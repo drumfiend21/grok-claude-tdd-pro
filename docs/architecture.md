@@ -7,6 +7,37 @@ Compose Grok Build CLI (outer orchestration) with Claude TDD Pro (inner Red-Gree
 - Pipelines need to be end-to-end automated.
 - Every code change must still pass a strict TDD gate with audit-quality provenance.
 
+## Repository topology (plugin-dependency model)
+
+This repo is one of **two independent microservice-style repositories**. They are developed, versioned, and released independently:
+
+```
+┌─────────────────────────────────────┐         ┌─────────────────────────────────────┐
+│  grok-claude-tdd-pro  (this repo)   │ imports │  claude-tdd-pro  (sibling repo)     │
+│  ─────────────────────────────────  │ ──────▶ │  ─────────────────────────────────  │
+│  Harness / consumer                 │         │  Plugin / provider                  │
+│                                     │         │                                     │
+│  - Grok outer-loop orchestration    │         │  - tdd-pro-cl-workflow skill        │
+│  - Handoff contract (.harness/)     │         │  - tdd-pro-batch-cl skill           │
+│  - Demo + integration substrate     │         │  - tdd-pro-bash32-portability skill │
+│  - Self-healing monitor (design)    │         │  - Authoritative architecture v1.9+ │
+└─────────────────────────────────────┘         └─────────────────────────────────────┘
+              consumer                                          provider
+              depends on plugin                                 unaware of consumer
+```
+
+Rules of the topology:
+
+1. **Direction of dependency is one-way.** This repo imports the plugin. The plugin never imports from this repo and is never modified to satisfy a need here.
+2. **Coupling surface is the contract, not internals.** The only sanctioned coupling points are (a) the handoff contract (`docs/handoff-contract.md`) and (b) the named skill IDs the plugin exposes. Reaching into undocumented plugin paths is a contract violation.
+3. **Versioned import, never vendored.** The plugin is imported by reference — a pinned git ref, skill version, or filesystem path resolved at session start. Files from `claude-tdd-pro` are never copied into this tree.
+4. **Independent release cadence.** A release of this repo MUST NOT require a synchronized release of `claude-tdd-pro`, and vice versa, except when the contract version itself is being bumped.
+5. **Contract changes are bilateral and explicit.** Bumping `schema_version` in the handoff contract is the only legitimate way to introduce a coordinated change. It happens as two PRs (one per repo) referencing each other, never as a covert edit.
+
+This model is what makes the harness durable: the plugin can evolve its inner-loop discipline (new audit gates, refined R-G-R prompts) without breaking the harness, and the harness can evolve its outer-loop orchestration (new monitors, new dispatch strategies) without destabilizing the plugin.
+
+The dependency invariant is the prime directive in `CLAUDE.md`. Every code change in this repo MUST preserve it.
+
 ## Role split (the contract)
 
 ### Grok Build CLI — outer loop
