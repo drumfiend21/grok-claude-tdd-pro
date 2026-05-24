@@ -1,4 +1,4 @@
-# CLAUDE.md — hybrid-harness-proto
+# CLAUDE.md — grok-claude-tdd-pro
 
 Project instructions for Claude when operating in this repo.
 
