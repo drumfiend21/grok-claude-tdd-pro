@@ -2,6 +2,12 @@
 # Never commit upstream snapshots into this tree — that would violate R-2 (no vendoring).
 .harness/plugin-cache/
 
+# Handoff documents + decision trails written at runtime by the harness scripts
+# (scripts/smoke-e2e.sh and, later, the real Grok orchestrator). These are
+# per-ticket runtime artifacts — useful for inspection, not durable repo state.
+.harness/handoffs/
+.harness/trails/
+
 # OS / editor noise
 .DS_Store
 *.swp
