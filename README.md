@@ -27,7 +27,7 @@ TICKETS 001–006 shipped (plus the TIER-0 / TIER-1 rulebook expansion sub-ticke
 - Demo target: `examples/string-utils/` ships at 4 pass / 1 fail; one designed Red test that the inner loop closes.
 - End-to-end smoke: `./scripts/smoke-e2e.sh` runs one full Red-Green-Refactor cycle through the wire format and exits 0 (per ADR-0008). Trap reverts the toy to Red baseline so re-runs are idempotent.
 
-Pending: TICKETS 009 (Boston demo storyboard) and 010 (provenance bridging). TICKET-008 self-healing extension is design-only and complete per ADR-0011; implementation lands as TICKET-008.a..e per the §16 sequencing in [`docs/self-healing-design.md`](docs/self-healing-design.md).
+Pending: TICKET 010 (provenance bridging). TICKET-008 self-healing extension is design-only and complete per ADR-0011; implementation lands as TICKET-008.a..e per the §16 sequencing in [`docs/self-healing-design.md`](docs/self-healing-design.md). TICKET-009 demo storyboard is complete in [`docs/demo-storyboard.md`](docs/demo-storyboard.md).
 
 ## Reused assets
 
