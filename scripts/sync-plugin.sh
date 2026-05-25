@@ -29,9 +29,10 @@ for arg in "$@"; do
     case "$arg" in
         --check)  MODE="check" ;;
         --update) MODE="update" ;;
+        --ensure) MODE="ensure" ;;
         --quiet)  QUIET=1 ;;
         -h|--help)
-            sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' >&2
             exit 0
             ;;
         *)
@@ -116,6 +117,40 @@ awk '
     }
     in_csf && /^[^[:space:]-]/ { in_csf=0 }
 ' "$LOCK_FILE" > "$TMP_CSF"
+
+# --- --ensure mode: materialize cache at pinned commit (no drift check) ----
+#
+# --ensure is the runtime-materialization primitive. The .claude/skills/* symlinks
+# resolve into this cache (see .claude/README.md), so the cache MUST exist at the
+# pinned commit before claude-tdd-pro skills can load. Idempotent: no-op when
+# cache is already at the pinned commit; rebuilds otherwise. Honors R-2
+# (by-reference materialization, not vendoring — the cache is gitignored).
+
+if [ "$MODE" = "ensure" ]; then
+    PINNED_SHORT_E=$(printf "%s" "$PINNED_COMMIT" | cut -c1-7)
+    log "[plugin-ensure] $UPSTREAM_REPO @ $PINNED_SHORT_E"
+    mkdir -p "$CACHE_DIR" || die "could not create cache dir: $CACHE_DIR"
+    CLONE_DIR_E="$CACHE_DIR/claude-tdd-pro"
+    if [ -d "$CLONE_DIR_E/.git" ]; then
+        EXISTING_HEAD_E=$(git -C "$CLONE_DIR_E" rev-parse HEAD 2>/dev/null || echo "")
+        if [ "$EXISTING_HEAD_E" = "$PINNED_COMMIT" ]; then
+            log "  status    : OK (cache already at pinned commit)"
+            exit 0
+        fi
+    fi
+    rm -rf "$CLONE_DIR_E"
+    git clone --depth=1 --branch "$PINNED_BRANCH" "$UPSTREAM_REPO" "$CLONE_DIR_E" >/dev/null 2>&1 \
+        || die "git clone failed for $UPSTREAM_REPO (network policy?)"
+    ACTUAL_HEAD_E=$(git -C "$CLONE_DIR_E" rev-parse HEAD)
+    if [ "$ACTUAL_HEAD_E" != "$PINNED_COMMIT" ]; then
+        log "  status    : WARN — branch HEAD ($(printf "%s" "$ACTUAL_HEAD_E" | cut -c1-7)) differs from pin ($PINNED_SHORT_E); fetching specific commit"
+        git -C "$CLONE_DIR_E" fetch --depth=1 origin "$PINNED_COMMIT" >/dev/null 2>&1 \
+            && git -C "$CLONE_DIR_E" checkout "$PINNED_COMMIT" >/dev/null 2>&1 \
+            || die "could not check out pinned commit $PINNED_COMMIT; bump the pin or unshallow"
+    fi
+    log "  status    : OK (cache materialized at $PINNED_SHORT_E)"
+    exit 0
+fi
 
 # --- Probe upstream HEAD ---------------------------------------------------
 

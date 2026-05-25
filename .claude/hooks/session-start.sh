@@ -26,6 +26,14 @@ if [ -x scripts/sync-plugin.sh ]; then
     if [ "$SYNC_EXIT" -eq 2 ]; then
         echo "[session-start] sync-plugin.sh reported an error (exit 2). Session continuing; investigate before acting on plugin state."
     fi
+    # Materialize the plugin cache at the pinned commit so that the
+    # .claude/skills/* symlinks resolve. Idempotent: no-op if the cache is
+    # already at the pinned commit. Required by TICKET-004 (skill consumption).
+    scripts/sync-plugin.sh --ensure
+    ENSURE_EXIT=$?
+    if [ "$ENSURE_EXIT" -ne 0 ]; then
+        echo "[session-start] sync-plugin.sh --ensure failed (exit $ENSURE_EXIT). Skills under .claude/skills/ may not resolve. Session continuing."
+    fi
 else
     echo "[session-start] WARN: scripts/sync-plugin.sh missing or not executable; plugin sync skipped."
 fi
