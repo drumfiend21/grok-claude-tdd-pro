@@ -76,38 +76,17 @@ The inner loop is invoked via `claude -p` (headless) and is driven by the three 
 - `tdd-pro-batch-cl` — substrate-touch CL batching decision
 - `tdd-pro-bash32-portability` — bash 3.2 / BSD-tool portability checklist (relevant when the harness writes shell scripts)
 
-## Handoff contract (defined in detail by TICKET-002)
+## Handoff contract
 
-Grok → Claude (per-ticket payload):
+The API boundary between the outer loop (Grok) and the inner loop (Claude TDD Pro). One JSON document per direction per ticket — request and response, no streaming, no partial updates.
 
-```json
-{
-  "ticket_id": "TICKET-NNN",
-  "title": "...",
-  "acceptance_criteria": ["...", "..."],
-  "file_scope": ["path/to/touch.ext", "..."],
-  "context": {
-    "research_refs": ["url-or-doc-id", "..."],
-    "decomposition_parent": "FEATURE-NNN",
-    "prior_decisions": ["..."]
-  }
-}
-```
+The **canonical schema, error semantics, freshness rules, and worked examples live in [`docs/handoff-contract.md`](handoff-contract.md)** (delivered by TICKET-002). This section names only the role; it does not duplicate the schema (per R-3: single source of truth).
 
-Claude → Grok (per-ticket response):
+Request (Grok → Claude) carries: `ticket_id`, `title`, `acceptance_criteria[]`, `file_scope.{may_edit, may_read, must_not_touch}`, `context.{research_refs, decomposition_parent, prior_decisions}`, `quality_gate`, plus `schema_version`, `issued_at`, and `context_ttl_seconds` for freshness control.
 
-```json
-{
-  "ticket_id": "TICKET-NNN",
-  "status": "green" | "red" | "blocked",
-  "changed_files": ["...", "..."],
-  "test_results": {"passed": N, "failed": N, "skipped": N},
-  "decision_trail_ref": "path/or/id",
-  "notes": "..."
-}
-```
+Response (Claude → Grok) carries: `ticket_id`, `status ∈ {green, red, blocked, error}`, `changed_files[]`, `test_results`, `coverage_delta`, `decision_trail_ref`, `skills_invoked[]`, and `error` (when status ≠ green).
 
-The exact JSON schema, error semantics, and freshness rules land in TICKET-002.
+End-to-end demonstration: `./scripts/smoke-e2e.sh` writes a real `.harness/handoffs/TICKET-042.req.json` against this contract, applies the inner-loop work, and writes a real `.res.json` populated from the actual test-gate output. Per ADR-0008.
 
 ## Reusing the existing trio (no new SKILL.md)
 

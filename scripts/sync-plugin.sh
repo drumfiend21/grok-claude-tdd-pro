@@ -6,14 +6,15 @@
 # dependency invariant: this repo never edits, vendors, or forks the upstream.
 #
 # Usage:
-#   scripts/sync-plugin.sh --check         # read-only; default; SessionStart hook calls this
-#   scripts/sync-plugin.sh --update        # bump the lock-file pin to upstream HEAD
+#   scripts/sync-plugin.sh --check         # read-only drift report; default; SessionStart hook calls this first
+#   scripts/sync-plugin.sh --ensure        # materialize the pinned commit into .harness/plugin-cache/ (idempotent); SessionStart hook calls this after --check so symlinked skills resolve
+#   scripts/sync-plugin.sh --update        # bump the lock-file pin to upstream HEAD (requires an ADR per architecture-principles §15)
 #   scripts/sync-plugin.sh --quiet         # suppress non-essential output
 #
 # Exit codes:
-#   0  in sync
+#   0  in sync / cache materialized
 #   1  drift detected (warning only — does not fail the session)
-#   2  error (network, missing tool, malformed lock file)
+#   2  error (network, missing tool, malformed lock file, pinned commit not fetchable)
 #
 # Portability target: bash 3.2 + BSD coreutils (per C-23).
 
@@ -32,7 +33,7 @@ for arg in "$@"; do
         --ensure) MODE="ensure" ;;
         --quiet)  QUIET=1 ;;
         -h|--help)
-            sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' >&2
+            sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' >&2
             exit 0
             ;;
         *)

@@ -16,8 +16,8 @@ There is **no live editing of the plugin** — this is a read-only awareness mec
 | File | Role |
 |---|---|
 | `docs/claude-tdd-pro.lock.yaml` | The pin. Records upstream URL, pinned commit, pinned timestamp, and sha256 of each contract-surface file. |
-| `scripts/sync-plugin.sh` | Compares the pin against upstream HEAD. `--check` (read-only), `--update` (bumps the pin), `--quiet`. |
-| `.claude/hooks/session-start.sh` | Thin wrapper that calls `sync-plugin.sh --check`. Always exits 0 (warn-only policy). |
+| `scripts/sync-plugin.sh` | Compares the pin against upstream HEAD and materializes the pinned commit on disk. Modes: `--check` (read-only drift report), `--ensure` (materialize the pinned commit into `.harness/plugin-cache/`, idempotent), `--update` (bump the pin to upstream HEAD; requires an ADR per `architecture-principles.md §15`), `--quiet`. |
+| `.claude/hooks/session-start.sh` | Thin wrapper that calls `sync-plugin.sh --check` (drift report) then `sync-plugin.sh --ensure` (cache materialization, so symlinked skills resolve). Always exits 0 (warn-only policy). |
 | `.claude/settings.json` | Wires the hook to Claude Code's `SessionStart` event. |
 | `.harness/plugin-cache/` | Gitignored shallow-clone cache used when hashing requires fetching upstream files. |
 

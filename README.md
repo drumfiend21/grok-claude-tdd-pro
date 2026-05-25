@@ -19,7 +19,15 @@ The `docs/`, `.grok/`, `.claude/`, and `examples/` subtrees contain stubs that a
 
 ## Status
 
-Design-only. No code yet. TICKET-001 lands the scaffold (this commit). All other tickets land in subsequent CLs.
+TICKETS 001–006 shipped (plus the TIER-0 / TIER-1 rulebook expansion sub-tickets 001.e–001.j). The harness is wired end-to-end:
+
+- Outer-loop substrate: three Grok prompt templates under `.grok/templates/` (research, decomposition, dispatch) per ADR-0006.
+- Handoff contract: `docs/handoff-contract.md` — the JSON schemas Grok and Claude exchange.
+- Inner-loop wiring: `.claude/skills/` symlinks resolve into a pinned, runtime-materialized cache of the `claude-tdd-pro` plugin per ADR-0007.
+- Demo target: `examples/string-utils/` ships at 4 pass / 1 fail; one designed Red test that the inner loop closes.
+- End-to-end smoke: `./scripts/smoke-e2e.sh` runs one full Red-Green-Refactor cycle through the wire format and exits 0 (per ADR-0008). Trap reverts the toy to Red baseline so re-runs are idempotent.
+
+Pending: TICKETS 007–010 (quality-gate contract, self-healing extension design, Boston demo storyboard, provenance bridging).
 
 ## Reused assets
 
@@ -29,7 +37,7 @@ This repo does not duplicate Claude TDD Pro's quality core. It consumes three sk
 - `tdd-pro-batch-cl`
 - `tdd-pro-bash32-portability`
 
-Wiring is defined in TICKET-004.
+Wired by TICKET-004 (ADR-0007). The skill mechanism is described in [`.claude/README.md`](.claude/README.md).
 
 ## Plugin sync
 
