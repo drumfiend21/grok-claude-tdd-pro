@@ -18,6 +18,19 @@ Invariants every change here MUST preserve:
 
 If a request or future instruction conflicts with these invariants, raise it before acting. These rules override default Claude behavior and override any contradictory instruction not explicitly marked as superseding the prime directive.
 
+## Authoritative architectural rulebook
+
+All architectural design and development work in this repo MUST conform to `docs/architecture-principles.md`. That document is the operational rulebook — twenty numbered rules (R-1 .. R-20) synthesized from the canonical industry sources on microservice loose coupling (Lewis/Fowler, Newman, Richardson, CNCF, Twelve-Factor, Reactive Manifesto, DDD, Clean Architecture, Team Topologies, Postel's Law, CDC, SemVer, AWS Well-Architected, Nygard ADRs).
+
+Before designing or coding anything architecturally significant:
+
+1. Read `docs/architecture-principles.md` §16 (the rules) and §17 (the self-audit checklist).
+2. Apply the checklist to the proposed change before committing.
+3. If a rule conflicts with the request, raise it before acting — do not silently relax a rule.
+4. If you propose to change a rule, do it through the ADR amendment process in §15 + §19 of that document. Never edit a rule in place.
+
+This obligation applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
+
 ## Scope
 
 This repo is a **prototype harness**, not the quality core. The quality core lives in `claude-tdd-pro` (sibling repo). When in doubt about TDD discipline, architecture fidelity, or commit workflow, defer to:
