@@ -814,6 +814,7 @@ Before every commit, the author — human or agent — confirms:
 - [ ] (D-11) New harness features declare which agent-CLI primitive(s) they compose on top of; nothing re-implements plan / diff / sub-agent / worktree / headless / ACP.
 - [ ] (D-12) The CL is positioned on the "production-grade trust" side of the line, not the "faster generation" side, or its rationale is documented.
 - [ ] (D-13) The session producing this CL did not exhibit any of the five named failure patterns (kitchen-sink, correction-loop, over-specified-CLAUDE.md, trust-then-verify gap, infinite exploration). If one appeared and was corrected mid-session, document it briefly in the commit body.
+- [ ] (D-12 + D-13, Q-DOC-DRIFT) **Operator-visible surface consistency.** If this CL changes any operator-visible surface — CLI flag, help text, JSON schema, hook, setting, README claim, example invariant, or any doc that describes the surface — every downstream operator-facing doc has been updated to match in this same CL. Verified by `./scripts/audit-doc-drift.sh` exiting 0 (or by inspection if the script's four pattern checks do not apply to this CL's surface). Stale operator docs are a D-12 trustability violation; not running the audit is a D-13 "trust-then-verify gap." Added in TICKET-006.b after the TICKET-006.a audit found six drift items the existing checklist did not catch; rationale in ADR-0009.
 
 ## §5 Authority tier and rule-ordering
 
