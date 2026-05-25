@@ -55,7 +55,7 @@ Field rules:
 - `acceptance_criteria` MUST be non-empty. Each entry is one observable behavior, not an implementation step.
 - `file_scope.may_edit` is an allowlist. Claude MUST NOT edit files outside it. `must_not_touch` is a denylist that wins ties.
 - `context_ttl_seconds` is how long the receiver may treat research_refs as fresh. Past TTL, Claude returns `status: "blocked"` with `error.code: "context_stale"` rather than acting on stale facts.
-- `quality_gate` defines what counts as "green". TICKET-007 will formalize the gate; this field is the contract surface.
+- `quality_gate` defines what counts as "green". The semantics of each sub-field — `tests_must_pass`, `coverage_delta_min`, `lint_clean`, and the recommended-at-v1 `provenance_complete` — are formalized in [`quality-gate.md`](quality-gate.md). This field is the contract surface; per-sub-gate definitions, defaults, override policies, and the reviewer checklist live in the formalization doc.
 
 ## Claude → Grok (response)
 
