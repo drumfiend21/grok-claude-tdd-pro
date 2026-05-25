@@ -1,0 +1,7 @@
+# claude-tdd-pro plugin sync cache (shallow clones written by scripts/sync-plugin.sh).
+# Never commit upstream snapshots into this tree — that would violate R-2 (no vendoring).
+.harness/plugin-cache/
+
+# OS / editor noise
+.DS_Store
+*.swp

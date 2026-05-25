@@ -1,0 +1,41 @@
+# claude-tdd-pro plugin lock file
+#
+# This file is the source-of-truth pin for the upstream claude-tdd-pro plugin
+# consumed by this repo. It is the operational form of architectural rule R-2
+# ("versioned consumption, by reference") and the unit-of-bump for rule R-5
+# ("contract changes are bilateral and explicit").
+#
+# Update via:  scripts/sync-plugin.sh --update
+# Check via:   scripts/sync-plugin.sh --check  (run automatically at SessionStart)
+#
+# Any --update that changes a contract_surface_files entry requires an ADR.
+# See: docs/architecture-principles.md §15, docs/plugin-sync.md
+#
+# DO NOT edit by hand unless you also write an ADR.
+
+schema_version: 1
+
+upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
+pinned_branch:   main
+pinned_commit:   b277284529b8b3ce3f7df904892d6ffb0080d045
+pinned_at:       2026-05-24T17:43:52-04:00
+pinned_message:  "portability: ruby 3.3.6 + Psych 4 YAML + hermetic git config for cloud-session parity (#1)"
+
+# The contract surface — files in upstream this repo's architecture depends on.
+# Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
+# compares. Hash drift on ANY of these files = a contract-surface change =
+# requires an ADR before bumping the pin.
+contract_surface_files:
+  - path:   CLAUDE.md
+    sha256: 220043438e104c5232000d96635d7f1b8689731258b68ad71865e63d9b6b9b39
+  - path:   docs/architecture-v1.9.md
+    sha256: 9080b6de202d5ffc6bd759e792cb8ea31bfc69feeef1967d485e1ce6fbd7eb73
+  - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
+    sha256: 33ee0d8a66574de504da77f7379bdbec6b8012efa70f9be9534deeb80b4a78f8
+  - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
+    sha256: 9a004131782faf3477900984f26f36e6d1997cca7f04e6b672552048d1fd65b4
+  - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
+    sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
+
+last_synced_at:      2026-05-25T01:08:00Z
+last_synced_session: "TICKET-001.e bootstrap"

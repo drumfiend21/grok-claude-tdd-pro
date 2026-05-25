@@ -30,3 +30,7 @@ This repo does not duplicate Claude TDD Pro's quality core. It consumes three sk
 - `tdd-pro-bash32-portability`
 
 Wiring is defined in TICKET-004.
+
+## Plugin sync
+
+The plugin dependency on `claude-tdd-pro` is pinned in [`docs/claude-tdd-pro.lock.yaml`](docs/claude-tdd-pro.lock.yaml) and reconciled on every session start. See [`docs/plugin-sync.md`](docs/plugin-sync.md) for how to read the drift report, when to bump the pin, and what triggers an ADR. Architectural rationale: [ADR-0001](docs/adr/0001-plugin-lockfile-session-sync.md).
