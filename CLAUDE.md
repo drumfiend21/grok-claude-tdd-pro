@@ -33,6 +33,21 @@ Before designing or coding anything:
 
 This obligation applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
 
+## Authoritative AI engineering corpus rulebook
+
+All planning and engineering work in this repo — every CL, every prompt, every agent invocation, every sub-agent delegation, every workflow pattern choice — MUST conform to `docs/ai-engineering-corpus.md`. That document is the operational procedural playbook for software engineering inside grok-claude-tdd-pro: a synthesis of the founder-directives §1 sources (Karpathy's agentic-engineering shift; Musk's 5-step Algorithm; Anthropic's Claude Code best practices and Building Effective Agents; Amodei's Machines of Loving Grace) into a single, ruthlessly actionable corpus covering mindset, the 5-step algorithm, Claude/Grok/LLM interaction practices, agent and workflow patterns, scaling, risks, and vision.
+
+Authority tier: **TIER 1**, sibling to the prime directive above and to the founder-directives rulebook. When the corpus conflicts with R-/G-/C-rules, the corpus wins. When the three TIER-1 authorities conflict among themselves, raise it explicitly — none defers by default.
+
+Before planning or engineering anything:
+
+1. Read `docs/ai-engineering-corpus.md` — both the framing (authority, provenance chain, amendment process, pre-commit checklist) and the verbatim corpus body (§§ 1–5 + Overarching Principles).
+2. Apply the corpus's pre-commit checklist alongside the founder-directives D-checklist and the architectural, Grok, and Claude TDD Pro checklists before committing.
+3. If the corpus conflicts with the request, raise it before acting.
+4. The corpus is explicitly living — amendments follow the ADR process in `docs/architecture-principles.md` §19. Unlike `docs/founder-directives.md §1` (which is immutable and append-only), the corpus body is editable; the amendment trail lives in ADRs and `git log`.
+
+This obligation applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
+
 ## Authoritative architectural rulebook
 
 All architectural design and development work in this repo MUST conform to `docs/architecture-principles.md`. That document is the operational rulebook — twenty numbered rules (R-1 .. R-20) synthesized from the canonical industry sources on microservice loose coupling (Lewis/Fowler, Newman, Richardson, CNCF, Twelve-Factor, Reactive Manifesto, DDD, Clean Architecture, Team Topologies, Postel's Law, CDC, SemVer, AWS Well-Architected, Nygard ADRs).
