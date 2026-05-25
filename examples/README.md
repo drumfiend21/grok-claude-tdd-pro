@@ -1,5 +1,9 @@
 # examples/
 
-Status: **stub — filled in by TICKET-005**.
+Demo targets the harness operates on end-to-end.
 
-This directory will hold the toy module (e.g. string-utils) used to demo one full Red-Green-Refactor cycle through the harness. TICKET-006 wires the end-to-end smoke script that drives it.
+| Path | Role |
+|---|---|
+| [`string-utils/`](./string-utils/) | TICKET-005 toy module. Demonstrates one R-G-R cycle through the full outer-loop → handoff → inner-loop pipeline. Ships at 4 pass / 1 red; the smoke script (TICKET-006) closes the gap once. |
+
+**D-5 lockdown** applies to everything under this tree: no CL after TICKET-005 lands purely against the toy. Future demos that materially expand `examples/` either target real problem instances or require an explicit ADR. See [`./string-utils/README.md`](./string-utils/README.md) for the full notice.
