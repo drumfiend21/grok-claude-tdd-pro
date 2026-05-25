@@ -44,6 +44,19 @@ Before designing or coding anything Grok-facing:
 
 This obligation also applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
 
+## Authoritative Claude TDD Pro consumption rulebook
+
+All work inside acceptance-tested scope — every inner-loop invocation, every test, every refactor, every commit driven by `claude-tdd-pro` — MUST conform to `docs/claude-tdd-pro-principles.md`. That document is the operational rulebook for consuming the plugin — twenty-four numbered rules (C-1 .. C-24) synthesized from the canonical TDD literature (Kent Beck, Uncle Bob's Three Laws, Martin Fowler's *Refactoring*, Michael Feathers' *Working Effectively with Legacy Code*, Mike Cohn's test pyramid, the London/Chicago schools, mutation/property-based testing), Anthropic's official Claude Code and Agent Skills documentation (headless `-p` mode, SKILL.md anatomy, progressive disclosure, the Agent SDK), and the DORA delivery metrics from *Accelerate*.
+
+Before designing or coding anything inside acceptance-tested scope:
+
+1. Read `docs/claude-tdd-pro-principles.md` §16 (the C-rules) and §17 (the inner-loop self-audit checklist).
+2. Apply the C-checklist alongside the architectural and Grok checklists before committing.
+3. If a C-rule conflicts with the request, raise it before acting.
+4. Amendments follow the same ADR process documented in `architecture-principles.md` §19 — never edit a C-rule in place.
+
+This obligation also applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
+
 ## Scope
 
 This repo is a **prototype harness**, not the quality core. The quality core lives in `claude-tdd-pro` (sibling repo). When in doubt about TDD discipline, architecture fidelity, or commit workflow, defer to:
