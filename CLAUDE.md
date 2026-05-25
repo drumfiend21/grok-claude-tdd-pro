@@ -18,6 +18,21 @@ Invariants every change here MUST preserve:
 
 If a request or future instruction conflicts with these invariants, raise it before acting. These rules override default Claude behavior and override any contradictory instruction not explicitly marked as superseding the prime directive.
 
+## Authoritative founder-directives rulebook
+
+All work in this repo — design, code, docs, prompts, hooks, skills, monitors — MUST conform to `docs/founder-directives.md`. That document is the operational rulebook for named-source directives elevated to repo-canonical authority by the architecture team: seven numbered directives (D-1 .. D-7) derived from immutable §1 provenance entries (today: two X posts from 2026-05-24 — @teslayoda on Grok learning from Claude Code and Cursor enterprise patterns, and @elonmusk on closing the loop on progressively harder problems).
+
+Authority tier: **TIER 1**, co-equal with the prime directive above. When a D-rule conflicts with an R- / G- / C-rule, the D-rule wins (per `docs/founder-directives.md` §5). When the two TIER-1 authorities themselves conflict, raise it explicitly — neither defers to the other by default.
+
+Before designing or coding anything:
+
+1. Read `docs/founder-directives.md` §3 (the D-rules) and §4 (the pre-commit self-audit checklist).
+2. Apply the D-checklist alongside the architectural, Grok, and Claude TDD Pro checklists before committing.
+3. If a D-rule conflicts with the request, raise it before acting — do not silently relax a directive.
+4. Amendments follow the ADR process in `docs/architecture-principles.md` §19. Never edit a D-rule in place. Never edit a §1 provenance entry, ever — even for typos.
+
+This obligation applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
+
 ## Authoritative architectural rulebook
 
 All architectural design and development work in this repo MUST conform to `docs/architecture-principles.md`. That document is the operational rulebook — twenty numbered rules (R-1 .. R-20) synthesized from the canonical industry sources on microservice loose coupling (Lewis/Fowler, Newman, Richardson, CNCF, Twelve-Factor, Reactive Manifesto, DDD, Clean Architecture, Team Topologies, Postel's Law, CDC, SemVer, AWS Well-Architected, Nygard ADRs).
