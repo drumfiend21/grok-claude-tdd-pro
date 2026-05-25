@@ -821,14 +821,14 @@ When D-rules conflict with rules in the other rulebooks, this is the ordering:
 
 | Tier | Rulebook | Scope |
 |---|---|---|
-| 1 | `CLAUDE.md` prime directive (plugin-dependency model) | Repo-wide; non-negotiable. |
-| 1 | This document (founder directives, D-1 .. D-13) | Repo-wide; provenance + derived directives. |
-| 1 | `docs/ai-engineering-corpus.md` | Repo-wide; procedural playbook for planning and engineering. |
+| 0 | `docs/ai-engineering-corpus.md` (supreme operating directive) | Repo-wide; highest-priority ruleset for architecture, planning, and development. Above everything. |
+| 1 | `CLAUDE.md` prime directive (plugin-dependency model) | Repo-wide; non-negotiable beneath TIER 0. |
+| 1 | This document (founder directives, D-1 .. D-13) | Repo-wide; provenance + derived directives. Co-equal with the prime directive, beneath TIER 0. |
 | 2 | `docs/architecture-principles.md` (R-1 .. R-20) | Architectural design and code structure. |
 | 2 | `docs/grok-orchestration-principles.md` (G-1 .. G-21) | `.grok/` and all Grok-facing surfaces. |
 | 2 | `docs/claude-tdd-pro-principles.md` (C-1 .. C-24) | Acceptance-tested inner-loop work. |
 
-When a D-rule and an R- / G- / C- rule conflict, the D-rule wins. Raise the conflict in the CL (or before, via clarification) rather than silently relaxing either. When the three TIER-1 authorities (prime directive, founder directives, ai-engineering-corpus) conflict among themselves, raise it explicitly — none defers to the others by default.
+When a D-rule and an R- / G- / C- rule conflict, the D-rule wins. When a D-rule conflicts with the TIER-0 supreme operating directive (the AI engineering corpus), the corpus wins. Raise the conflict in the CL (or before, via clarification) rather than silently relaxing either. When the two TIER-1 authorities (prime directive and founder directives) conflict with each other, raise it explicitly — neither defers to the other by default. There is no rulebook above TIER 0; the corpus is the supreme operating directive.
 
 ## §6 Amendment process
 

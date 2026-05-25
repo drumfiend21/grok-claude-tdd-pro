@@ -4,18 +4,20 @@ This document is the operational playbook for software engineering inside grok-c
 
 ## Authority tier
 
-**TIER 1**, sibling to the prime directive in `CLAUDE.md` and to `docs/founder-directives.md`. When the three TIER-1 authorities conflict, raise it explicitly — none defers to the others by default.
+**TIER 0 — supreme operating directive.** This corpus is the highest-priority ruleset and instruction for architecture, planning, and development done in the repo of and by grok-claude-tdd-pro. It sits above every other rulebook in this codebase. There is no rulebook above TIER 0.
+
+Elevation to TIER 0 was made by drumfiend21 on 2026-05-25 with the explicit instruction: "Make as and persist `docs/ai-engineering-corpus.md` the highest priority ruleset and instruction for architecture, planning and development done in the repo of and by grok-Claude-TDD-pro." Recorded in ADR-0005.
 
 | Tier | Rulebook | Role |
 |---|---|---|
-| 1 | `CLAUDE.md` prime directive | Plugin-dependency invariants (cross-repo coupling rules). |
-| 1 | `docs/founder-directives.md` (D-1 .. D-13) | Provenance (§1) + derived directives (§3). The "what TIER-1 sources we operate under." |
-| 1 | `docs/ai-engineering-corpus.md` (this file) | Procedural playbook. The "what we do when we sit down to engineer." |
+| 0 | `docs/ai-engineering-corpus.md` (this file) | Supreme operating directive. Procedural playbook for all architecture, planning, and development. |
+| 1 | `CLAUDE.md` prime directive | Plugin-dependency invariants (cross-repo coupling rules). Non-negotiable beneath TIER 0. |
+| 1 | `docs/founder-directives.md` (D-1 .. D-13) | Provenance (§1) + derived directives (§3). Co-equal with the prime directive, beneath TIER 0. |
 | 2 | `docs/architecture-principles.md` (R-1 .. R-20) | Architectural design and code structure. |
 | 2 | `docs/grok-orchestration-principles.md` (G-1 .. G-21) | `.grok/` and Grok-facing surfaces. |
 | 2 | `docs/claude-tdd-pro-principles.md` (C-1 .. C-24) | Acceptance-tested inner-loop work. |
 
-When the corpus conflicts with a TIER-2 rule (R-, G-, C-), the corpus wins. When it conflicts with another TIER-1 authority (prime directive or founder-directives), raise it.
+When this corpus conflicts with ANY other rulebook in the repo — the prime directive, founder-directives D-rules, R-rules, G-rules, or C-rules — the corpus wins. The only legitimate override of the corpus is an explicit, named amendment to the corpus itself, landed via the ADR process referenced under "Amendment process" below. Silent relaxation, deferred interpretation, or implicit override is forbidden.
 
 ## Scope
 
