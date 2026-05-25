@@ -31,6 +31,19 @@ Before designing or coding anything architecturally significant:
 
 This obligation applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
 
+## Authoritative Grok orchestration rulebook
+
+All work that touches `.grok/`, AGENTS.md, the handoff layer, the Grok system prompts, the Grok-driven monitors, or any other Grok-facing config MUST conform to `docs/grok-orchestration-principles.md`. That document is the operational rulebook for Grok-as-outer-loop-orchestrator — twenty-one numbered rules (G-1 .. G-21) synthesized from xAI's official Grok and Grok Build CLI guidance, Anthropic's *Building Effective Agents*, canonical orchestrator-worker and hierarchical multi-agent patterns, LangGraph's supervisor pattern, the AGENTS.md and Agent Client Protocol open standards, the self-healing agent pattern, and the production HITL approval-gate literature.
+
+Before designing or coding anything Grok-facing:
+
+1. Read `docs/grok-orchestration-principles.md` §15 (the G-rules) and §16 (the Grok self-audit checklist).
+2. Apply the Grok checklist alongside the architectural checklist before committing.
+3. If a G-rule conflicts with the request, raise it before acting.
+4. Amendments follow the same ADR process documented in `architecture-principles.md` §19 — never edit a G-rule in place.
+
+This obligation also applies to every session type (local CLI, remote, cloud, GitHub Action, IDE), no exceptions.
+
 ## Scope
 
 This repo is a **prototype harness**, not the quality core. The quality core lives in `claude-tdd-pro` (sibling repo). When in doubt about TDD discipline, architecture fidelity, or commit workflow, defer to:
