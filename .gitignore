@@ -8,6 +8,11 @@
 .harness/handoffs/
 .harness/trails/
 
+# Per-session Cursor working artifacts (reserved by TICKET-013 / ADR-0014; not
+# used at v1). .cursor/rules/*.mdc IS committed (generator output, checked in
+# so fresh clones have it before sync-plugin.sh --ensure runs).
+.harness/cursor-sessions/
+
 # OS / editor noise
 .DS_Store
 *.swp

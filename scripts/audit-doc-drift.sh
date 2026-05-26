@@ -13,6 +13,8 @@
 #   F-2  "No code yet" / "Design-only" strings in README.md
 #   F-3  "lands in TICKET-NNN" / "will land in TICKET-NNN" future-tense for DONE tickets
 #   F-4  scripts/sync-plugin.sh case-arm flags vs --help output parity
+#   F-5  .cursor/rules/*.mdc files differ from scripts/export-cursor-rules.sh
+#        output (generator-output-only invariant per ADR-0014 / TICKET-013)
 #
 # Usage:
 #   scripts/audit-doc-drift.sh                    # exit 0 clean / 1 with findings
@@ -116,6 +118,28 @@ if [[ -f "$SP" ]]; then
         [[ -z "$f" ]] && continue
         emit "F-4 (help/impl mismatch): $SP --help documents $f but no case arm implements it."
     done <<< "$missing_from_impl"
+fi
+
+# --- Check F-5: .cursor/rules/*.mdc generator-output-only invariant ---
+#
+# .cursor/rules/*.mdc files are generator output from scripts/export-cursor-rules.sh
+# (ADR-0014). Hand-edits are forbidden because the next sync-plugin.sh --ensure
+# would clobber them. F-5 catches hand-edits or stale outputs by re-running the
+# generator in --check mode (writes to a temp dir, diffs against on-disk).
+ECR="scripts/export-cursor-rules.sh"
+if [[ -x "$ECR" ]]; then
+    if ! "$ECR" --check --quiet >/dev/null 2>&1; then
+        # Re-run with output captured to surface the specific drift file(s).
+        ecr_out="$("$ECR" --check 2>&1 || true)"
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            case "$line" in
+                *DRIFT:*|*MISSING*)
+                    emit "F-5 (cursor-rules drift): ${line#\[cursor-rules\] }"
+                    ;;
+            esac
+        done <<< "$ecr_out"
+    fi
 fi
 
 # --- Report ---

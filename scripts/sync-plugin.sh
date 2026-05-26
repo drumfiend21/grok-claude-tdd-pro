@@ -150,6 +150,17 @@ if [ "$MODE" = "ensure" ]; then
             || die "could not check out pinned commit $PINNED_COMMIT; bump the pin or unshallow"
     fi
     log "  status    : OK (cache materialized at $PINNED_SHORT_E)"
+
+    # Additive step (TICKET-013 / ADR-0014): materialize .cursor/rules/*.mdc
+    # from sources-of-truth so Cursor's chat agent has the session-start
+    # ritual + skill paths + authority pointers available on session open
+    # (Cursor's always-loaded-rule equivalent to Claude Code's push-hook).
+    # The generator is idempotent; no-op if outputs already match sources.
+    if [ -x "scripts/export-cursor-rules.sh" ]; then
+        scripts/export-cursor-rules.sh --quiet || log "  warn      : export-cursor-rules.sh exited non-zero (see scripts/export-cursor-rules.sh output)"
+        log "  cursor    : .cursor/rules/*.mdc generated"
+    fi
+
     exit 0
 fi
 
