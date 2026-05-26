@@ -34,3 +34,18 @@ TICKETS 011-014 landed the "harness usable INSIDE Cursor IDE" extension per the 
 The user-provided "Technical Implementation Plan: grok-Claude-tdd-pro Hybrid Harness v0.2" spec was adapted to extend the existing architecture (rather than adopted literally) per the user's 2026-05-25 direction; reconciliation mapping recorded in the implementation plan. Zero TIER-1 invariants violated; zero v0.2 directives lost; explicit deferrals documented in each ticket's ADR.
 
 Enterprise positioning: every harness feature is now drivable from inside Cursor — the named enterprise IDE alongside Claude Code. Pitch hook (2026-05-24) extended: outer-loop autonomy + inner-loop discipline + cross-IDE operator surface = production-grade trustability that survives both 1,000 engineers shipping in parallel AND a heterogeneous IDE fleet (Cursor + Claude Code + Grok Build).
+
+## 2026-05-26 — Swarm orchestration v1 (MVP)
+
+TICKET-015 / ADR-0017 ships `.claude/skills/orchestrating-swarms/SKILL.md` — the Claude-Code / Cursor-side materialization of the orchestrator-worker pattern named in `docs/grok-orchestration-principles.md §§4, 9, 10` + G-7 / G-8 / G-9 / G-16. Per the 2026-05-26 "Architect Automation Briefing" #1 action item (Wayfair / Babel Street / State Street / HubSpot agentic-swarm hiring signal).
+
+Design (per 2026-05-26 user direction):
+
+- **Mode: worker-fanout.** Composes on Grok's outer-loop decomposition per G-7; does NOT replace it. Grok still decomposes; the new skill is the Claude-side fanout consumer.
+- **MVP scope.** SKILL.md + this AUTOMATION_INTEL entry + AGENTS.md §4 enumeration + TICKETS.md row + ADR-0017. PostToolUse hooks, self-healing tests, weekly debt cron, Apple/Google triggers, lead-orchestrator mode, hierarchical multi-supervisor pattern — all explicitly deferred per ADR-0017 Out-of-scope with rationale.
+- **Sub-agent role mapping.** The briefing's Architect / Builder / Validator labels map sequentially within one worker to R-G-R phases (Architect = Red, Builder = Green, Validator = Refactor + gate pre-review), not as three parallel TeammateTools per ticket. N parallel workers across N tickets is the swarm; per-ticket fan-out is not.
+- **Worktree discipline.** Per G-8: one worker = one git worktree = one branch = one PR. Pre-decomposition file-scope conflict map serializes overlapping tickets (not papered over). G-9 caps parallel workers at 8 per supervisor.
+
+Vendor benchmark claim in the briefing (80-95% UI-DOM self-healing tests) treated as T-D paraphrased per `docs/founder-directives.md §1` verification tiers; not founder-elevated; out-of-scope.
+
+Enterprise positioning extended: outer-loop autonomy (Grok) + parallel worker fan-out on isolated worktrees (this CL) + inner-loop discipline (tdd-pro-cl-workflow trio) + per-worker quality gate (`docs/quality-gate.md`) + cross-IDE operator surface (TICKETS 011-014) = the harness now operationalizes parallel multi-ticket delivery without surrendering production-grade trust. Direct addressable pitch for >1,000-IC orgs running heterogeneous IDE fleets shipping agentic platforms.

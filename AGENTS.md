@@ -37,15 +37,19 @@ The cross-tool wire format is documented in `docs/handoff-contract.md`. Two sche
 
 Both schemas at `schema_version: "1"`. Self-heal dispatches reuse the same schema with `SELF-HEAL-<UTC-date>-<seq>` ticket-id prefix (see `docs/self-healing-design.md`); no second wire format.
 
-## 4. Skill enumeration (inner-loop discipline)
+## 4. Skill enumeration (inner-loop discipline + orchestration)
 
-Three skills are materialized as symlinks under `.claude/skills/` pointing into `.harness/plugin-cache/claude-tdd-pro/.claude/skills/`:
+Three **inner-loop discipline** skills are materialized as symlinks under `.claude/skills/` pointing into `.harness/plugin-cache/claude-tdd-pro/.claude/skills/`:
 
 - `.claude/skills/tdd-pro-cl-workflow/SKILL.md` — the per-CL Red-Green-Refactor loop. Read BEFORE writing any spec, substrate, or commit. Enforces architecture-quote pre-flight → spec-write → self-audit → verify → propose commit.
 - `.claude/skills/tdd-pro-batch-cl/SKILL.md` — substrate-touch CL batching convention. Read BEFORE planning the next CL boundary; decides when to ship multiple features as ONE commit vs. separate commits.
 - `.claude/skills/tdd-pro-bash32-portability/SKILL.md` — macOS bash 3.2 + BSD-tool portability checklist. Reference BEFORE any new Write/Edit of a `.sh` file; catches the 9 recurring portability gotchas.
 
 The three SKILL.md files are the inner-loop discipline. The harness adds no fourth core skill — per CLAUDE.md "What this repo does NOT do": *"Define a new tdd-pro-core SKILL.md. The existing trio is the core."*
+
+One **orchestration-tier** skill lives at the harness's repo (NOT a tdd-pro-core skill — joins the trio as a sibling at the orchestration tier, not the inner-loop tier):
+
+- `.claude/skills/orchestrating-swarms/SKILL.md` — worker-fanout coordinator for the orchestrator-worker pattern named in `docs/grok-orchestration-principles.md §§4, 9, 10` + G-7 / G-8 / G-9 / G-16. Use AFTER `/decompose` produces ≥2 atomic tickets with non-overlapping `file_scope`. Spawns one worker per ticket on its own git worktree (G-8); each worker runs the existing `tdd-pro-cl-workflow` R-G-R discipline; lead collects worker outputs and runs the per-worker quality gate. Composes on Grok's outer-loop decomposition per G-7 (does NOT replace it). Introduced in TICKET-015 / ADR-0017.
 
 ## 5. Authority-doc enumeration (TIER 0 / TIER 1 / TIER 2)
 
