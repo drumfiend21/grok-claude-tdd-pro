@@ -70,6 +70,7 @@ One **orchestration-tier** skill lives at the harness's repo (NOT a tdd-pro-core
 - `docs/quality-gate.md` — four sub-gates (`tests_must_pass`, `coverage_delta_min`, `lint_clean`, `provenance_complete`).
 - `docs/self-healing-design.md` — design for long-running outer-loop monitor; implementation deferred per ADR-0011.
 - `docs/handoff-contract.md` — wire format (see §3 above).
+- `docs/provenance-bridging-design.md` — design for the per-ticket provenance manifest at `.harness/audit/TICKET-NNN.manifest.json` bridging Grok's `research_refs` + Claude's decision trail + `.res.json` `gate_results` into a single audit entry point; implementation deferred to TICKET-010.a per ADR-0018.
 
 Conflict-resolution: TIER 0 > TIER 1 > TIER 2. Within TIER 1, prime-directive vs. founder-directives conflicts must be raised explicitly — neither defers to the other by default. See `CLAUDE.md` and `docs/founder-directives.md §5`.
 
