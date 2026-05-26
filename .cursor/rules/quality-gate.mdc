@@ -31,9 +31,11 @@ When reviewing a diff produced by `/inner-loop` (or any inner-loop invocation), 
 - Per-CL override allowed with documented rationale.
 - Source-of-truth: `docs/quality-gate.md §Sub-gate 3: lint_clean`.
 
-## Sub-gate 4: `provenance_complete` (RECOMMENDED at v1; REQUIRED at v2)
+## Sub-gate 4: `provenance_complete` (REQUIRED post-TICKET-010 trilogy; ADR-0026)
 
 - Decision trail at `.harness/trails/TICKET-NNN.md` names the R-G-R steps (or skip rationale per SKILL.md's allowance for stub-shape commits).
+- Manifest at `.harness/audit/TICKET-NNN.manifest.json` exists, validates per `scripts/audit-manifest.sh` (ADR-0020), and `scripts/emit-manifest.sh --regenerate` shows no source-sha drift (ADR-0021).
+- Promotion mechanism: the TICKET-010 trilogy (010.a/.b/.c) provides the structural enforcement bar; promotion to REQUIRED landed via ADR-0026 WITHOUT a `schema_version` bump (wire-format compatibility preserved per R-11).
 - Borrows from plugin `architecture-v1.9.md §2.8 AI Provenance Manifest`.
 - Source-of-truth: `docs/quality-gate.md §Sub-gate 4: provenance_complete`.
 

@@ -19,9 +19,9 @@ The harness's per-CL bar. A Claude→Grok response is allowed to claim `status: 
 | `tests_must_pass` | Required | (none — harness-native) | No |
 | `coverage_delta_min` | Required (default `0`) | (none — harness-native) | Yes, with documented rationale |
 | `lint_clean` | Required | (none — harness-native) | Yes, with documented rationale |
-| `provenance_complete` | Recommended (additive); will be Required at schema_version=2 | §2.8 AI Provenance Manifest | No (when present) |
+| `provenance_complete` | **Required** (promoted per ADR-0026; the TICKET-010 manifest trilogy provides the structural enforcement bar) | §2.8 AI Provenance Manifest | No when `status: "green"` (manifest must exist + validate + sha-match sources); Yes with documented rationale when `status: "red"` or `"blocked"` (`response_missing` source-kind acceptable per emit-manifest.sh) |
 
-Per R-11 (tolerant reader) and R-5 (bilateral schema changes), `provenance_complete` is additive at schema_version=1: consumers that don't recognize the field MUST ignore it without erroring, and responses MAY omit it. The promotion to required-at-v2 lands via a future ADR and bumps `schema_version` in all three sites named by `dispatch.md`.
+Promotion history: `provenance_complete` was originally **Recommended (additive) at `schema_version=1`** pending the manifest infrastructure. The TICKET-010 trilogy shipped that infrastructure (ADR-0018 design; ADR-0019 emitter; ADR-0020 schema validator; ADR-0021 `--regenerate` audit-time re-hash). ADR-0026 promotes the sub-gate to **Required without bumping `schema_version`** — wire-format compatibility (R-11 tolerant reader) is preserved; the structural enforcement is the manifest file's existence + schema validity + sha-source consistency, not a wire-format field. The original "will be Required at schema_version=2" language is therefore superseded: the schema bump is no longer the trigger; the trilogy is.
 
 ### Sub-gate 1: `tests_must_pass`
 
@@ -72,11 +72,11 @@ Per R-11 (tolerant reader) and R-5 (bilateral schema changes), `provenance_compl
 - [ ] If no linter: response notes documents the exemption verbatim.
 - [ ] Warnings exempted are listed by rule-id in the response notes.
 
-### Sub-gate 4: `provenance_complete` (recommended at v1; required at v2)
+### Sub-gate 4: `provenance_complete` (REQUIRED post-TICKET-010 trilogy; ADR-0026)
 
-**Definition.** The response's `decision_trail_ref` resolves to a file that exists, is readable, and names the three R-G-R steps (Red, Green, Refactor) — or, if Refactor was skipped, documents the skip with a one-line rationale. The trail file is the harness's minimum-viable provenance artifact; it composes on the plugin's `§2.8 AI Provenance Manifest` but does NOT inherit its full JSON schema (the manifest is the plugin's per-commit signature; the trail is the harness's per-ticket narrative).
+**Definition.** The response's `decision_trail_ref` resolves to a file that exists, is readable, and names the three R-G-R steps (Red, Green, Refactor) — or, if Refactor was skipped, documents the skip with a one-line rationale. AND the per-ticket provenance manifest at `.harness/audit/TICKET-NNN.manifest.json` exists, validates against the v1 schema per `scripts/audit-manifest.sh` (ADR-0020), and its source-file sha256 entries match the on-disk sources at gate time. The trail file is the harness's per-ticket narrative; the manifest is the index-only audit-trail entry point per `docs/provenance-bridging-design.md` §3 (ADR-0018). Both together — narrative + index — form the structural enforcement bar that ADR-0026 leverages for the promotion to REQUIRED.
 
-**Severity** (per §2.1 style): **P0** when explicitly enabled by the requestor; **P1** when implicit. A missing trail file with `provenance_complete: true` in the request is `gate_failed`. A missing trail file when the field is absent is a warning.
+**Severity** (per §2.1 style): **P0**. A `status: "green"` response without a contract-valid manifest at `.harness/audit/TICKET-NNN.manifest.json` is `gate_failed` regardless of whether `provenance_complete: true` was set in the request — the field is now always-implicit-required at gate evaluation time. `status: "red"` or `"blocked"` responses may have a `response_missing` source-kind in the manifest (per emit-manifest.sh) — that is acceptable and does NOT fail the gate by itself.
 
 **What the trail file MUST contain:**
 
@@ -92,12 +92,15 @@ Per R-11 (tolerant reader) and R-5 (bilateral schema changes), `provenance_compl
 - Token / cost telemetry (forward-compatible with §2.8's `cost_telemetry`).
 - Decisions referenced (forward-compatible with §2.8's `decision_provenance.adrs`).
 
-**Override policy.** None when explicitly enabled. When implicit, a `decision_trail_ref: null` is acceptable for `status: "blocked"` or `"error"` responses (no R-G-R cycle to record).
+**Override policy.** None for `status: "green"`. For `status: "red"` / `"blocked"` / `"error"`, the manifest's `response_missing` source-kind is acceptable when there is no R-G-R cycle to record; the manifest file itself MUST still exist with the request-source indexed.
 
 **Reviewer checklist:**
 
-- [ ] If `provenance_complete: true` in request: trail file exists, is non-empty, and contains Red + Green + Refactor sections (or documented skip).
+- [ ] Trail file exists at `.harness/trails/TICKET-NNN.md`, is non-empty, and contains Red + Green + Refactor sections (or documented skip).
 - [ ] `decision_trail_ref` path is inside `.harness/trails/` (the gitignored runtime artifact location per ADR-0008).
+- [ ] Manifest file exists at `.harness/audit/TICKET-NNN.manifest.json` (per ADR-0018 design + ADR-0019 emitter).
+- [ ] `scripts/audit-manifest.sh .harness/audit/TICKET-NNN.manifest.json` exits 0 (schema-valid per ADR-0020).
+- [ ] `scripts/emit-manifest.sh --ticket TICKET-NNN --regenerate --quiet` exits 0 (source-shas unchanged since emission per ADR-0021).
 - [ ] If trail names skills invoked: at least `tdd-pro-cl-workflow` for live-Claude mode, or "stub" for stub mode.
 
 ## Cross-cutting checks (apply regardless of which sub-gates are enabled)
@@ -121,7 +124,7 @@ When the requestor (Grok) does not specify `quality_gate` overrides, the dispatc
 }
 ```
 
-The `provenance_complete` field is **not injected at schema_version=1** to preserve backward compatibility with consumers that pre-date this document. Requestors who want provenance enforcement add it explicitly. The v2 schema bump (future ADR) will inject it by default.
+The `provenance_complete` field is **always-implicit-required at gate evaluation** per ADR-0026 (TICKET-019). Requestors MAY omit the field in `.req.json` (R-11 tolerant reader); the gate runner treats absence as `true` for `status: "green"` responses and evaluates against the manifest + trail per Sub-gate 4. No `schema_version` bump was needed — the structural enforcement is the manifest's existence + validity + sha-source consistency, not a wire-format field. The original "not injected at schema_version=1" language predates the TICKET-010 trilogy; superseded by the manifest-as-enforcement-bar mechanism.
 
 ## Examples
 
