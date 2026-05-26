@@ -171,9 +171,9 @@ manifest = {
 write_json(".harness/audit/" + ticket_id + ".manifest.json", manifest)
 ```
 
-**`--regenerate` path** (auditor-only, future implementation):
+**`--regenerate` path** (shipped in TICKET-010.c / ADR-0021):
 
-The manifest is logically immutable. If an auditor needs a fresh manifest for an old ticket (e.g., to detect post-hoc tampering), they invoke `manifest-regenerate --ticket TICKET-NNN`; the script re-hashes the current source files; if the new hashes don't match the original manifest's hashes, the original sources have been tampered or legitimately edited post-ticket. The regenerated manifest is written to `.harness/audit/TICKET-NNN.manifest.regenerated.json` — never overwriting the original. No regeneration helper at v1; design only.
+The manifest is logically immutable. If an auditor needs a fresh manifest for an old ticket (e.g., to detect post-hoc tampering), they invoke `scripts/emit-manifest.sh --ticket TICKET-NNN --regenerate`; the script re-hashes the current source files and writes the result to `.harness/audit/TICKET-NNN.manifest.regenerated.json` — the original `.manifest.json` is NEVER overwritten. The script then diffs `sha256` per source between original and regenerated; any mismatch is surfaced (with original + current sha lines) and the exit code is 1 (source drift detected). All-clean = exit 0.
 
 ## §7 Composition with existing contracts
 

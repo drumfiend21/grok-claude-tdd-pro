@@ -9,17 +9,23 @@
 #
 # Usage:
 #   scripts/emit-manifest.sh --ticket TICKET-NNN [--driver <name>] [--upstream-ref <path>] [--quiet]
+#   scripts/emit-manifest.sh --ticket TICKET-NNN --regenerate          # audit-time re-hash; never overwrites original
 #
 # Flags:
 #   --ticket <id>       (required) Ticket id, e.g. TICKET-042 or SELF-HEAL-2026-05-26-001
 #   --driver <name>     Caller identification for manifest_generator.tool (default: emit-manifest.sh)
 #   --upstream-ref <p>  Path to upstream claude-tdd-pro provenance manifest (§2.8); default: null
 #   --quiet             Suppress per-source status output
+#   --regenerate        Audit mode (TICKET-010.c / ADR-0021): re-hash all sources, write to
+#                       .harness/audit/<id>.manifest.regenerated.json, diff per-kind sha256 vs.
+#                       the original. Original is NEVER overwritten. Exit 1 on any sha drift.
 #
 # Exit codes:
-#   0  manifest written; all three sources present and indexed
+#   0  manifest written; all three sources present and indexed (or --regenerate with no drift)
 #   1  manifest written with warning (response or trail missing; status set accordingly)
-#   2  error (missing --ticket; request file missing; ticket-id mismatch; write failure)
+#      OR --regenerate detected source drift vs. original
+#   2  error (missing --ticket; request file missing; ticket-id mismatch; write failure;
+#      --regenerate without an existing original manifest)
 #
 # Portability: bash 3.2 + BSD coreutils (per C-23, tdd-pro-bash32-portability).
 
@@ -29,6 +35,7 @@ TICKET=""
 DRIVER="emit-manifest.sh"
 UPSTREAM_REF=""
 QUIET=0
+REGENERATE=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -36,6 +43,7 @@ while [ $# -gt 0 ]; do
         --driver)        DRIVER="$2"; shift 2 ;;
         --upstream-ref)  UPSTREAM_REF="$2"; shift 2 ;;
         --quiet)         QUIET=1; shift ;;
+        --regenerate)    REGENERATE=1; shift ;;
         -h|--help)
             sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//' >&2
             exit 0
@@ -83,7 +91,13 @@ REQ_PATH=".harness/handoffs/${TICKET}.req.json"
 RES_PATH=".harness/handoffs/${TICKET}.res.json"
 TRAIL_PATH=".harness/trails/${TICKET}.md"
 AUDIT_DIR=".harness/audit"
-MANIFEST_PATH="${AUDIT_DIR}/${TICKET}.manifest.json"
+ORIGINAL_PATH="${AUDIT_DIR}/${TICKET}.manifest.json"
+if [ "$REGENERATE" -eq 1 ]; then
+    MANIFEST_PATH="${AUDIT_DIR}/${TICKET}.manifest.regenerated.json"
+    [ -f "$ORIGINAL_PATH" ] || die "--regenerate requires the original manifest to exist: $ORIGINAL_PATH"
+else
+    MANIFEST_PATH="${ORIGINAL_PATH}"
+fi
 
 [ -f "$REQ_PATH" ] || die "request file missing: $REQ_PATH (run /dispatch or scripts/smoke-e2e.sh first)"
 
@@ -218,6 +232,44 @@ mv -f -- "$TMP_OUT" "$MANIFEST_PATH" || die "could not write $MANIFEST_PATH"
 trap - EXIT INT TERM
 
 log "[emit-manifest] wrote $MANIFEST_PATH (status=$STATUS)"
+
+# --regenerate path (TICKET-010.c / ADR-0021): diff each source's sha256
+# between the original and the freshly-regenerated manifest. The original
+# is never overwritten; the diff signals whether any source file has been
+# modified since the original manifest's creation. Exit 1 on any sha drift
+# (the manifest is the audit-trail integrity check; sha drift = tamper or
+# legitimate edit, both worth surfacing).
+if [ "$REGENERATE" -eq 1 ]; then
+    drift_count=0
+    # Parse sha pairs by kind. Hand-rolled grep+awk; manifest schema is small
+    # and stable per ADR-0018 §3.
+    for kind in request response decision_trail; do
+        orig_sha=$(awk -v k="\"$kind\"" '
+            $0 ~ "\"kind\": " k { in_block=1; next }
+            in_block && /"sha256"/ { gsub(/[",]/, "", $2); print $2; exit }
+        ' "$ORIGINAL_PATH" 2>/dev/null || true)
+        new_sha=$(awk -v k="\"$kind\"" '
+            $0 ~ "\"kind\": " k { in_block=1; next }
+            in_block && /"sha256"/ { gsub(/[",]/, "", $2); print $2; exit }
+        ' "$MANIFEST_PATH" 2>/dev/null || true)
+        if [ -z "$orig_sha" ] && [ -z "$new_sha" ]; then
+            continue                      # neither original nor regen had this kind
+        fi
+        if [ "$orig_sha" = "$new_sha" ]; then
+            log "  $kind: unchanged ($orig_sha)"
+        else
+            drift_count=$((drift_count + 1))
+            log "  $kind: DRIFT"
+            log "    original: ${orig_sha:-<absent>}"
+            log "    current:  ${new_sha:-<absent>}"
+        fi
+    done
+    if [ "$drift_count" -gt 0 ]; then
+        log "[emit-manifest] --regenerate: $drift_count source(s) drifted vs. original. Original preserved at $ORIGINAL_PATH."
+        exit 1
+    fi
+    log "[emit-manifest] --regenerate: all sources match original. No tampering detected."
+fi
 
 if [ "$WARN" -eq 1 ]; then
     exit 1
