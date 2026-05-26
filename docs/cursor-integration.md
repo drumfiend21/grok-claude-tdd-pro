@@ -42,31 +42,31 @@ ADR-0015 records the "Cursor as host IDE" decision: Cursor sits at the top of th
 
 ## §3 Surfaces — every harness feature mapped to its Cursor driver
 
-This table is the operational index. Each row names a harness feature, its source-of-truth, the Cursor surface a developer uses to drive it, and the ticket that landed (or will land) the operator path. Cross-reference: TICKET-014 will extend this table with the seven `/`-slash commands.
+This table is the operational index. Each row names a harness feature, its source-of-truth, the Cursor surface a developer uses to drive it, and the ticket that landed the operator path. All seven slash commands ship in TICKET-014 / ADR-0016.
 
 | Harness feature | Source-of-truth | Cursor surface | Ticket |
 |---|---|---|---|
 | Cross-tool agent-binding context | `AGENTS.md` | Auto-loaded by Cursor's chat agent on session open (per AGENTS.md open spec) | 011 (DONE) |
-| Plugin cache materialization (session-start ritual) | `scripts/sync-plugin.sh --ensure` | Once shipped: chat agent reads `.cursor/rules/agent-context.mdc` always-loaded rule → runs script. Until shipped: developer or chat agent invokes from terminal per AGENTS.md §7. | 013 |
+| Plugin cache materialization (session-start ritual) | `scripts/sync-plugin.sh --ensure` | Chat agent reads `.cursor/rules/agent-context.mdc` always-loaded rule → runs script. Manual re-trigger: `/sync` slash command. | 013 + 014 (DONE) |
 | Plugin pin freshness check | `scripts/sync-plugin.sh --check` | Cursor terminal (CLI invocation) | (existing) |
-| Outer-loop research | `.grok/templates/research.md` | Once shipped: developer types `/research <topic>`; chat agent reads template, follows schema, produces `research_refs`. Until shipped: chat agent reads template directly from `.grok/templates/research.md` when prompted. | 014 |
-| Outer-loop decomposition | `.grok/templates/decomposition.md` | Once shipped: `/decompose`. Until shipped: chat agent reads template directly. | 014 |
-| Outer-loop dispatch | `.grok/templates/dispatch.md` | Once shipped: `/dispatch TICKET-NNN`. Until shipped: chat agent reads template + `docs/handoff-contract.md §Grok→Claude`, writes `.req.json`. | 014 |
+| Outer-loop research | `.grok/templates/research.md` | Developer types `/research <topic>`; chat agent reads template, follows schema, produces `research_refs`. | 014 (DONE) |
+| Outer-loop decomposition | `.grok/templates/decomposition.md` | Developer types `/decompose`; chat agent reads template and produces atomic ticket decomposition. | 014 (DONE) |
+| Outer-loop dispatch | `.grok/templates/dispatch.md` | Developer types `/dispatch TICKET-NNN`; chat agent reads template + `docs/handoff-contract.md §Grok→Claude` and writes contract-valid `.req.json`. | 014 (DONE) |
 | Handoff contract (wire format) | `docs/handoff-contract.md` | Read directly by chat agent during dispatch / inner-loop invocation; enumerated in AGENTS.md §3. | 011 (DONE) |
-| Inner-loop R-G-R skill | `.claude/skills/tdd-pro-cl-workflow/SKILL.md` | Once shipped: `/inner-loop TICKET-NNN`; chat agent loads SKILL.md and runs R-G-R. Until shipped: chat agent reads SKILL.md when prompted. See §4 below. | 014 |
+| Inner-loop R-G-R skill | `.claude/skills/tdd-pro-cl-workflow/SKILL.md` | Developer types `/inner-loop TICKET-NNN`; chat agent loads SKILL.md and runs R-G-R; writes `.res.json` + trail. See §4 below. | 014 (DONE) |
 | Inner-loop batching skill | `.claude/skills/tdd-pro-batch-cl/SKILL.md` | Chat agent reads when batching multiple substrate-touch CLs (per AGENTS.md §4). | 011 (DONE) |
 | Inner-loop portability skill | `.claude/skills/tdd-pro-bash32-portability/SKILL.md` | Chat agent reads before any new `.sh` edit (per AGENTS.md §4). | 011 (DONE) |
-| End-to-end smoke | `scripts/smoke-e2e.sh` | Once shipped: `/smoke`. Until shipped: terminal invocation. | 014 |
-| Doc-drift audit | `scripts/audit-doc-drift.sh` | Once shipped: `/audit`. Until shipped: terminal invocation. | 014 |
-| Plugin sync (manual) | `scripts/sync-plugin.sh --ensure` | Once shipped: `/sync`. Until shipped: terminal invocation. | 014 |
-| Quality-gate sub-gates | `docs/quality-gate.md` | Once shipped: `.cursor/rules/quality-gate.mdc` always-loaded so chat agent enforces during diff review. Until shipped: chat agent reads `docs/quality-gate.md` when reviewing. | 013 |
+| End-to-end smoke | `scripts/smoke-e2e.sh` | Developer types `/smoke`; chat agent runs the script and reports pass/fail. | 014 (DONE) |
+| Doc-drift audit | `scripts/audit-doc-drift.sh` | Developer types `/audit`; chat agent runs the script and surfaces findings. | 014 (DONE) |
+| Plugin sync (manual) | `scripts/sync-plugin.sh --ensure` | Developer types `/sync`; chat agent runs the script. (Also fired automatically per `.cursor/rules/agent-context.mdc` on session open.) | 014 (DONE) |
+| Quality-gate sub-gates | `docs/quality-gate.md` | `.cursor/rules/quality-gate.mdc` agent-loaded so chat agent enforces during diff review. | 013 (DONE) |
 | Authority hierarchy (TIER 0/1/2) | `AGENTS.md §5` + `CLAUDE.md` | Chat agent reads on session open. | 011 (DONE) |
-| Decision-trail surface | `.harness/trails/TICKET-NNN.md` | Written by chat agent during `/inner-loop` (TICKET-014) or by manual inner-loop invocation. | 014 |
+| Decision-trail surface | `.harness/trails/TICKET-NNN.md` | Written by chat agent during `/inner-loop` (or by manual inner-loop invocation). | 014 (DONE) |
 | Headless Claude Code as alternative inner-loop driver | `claude -p` headless mode | Cursor terminal — see §5. | (existing, no new code) |
 | Demo storyboard | `docs/demo-storyboard.md` | Read as documentation in Cursor's editor. | (existing) |
 | Self-healing design (deferred implementation) | `docs/self-healing-design.md` | Read as TIER-2 design doc. | (existing) |
 
-The seventeen-line table above plus the seven slash commands TICKET-014 will land cover every harness feature against a Cursor surface. No feature is unreachable from Cursor.
+The eighteen-row table above covers every harness feature against a Cursor surface; the seven slash commands shipped in TICKET-014 close the operator-surface loop. No feature is unreachable from Cursor.
 
 ## §4 Cursor's chat agent as the inner-loop driver (primary path)
 
@@ -97,11 +97,11 @@ Both paths produce contract-valid `.res.json` + `.harness/trails/` artifacts. Th
 
 The outer-loop templates (`.grok/templates/{research,decomposition,dispatch}.md`) were originally written for Grok CLI (`grok -p`) consumption, per `docs/grok-orchestration-principles.md`. The templates themselves are model-agnostic structured-output prompts; any agent capable of following the documented output schema can drive them. From inside Cursor:
 
-- **Primary path (once TICKET-014 ships):** developer types `/research <topic>`, `/decompose`, `/dispatch TICKET-NNN` in Cursor chat. The agent reads the corresponding template from `.grok/templates/` and follows its output schema. No Grok CLI installation required.
+- **Primary path:** developer types `/research <topic>`, `/decompose`, `/dispatch TICKET-NNN` in Cursor chat (TICKET-014's `.cursor/commands/*.md`). The agent reads the corresponding template from `.grok/templates/` and follows its output schema. No Grok CLI installation required.
 - **Fallback path (also valid):** developer opens Cursor's terminal and runs `grok -p` against the template directly, if Grok CLI is installed. This is the original path; the slash-command path is the addition.
 - **Manual path (always works):** developer pastes the template body into Cursor chat with the input variables filled in. Useful for exploratory work that doesn't fit the structured commands cleanly.
 
-D-1 forward attribution lives in each template (`.grok/templates/research.md:5` *"Drawn from (per D-1): Cursor's ask-mode context gather."*; `.grok/templates/decomposition.md:5` *"Drawn from (per D-1): Cursor's compose mode (multi-edit plan)."*). D-1 reverse attribution (per ADR-0013) for the slash commands lands with TICKET-014.
+D-1 forward attribution lives in each template (`.grok/templates/research.md:5` *"Drawn from (per D-1): Cursor's ask-mode context gather."*; `.grok/templates/decomposition.md:5` *"Drawn from (per D-1): Cursor's compose mode (multi-edit plan)."*). D-1 reverse attribution (per ADR-0013) for the slash commands lives in each `.cursor/commands/*.md` file's "Composition" trailer.
 
 ## §7 Session-start ritual under Cursor
 
@@ -116,7 +116,7 @@ Claude Code has a push-hook mechanism (`.claude/hooks/session-start.sh`, registe
 
 The behavior is equivalent (both surface the session-start ritual to the agent before any other action); the mechanism differs (push-hook vs. always-loaded rule). This is a tool architectural difference between Cursor and Claude Code, not a harness feature gap — `AGENTS.md §7` documents this explicitly.
 
-Until TICKET-013 ships the always-loaded rule, the Cursor session-start ritual is operator-driven: the developer (or chat agent) runs `./scripts/sync-plugin.sh --ensure` manually as the first action per `AGENTS.md §7`. AGENTS.md is the bridge between landing TICKET-011 and TICKET-013's rule files materializing.
+TICKET-013 has shipped the always-loaded rule (`.cursor/rules/agent-context.mdc` plus the three sibling rules). The Cursor session-start ritual is now automatic via that always-loaded rule; the `/sync` slash command (TICKET-014) is the manual re-trigger for mid-session refreshes (e.g., after a `git pull`). AGENTS.md §7 remains the documented entry point for non-Cursor AGENTS.md consumers.
 
 ## §8 Failure modes
 
@@ -134,9 +134,9 @@ Eight failure modes the design considered; each with a structural mitigation or 
 ## §9 Sequencing (this doc references the materialization tickets)
 
 - **TICKET-011 (DONE)** — `AGENTS.md` shipped (the cross-tool surface this doc composes on); ADRs 0012 + 0013.
-- **TICKET-012 (this doc)** — `docs/cursor-integration.md` + ADR-0015 (Cursor as host IDE).
-- **TICKET-013 (will materialize the always-loaded rules)** — `scripts/export-cursor-rules.sh` + four `.cursor/rules/*.mdc` files + ADR-0014; extends `scripts/audit-doc-drift.sh` with F-5; wires into `scripts/sync-plugin.sh --ensure`.
-- **TICKET-014 (will materialize the slash commands + the §3 table extension)** — seven `.cursor/commands/*.md` files + ADR-0016; Q-DEMO step inside a real Cursor session against `examples/string-utils/` confirms `/dispatch` + `/inner-loop` produce contract-valid artifacts; appends entry to `AUTOMATION_INTEL.md`; modifies §3 of this doc to surface the slash commands explicitly.
+- **TICKET-012 (DONE — this doc)** — `docs/cursor-integration.md` + ADR-0015 (Cursor as host IDE).
+- **TICKET-013 (DONE)** — `scripts/export-cursor-rules.sh` + four `.cursor/rules/*.mdc` files + ADR-0014; extends `scripts/audit-doc-drift.sh` with F-5; wires into `scripts/sync-plugin.sh --ensure`.
+- **TICKET-014 (DONE)** — seven `.cursor/commands/*.md` files + ADR-0016; §3 table above surfaces the slash commands; `AUTOMATION_INTEL.md` appended with "Hybrid Harness v0.2 reconciliation complete" entry per the v0.2 spec's §5 directive. The Q-DEMO step is operator-attested per the smoke-script Q-DEMO pattern: the first Cursor session after this CL lands runs `/dispatch TICKET-DEMO` and `/inner-loop TICKET-DEMO` against `examples/string-utils/` and confirms contract-valid `.req.json` + `.res.json` with passing tests.
 
 Each ticket is a single CL; the four together close the gap "harness usable inside Cursor IDE." The Out-of-scope items (MCP server exposure, devcontainer, custom Cursor extension) are deferred per the plan's Out-of-scope section; they are not required to satisfy the founder's "Cursor inside Marcohard" intent at v1.
 
