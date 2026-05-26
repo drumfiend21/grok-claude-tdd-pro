@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   b277284529b8b3ce3f7df904892d6ffb0080d045
-pinned_at:       2026-05-24T17:43:52-04:00
-pinned_message:  "portability: ruby 3.3.6 + Psych 4 YAML + hermetic git config for cloud-session parity (#1)"
+pinned_commit:   23e5c2b78ffe170ef875067edd14cd950c19e7b5
+pinned_at:       2026-05-25T11:15:00-04:00
+pinned_message:  "architecture-dev: 39 CLs, 22 CC contracts, §25 fidelity gate, AI-dev corpus (+379 specs) (#2)"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -27,15 +27,15 @@ pinned_message:  "portability: ruby 3.3.6 + Psych 4 YAML + hermetic git config f
 # requires an ADR before bumping the pin.
 contract_surface_files:
   - path:   CLAUDE.md
-    sha256: 220043438e104c5232000d96635d7f1b8689731258b68ad71865e63d9b6b9b39
+    sha256: 05ff3d08dca78ede436a62f8bbdab939c1bdf9cf1bffb5a6d22e4c926f412060
   - path:   docs/architecture-v1.9.md
-    sha256: 9080b6de202d5ffc6bd759e792cb8ea31bfc69feeef1967d485e1ce6fbd7eb73
+    sha256: e0bc465cdb44bbd3b3b2e64f368c69bf1e5e67b28f512c95b4e9c25ad61d1ad7
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
-    sha256: 33ee0d8a66574de504da77f7379bdbec6b8012efa70f9be9534deeb80b4a78f8
+    sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
     sha256: 9a004131782faf3477900984f26f36e6d1997cca7f04e6b672552048d1fd65b4
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-05-25T01:08:00Z
-last_synced_session: "TICKET-001.e bootstrap"
+last_synced_at:      2026-05-26T18:30:00Z
+last_synced_session: "TICKET-018 pin bump per ADR-0025"
