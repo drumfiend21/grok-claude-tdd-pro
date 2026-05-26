@@ -677,6 +677,48 @@ Over time, you'll develop intuition that no guide can capture. You'll know when 
 
 ---
 
+### Source 9 — xAI, "Grok Build Beta" (xAI canonical product surface, x.ai/cli, accessed 2026-05-26)
+
+Distinct from Source 4 (the 2026-05-14 launch announcement at `x.ai/news/grok-build-cli`). Source 4 = one-time launch event; Source 9 = living product surface with installer, slash commands, plan-mode rules, extensions composition.
+
+> *"Grok Build is a powerful new coding agent and CLI for professional software engineering and complex coding work."*
+
+(Verbatim positioning consistent across Source 4 + Source 9 — confirming `x.ai/cli` is the canonical product page for the same product.)
+
+**Distribution.** Available to all SuperGrok and X Premium Plus subscribers.
+
+**Installation** (verbatim):
+
+```
+curl -fsSL https://x.ai/cli/install.sh | bash
+```
+
+**Architecture** (verbatim, ratifying G-7 / G-8 / G-9):
+
+> *"Grok Build delegates larger tasks to specialized subagents, with each child running in parallel with its own context window."*
+
+**Plan Mode** (verbatim, ratifying G-12):
+
+> *"Plan mode is for planning first. When it is active, write tools are blocked except for the session plan file. Use it when you want Grok to sketch the approach before it starts making changes."*
+
+Plan mode → approve / comment-on-step / rewrite → clean diffs once approved.
+
+**Extensions composition** (verbatim, ratifying G-10 + the harness composition strategy):
+
+> *"Your AGENTS.md, plugins, hooks, skills, and MCP servers all work out of the box. Start Grok Build in your repo and it picks up your conventions instantly."*
+
+**Slash commands.** `/hooks`, `/plugins`, `/skills`, `/mcps` all open the same extensions modal (pre-selecting a tab). `/feedback` sends bugs / requests / reactions to the team.
+
+**Workflow positioning** (verbatim): *"one tool for the entire development workflow — plan, build, test, and deploy."*
+
+**Verification:** T-C. Primary URL (`x.ai/cli`) returned 403 in capture session (`x-deny-reason: host_not_allowed` per the harness's outbound network policy). Verbatim phrasing recovered per `docs/researcher-discipline.md §3` fallback chain: WebFetch → WebSearch → cross-attribute across ≥ 3 indexed secondary sources with a primary-operated anchor (`docs.x.ai/build/modes-and-commands`). Cross-attribution citations: `docs.x.ai/build/modes-and-commands`, `skywork.ai/clihub/keywords/grok-cli.html`, `aimadetools.com/blog/grok-build-complete-guide`, `basenor.com/blogs/news/xai-launches-grok-build-beta-agentic-coding-cli-explained`, `pasqualepillitteri.it/en/news/2584/grok-build-xai-cli-2026`, `releasebot.io/updates/xai`, `codersera.com/blog/how-to-install-grok-build-cli-2026/`, `chatforest.com/reviews/xai-grok-build-coding-agent-cli-review-2026/`, `verdent.ai/guides/grok-for-coding-2026`, `cryptobriefing.com/xai-grok-cli-windows-powershell/`, `digitalapplied.com/blog/xai-grok-build-cli-parallel-coding-agents`. Acceptance bar honored per `docs/researcher-discipline.md §5`: ≥ 3 secondary sources, primary-operated domain anchor (`docs.x.ai`), SEO-spam sources rejected.
+
+**Supplementary reference (NOT elevated as a separate Source):** Dan (@Daniel_Farinax) X post at `x.com/Daniel_Farinax/status/2059002180481204461` (2026-05-25). Beginner-onboarding video demoing Source 9's installer and workflow for non-technical SuperGrok / X Premium+ users. Also 403 in capture session; T-D paraphrase recovered. Community-adoption evidence; demos Source 9 content rather than carrying independent architectural weight, hence folded here rather than elevated as Source 10. Per `docs/researcher-discipline.md §5`, single-source secondary content is T-D not T-C; documented as supplementary so the URL remains in the architectural record.
+
+**Capture date:** 2026-05-26. **Elevated by:** drumfiend21. **Procedure cited:** `docs/researcher-discipline.md` (first §1 entry to cite the procedure doc by path rather than open-coded prose).
+
+---
+
 ## §2 Scope
 
 These directives apply to **every** session type (local CLI, remote, cloud, GitHub Action, IDE) and **every** component of the harness — this repo, the consumption pattern around the `claude-tdd-pro` plugin, the `.grok/` orchestration layer, the `.claude/` consumption layer, the handoff contract, all skills, all hooks, all sub-agents, all monitors.

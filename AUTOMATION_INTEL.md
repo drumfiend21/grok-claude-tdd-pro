@@ -49,3 +49,21 @@ Design (per 2026-05-26 user direction):
 Vendor benchmark claim in the briefing (80-95% UI-DOM self-healing tests) treated as T-D paraphrased per `docs/founder-directives.md §1` verification tiers; not founder-elevated; out-of-scope.
 
 Enterprise positioning extended: outer-loop autonomy (Grok) + parallel worker fan-out on isolated worktrees (this CL) + inner-loop discipline (tdd-pro-cl-workflow trio) + per-worker quality gate (`docs/quality-gate.md`) + cross-IDE operator surface (TICKETS 011-014) = the harness now operationalizes parallel multi-ticket delivery without surrendering production-grade trust. Direct addressable pitch for >1,000-IC orgs running heterogeneous IDE fleets shipping agentic platforms.
+
+## 2026-05-26 — Grok Build Beta GA + Source 9 elevation
+
+TICKET-017 / ADR-0024 elevates `x.ai/cli` as `docs/founder-directives.md §1` Source 9 (Grok Build Beta canonical product surface). Distinct from Source 4 (the 2026-05-14 launch announcement at `x.ai/news/grok-build-cli`) — Source 4 = one-time launch event; Source 9 = living product surface with installer command, slash commands, plan-mode rules, extensions-out-of-the-box composition.
+
+Operational intel for demos / pitches:
+
+- **Distribution.** Available to all SuperGrok and X Premium Plus subscribers as of 2026-05-26.
+- **Installer (verbatim from Source 9):** `curl -fsSL https://x.ai/cli/install.sh | bash` — single-command install on Linux + macOS.
+- **Cross-tool composability (verbatim, ratifying harness G-10):** *"Your AGENTS.md, plugins, hooks, skills, and MCP servers all work out of the box. Start Grok Build in your repo and it picks up your conventions instantly."* This is the harness's value-prop validated by xAI's own product positioning: the harness's `AGENTS.md` + `.claude/skills/` + `.claude/hooks/` + `.cursor/rules/` + `.cursor/commands/` ARE the conventions Grok Build "picks up instantly."
+- **Plan-mode (verbatim, ratifying G-12):** *"Plan mode is for planning first. When it is active, write tools are blocked except for the session plan file."* Matches Claude Code's plan-mode semantics; supports the cross-tool plan-first discipline the harness already enforces.
+- **Architecture (verbatim, ratifying G-7/G-8/G-9):** *"Grok Build delegates larger tasks to specialized subagents, with each child running in parallel with its own context window."* Source 9 ratifies the orchestrator-worker pattern the harness's `orchestrating-swarms` SKILL.md (TICKET-015 / ADR-0017) materializes on the Claude/Cursor side.
+
+The Daniel Farinax X post (`x.com/Daniel_Farinax/status/2059002180481204461`, 2026-05-25) is the community-onboarding video for non-technical SuperGrok / X Premium+ users — folded as supplementary into Source 9's verification block at T-D paraphrase tier (community-adoption evidence; demos Source 9 content; no independent architectural weight).
+
+Verification procedure cited inline: `docs/researcher-discipline.md` (TICKET-016 / ADR-0023). Both URLs returned 403 in capture session per the harness's outbound network policy (`x-deny-reason: host_not_allowed`); WebSearch + 11-source cross-attribution recovered T-C content per `docs/researcher-discipline.md §3`. Source 9 is the FIRST §1 entry to cite the new researcher-discipline doc by path rather than open-coding the procedure.
+
+Pitch hook extension (2026-05-26): the harness composes cleanly with both Anthropic's Claude Code (existing path) AND xAI's Grok Build (Source 9-ratified path). The cross-vendor positioning is exactly what >1,000-IC enterprise procurement teams want: their AI tooling stack survives vendor diversification without architectural rewrites. AGENTS.md + plugins + hooks + skills + MCP servers are the cross-tool primitives both vendors honor.
