@@ -802,6 +802,7 @@ The five named failure patterns from Source 8 (verbatim):
 Before every commit, the author — human or agent — confirms:
 
 - [ ] (D-1) If a new Grok-side primitive was added, its Claude Code and/or Cursor analog is documented in the PR description or an accompanying ADR.
+- [ ] (D-1 reverse, ADR-0013) If a new Cursor-side or Claude Code-side primitive was added, its Grok analog (or rationale for absence) is documented in the PR description or an accompanying ADR. Symmetric reading of D-1 per ADR-0013.
 - [ ] (D-2) The change is sane for a >1,000-IC enterprise deployment context, or its gap is filed as an ADR with a stated path to closing it.
 - [ ] (D-3) Every loop touched by the change has a written, machine-checkable terminal condition.
 - [ ] (D-4) The commit message states the difficulty metric and how this CL is strictly harder than the previous.

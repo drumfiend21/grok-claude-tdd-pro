@@ -118,3 +118,7 @@ Violating either rule means the harness is not being used; it's just two tools r
 - Re-implement Red-Green-Refactor. Reuse the three `tdd-pro-*` skills.
 - Define a new `tdd-pro-core` SKILL.md. The existing trio is the core.
 - Touch `claude-tdd-pro` substrate, specs, or architecture text.
+
+## Cross-tool agent-binding surface
+
+Non-Claude agents (Cursor's chat agent, Codex, Amp, Jules, Factory, Grok Build) read `AGENTS.md` at repo root for their session-start binding context. Claude Code reads this file (`CLAUDE.md`); the two surfaces compose without duplicating each other. See ADR-0012 for the rationale and the eight-section schema.
