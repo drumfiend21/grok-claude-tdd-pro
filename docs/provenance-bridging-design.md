@@ -133,7 +133,7 @@ Self-heal dispatches (`SELF-HEAL-<utc-date>-<seq>` per `docs/self-healing-design
 
 ## §6 Generation procedure
 
-Pseudocode for the manifest emitter (implementation lands in TICKET-010.a):
+Pseudocode for the manifest emitter (shipped in TICKET-010.a / ADR-0019 as `scripts/emit-manifest.sh`):
 
 ```
 input: ticket_id (string)

@@ -15,6 +15,8 @@
 #   F-4  scripts/sync-plugin.sh case-arm flags vs --help output parity
 #   F-5  .cursor/rules/*.mdc files differ from scripts/export-cursor-rules.sh
 #        output (generator-output-only invariant per ADR-0014 / TICKET-013)
+#   F-6  .harness/audit/*.manifest.json files invalid per ADR-0018 v1 schema
+#        (delegated to scripts/audit-manifest.sh per TICKET-010.b / ADR-0020)
 #
 # Usage:
 #   scripts/audit-doc-drift.sh                    # exit 0 clean / 1 with findings
@@ -139,6 +141,27 @@ if [[ -x "$ECR" ]]; then
                     ;;
             esac
         done <<< "$ecr_out"
+    fi
+fi
+
+# --- Check F-6: manifest schema validity per ADR-0018 / ADR-0020 ---
+#
+# .harness/audit/*.manifest.json files must validate against the v1 schema
+# documented in docs/provenance-bridging-design.md §3. Delegated to
+# scripts/audit-manifest.sh which uses node for JSON parsing + structural
+# checks. Defensive: if audit-manifest.sh is missing, this F-pattern is
+# silently skipped (matches the F-5 defensive pattern).
+AM="scripts/audit-manifest.sh"
+if [[ -x "$AM" ]]; then
+    if ! am_out="$("$AM" --quiet 2>&1)"; then
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            case "$line" in
+                \[manifest-audit\]\ * )
+                    emit "F-6 (manifest schema): ${line#\[manifest-audit\] }"
+                    ;;
+            esac
+        done <<< "$am_out"
     fi
 fi
 
