@@ -28,7 +28,9 @@ The alternative path (headless `claude -p`) remains available in Cursor's termin
 
 6. **Write the decision trail.** Compose `.harness/trails/<TICKET-NNN>.md` naming the three R-G-R steps (or skip rationale). Cite the SKILL.md sections walked.
 
-7. **Surface artifacts to the user.** Report: status, changed_files count, test_results summary, gate_results pass/fail, the two artifact paths. Tell the user `/audit` is next, then commit.
+7. **Emit the provenance manifest.** Run `./scripts/emit-manifest.sh --ticket <TICKET-NNN> --driver cursor-inner-loop` to produce `.harness/audit/<TICKET-NNN>.manifest.json` per `docs/provenance-bridging-design.md` (ADR-0018). The manifest indexes the three sources (request, response, decision_trail) with sha256 + size_bytes for tamper detection. Index-only per R-3 — no content duplication. Defensive: log warning on non-zero exit, do not block.
+
+8. **Surface artifacts to the user.** Report: status, changed_files count, test_results summary, gate_results pass/fail, the three artifact paths plus the manifest path. Tell the user `/audit` is next, then commit.
 
 ## Success criteria
 

@@ -78,14 +78,17 @@ For each parallel-eligible ticket:
 
 4. **Do not cross worktree boundaries.** A worker's edits live in its worktree. The lead agent does not write to a worker's worktree; the worker does not write outside its declared `file_scope`. The existing `tdd-pro-cl-workflow/SKILL.md` enforces file-scope discipline at the inner loop; the swarm composes on that enforcement.
 
-## Step 5 — Collect worker outputs
+## Step 5 — Collect worker outputs (manifest is the entry point per ADR-0018)
 
 After workers complete (or time out):
 
-1. Gather each worker's `.res.json` from its worktree's `.harness/handoffs/TICKET-NNN.res.json`.
-2. Validate contract-compliance per `docs/handoff-contract.md §Claude→Grok`. Required fields: `schema_version: "1"`, `ticket_id`, `status`, `changed_files`, `test_results`, `decision_trail_ref`, `gate_results`.
-3. Run the per-ticket quality gate per `docs/quality-gate.md` against each `gate_results` block. Four sub-gates: `tests_must_pass` (REQUIRED), `coverage_delta_min` (REQUIRED, default 0), `lint_clean` (REQUIRED), `provenance_complete` (RECOMMENDED at v1).
-4. Log PASS / FAIL per ticket. If any sub-gate fails with no documented per-CL override rationale, mark the worker `red`.
+1. **Read the per-worker manifest** at `.harness/audit/TICKET-NNN.manifest.json` (each worker's `/inner-loop` Step 7 emits this per ADR-0018). The manifest indexes the three sources (request, response, decision_trail) with sha256 + size_bytes for tamper detection.
+2. **Verify sha integrity.** Re-hash each indexed source file; compare to `sources[*].sha256`. Mismatch = source was modified post-emission (likely operator hand-edit; worth surfacing in the lead's summary).
+3. **Validate response contract-compliance** per `docs/handoff-contract.md §Claude→Grok`. Required fields: `schema_version: "1"`, `ticket_id`, `status`, `changed_files`, `test_results`, `decision_trail_ref`, `gate_results`.
+4. **Run the per-ticket quality gate** per `docs/quality-gate.md` against each `gate_results` block. Four sub-gates: `tests_must_pass` (REQUIRED), `coverage_delta_min` (REQUIRED, default 0), `lint_clean` (REQUIRED), `provenance_complete` (RECOMMENDED at v1; promotion to REQUIRED depends on TICKET-010.a + a future quality-gate v2 ADR).
+5. **Log PASS / FAIL per ticket.** If any sub-gate fails with no documented per-CL override rationale, mark the worker `red`. Manifest absence (no `.audit/TICKET-NNN.manifest.json` file) means the worker's `/inner-loop` Step 7 didn't run — surface as a worker-status anomaly.
+
+If a worker's `/inner-loop` was driven by a path that does not call `scripts/emit-manifest.sh` (e.g., headless `claude -p` invoked without manifest emission), the lead can synthesize the manifest itself: `./scripts/emit-manifest.sh --ticket TICKET-NNN --driver swarm-lead-synthesis`. The manifest format does not distinguish synthesis-by-lead from emission-by-worker beyond the `manifest_generator.tool` field.
 
 ## Step 6 — Synthesis (per G-7 — synthesis happens in the orchestrator)
 

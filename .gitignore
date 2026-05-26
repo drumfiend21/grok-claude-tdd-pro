@@ -8,6 +8,12 @@
 .harness/handoffs/
 .harness/trails/
 
+# Per-ticket provenance manifests written by scripts/emit-manifest.sh
+# (TICKET-010.a / ADR-0019). Index-only artifacts pointing at the three
+# source surfaces above; same runtime-not-durable role as handoffs/ and
+# trails/.
+.harness/audit/
+
 # Per-session Cursor working artifacts (reserved by TICKET-013 / ADR-0014; not
 # used at v1). .cursor/rules/*.mdc IS committed (generator output, checked in
 # so fresh clones have it before sync-plugin.sh --ensure runs).

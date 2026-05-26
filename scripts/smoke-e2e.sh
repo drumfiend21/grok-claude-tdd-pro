@@ -240,5 +240,19 @@ log "  request : $REQ_PATH"
 log "  response: $RES_PATH"
 log "  trail   : $TRAIL_PATH"
 
+# Provenance manifest (TICKET-010.a / ADR-0019): index the three sources
+# with sha256 + size_bytes for tamper detection per the design in
+# docs/provenance-bridging-design.md. Defensive call — only invoked when
+# the emitter is present; non-zero exit is logged as a warning rather
+# than failing the smoke (the manifest is additive audit evidence, not a
+# smoke gate).
+if [ -x "scripts/emit-manifest.sh" ]; then
+    if scripts/emit-manifest.sh --ticket "$TICKET_ID" --driver smoke-e2e.sh --quiet; then
+        log "  manifest: .harness/audit/${TICKET_ID}.manifest.json"
+    else
+        log "  warn: emit-manifest.sh exited non-zero (manifest may be degraded)"
+    fi
+fi
+
 # trap cleanup restores TOY_SRC from backup on EXIT (preserves Red baseline).
 exit 0
