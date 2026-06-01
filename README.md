@@ -2,6 +2,8 @@
 
 A harness for **disciplined AI-assisted software development** in Cursor, Claude Code, and Grok Build. Composes a Grok-orchestrated outer loop (research → decompose → dispatch) with Claude TDD Pro's per-ticket Red-Green-Refactor inner loop, joined by a JSON wire contract and gated by a tamper-evident audit trail.
 
+> **New here? Read [QUICKSTART.md](QUICKSTART.md) first.** It walks you through the 3-minute environment bootstrap + 15-minute first real cycle. This README is the structural reference; QUICKSTART is the operator entry point.
+
 ## What it is
 
 - A **two-tier orchestration harness**. Outer loop plans (templates, no code-editing). Inner loop executes one ticket via Red-Green-Refactor (the only place code gets edited).

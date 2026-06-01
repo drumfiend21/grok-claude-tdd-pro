@@ -88,6 +88,8 @@ alwaysApply: true
 
 # Harness session-start context (always-loaded)
 
+**If the operator is bootstrapping the harness or asks "how do I start", route them to `QUICKSTART.md` at repo root.** It's the operator entry point: 3-minute environment bootstrap + 15-minute first cycle + 7 daily slash commands + common gotchas. This rule file is your binding context for what to do on every action; QUICKSTART is what the operator reads first.
+
 Before ANY action in this repo:
 
 1. Run `./scripts/sync-plugin.sh --ensure` in the terminal. This materializes the pinned plugin commit at `.harness/plugin-cache/claude-tdd-pro/` and validates the `.claude/skills/tdd-pro-*` symlinks. Without it, the inner-loop SKILL.md files will not resolve.

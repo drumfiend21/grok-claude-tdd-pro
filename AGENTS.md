@@ -2,6 +2,8 @@
 
 Cross-tool agent-binding context per the AGENTS.md open spec (agentsmd.net; Cursor's documented convention for agent context). Read this file at session open if you are an agent (Cursor's chat agent, Codex, Amp, Jules, Factory, Grok Build, or any other AGENTS.md-conformant tool) operating in this repository. Claude Code reads `CLAUDE.md` for its own binding context; the two surfaces compose without duplicating each other.
 
+**If this is a fresh session and the operator has not yet bootstrapped the harness, first point them at [`QUICKSTART.md`](QUICKSTART.md) at repo root** — it's the operator entry point (3-minute bootstrap + 15-minute first cycle). This AGENTS.md file is your binding context for what to do on every action; QUICKSTART is what the operator reads first.
+
 Authority: this file is a TIER-2 operator-surface convention; it composes on (does not supersede) the TIER-0 supreme operating directive (`docs/ai-engineering-corpus.md`), the TIER-1 prime directive (`CLAUDE.md` plugin-dependency model), and the TIER-1 founder-directives rulebook (`docs/founder-directives.md`). Authority hierarchy and conflict-resolution: see CLAUDE.md and `docs/founder-directives.md §5`.
 
 ## 1. Build / test / verification commands

@@ -1,0 +1,175 @@
+# QUICKSTART — grok-claude-tdd-pro
+
+**Read this first.** This is the operator entry point. The rest of the repo's documentation is reference material; this file is what you do.
+
+## What this is (one paragraph)
+
+`grok-claude-tdd-pro` is a harness that provides **rails for AI-assisted software development**. The AI (Cursor's chat agent / Claude Code / Grok Build CLI / headless `claude -p`) does the actual writing. The harness provides workflow discipline (Red-Green-Refactor per ticket), a JSON wire contract between outer-loop planning and inner-loop execution, tamper-evident provenance manifests, file-fence enforcement, and a 6-pattern pre-commit drift audit. You — the operator — type slash commands, approve plans, review diffs, and commit. The AI writes the code inside the rails.
+
+**This is not autopilot.** It is "AI-assisted with discipline you can show an auditor." The value compounds: Day 1 friction is comparable to a normal Cursor session; Week 1+ shows measurable audit-trail completeness + R-G-R discipline.
+
+## §1 Prerequisites (verify in 60 seconds)
+
+You need:
+
+- `git` (any modern version)
+- `bash 3.2+` (macOS default; harness scripts target bash 3.2 + BSD coreutils)
+- `node` (any LTS version; used by `scripts/audit-manifest.sh` + `scripts/smoke-e2e.sh`)
+- `sha256sum` (Linux) OR `shasum` (macOS) — either; the scripts fall back
+- `curl` (used by `scripts/sync-plugin.sh`)
+
+You will use at least one of:
+
+- **Cursor IDE** — recommended primary editor; auto-loads `AGENTS.md` + `.cursor/rules/*.mdc`; exposes 7 slash commands
+- **Claude Code** (CLI or web/cloud) — auto-runs SessionStart + PostToolUse hooks; reads `CLAUDE.md`
+- **Grok Build CLI** (`x.ai/cli`) — picks up `AGENTS.md` + plugins + hooks + skills + MCP servers out of the box per `docs/founder-directives.md §1 Source 9`
+
+## §2 Bootstrap (3 minutes)
+
+```bash
+# Clone (if not already)
+git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git
+cd grok-claude-tdd-pro
+
+# Materialize the plugin cache + regenerate .cursor/rules/
+./scripts/sync-plugin.sh --ensure
+
+# Verify your environment — all 5 should exit 0
+./scripts/sync-plugin.sh --check
+./scripts/smoke-e2e.sh
+./scripts/audit-doc-drift.sh
+./scripts/export-cursor-rules.sh --check
+./scripts/audit-manifest.sh
+```
+
+If all five exit 0, the harness is operationally ready. If any fail, the failure message will name the specific drift; address it before proceeding.
+
+## §3 Pick your usage mode (5 minutes — answer for yourself)
+
+| Mode | Pick when | Set up by |
+|---|---|---|
+| **A. Inside this repo** | You want to build features for the harness itself OR add a small project as a subdirectory under `examples/` or a new top-level dir | Clone, work inline, add TICKETS.md rows for your feature, run the workflow below |
+| **B. Harness-as-template** | You want a fresh project repo with the harness's discipline applied | Clone, strip harness-development artifacts (TICKETS 001-027 are this repo's own history; `AUTOMATION_INTEL.md` is about THIS harness), keep `AGENTS.md` + `.claude/` + `.cursor/` + `.grok/` + `scripts/` + the TIER-2 rulebooks under `docs/`, reset TICKETS.md to your first ticket |
+| **C. Pattern-copy into existing repo** | You already have a project codebase and want the discipline retroactively | Copy `AGENTS.md` + `.claude/hooks/` + `.claude/settings.json` + `.cursor/` + `.grok/templates/` + `scripts/` into your existing repo, then pin `claude-tdd-pro` via `docs/claude-tdd-pro.lock.yaml` |
+
+If you don't know which: **Start with A** to learn the workflow with zero new setup, then decide.
+
+## §4 Your first real cycle (15 minutes — actually do this)
+
+Open the repo in your IDE:
+
+```bash
+cursor .          # OR: claude (Claude Code CLI) / grok-build (Grok Build CLI)
+```
+
+Pick a deliberately small first feature so you learn the rails before pushing scope. **Suggestion:** add `kebabCase()` to `examples/string-utils/` (sibling of the existing `slugify`).
+
+In your IDE's chat:
+
+```
+/research add kebabCase function to examples/string-utils that converts "Hello World" to "hello-world"
+```
+
+The agent reads `.grok/templates/research.md`, produces structured research output. **Review it.**
+
+```
+/decompose
+```
+
+Produces one atomic ticket (e.g., TICKET-DEMO) with `file_scope: examples/string-utils/src/string-utils.mjs` + acceptance criteria.
+
+```
+/dispatch TICKET-DEMO
+```
+
+Writes `.harness/handoffs/TICKET-DEMO.req.json`. **Open the file — it's the contract.** This JSON is what the inner loop reads.
+
+```
+/inner-loop TICKET-DEMO
+```
+
+The agent reads `.claude/skills/tdd-pro-cl-workflow/SKILL.md` (the per-CL Red-Green-Refactor skill from the pinned `claude-tdd-pro` plugin) and:
+
+1. **Red** — writes a failing test for `kebabCase`. Runs `node --test`; confirms failure.
+2. **Green** — implements the minimum code to pass. Runs tests; confirms green.
+3. **Refactor** — cleans up if useful, or documents skip rationale.
+4. Writes `.harness/handoffs/TICKET-DEMO.res.json` per `docs/handoff-contract.md`.
+5. Writes `.harness/trails/TICKET-DEMO.md` (the R-G-R decision narrative).
+6. Auto-emits `.harness/audit/TICKET-DEMO.manifest.json` (index + sha256 per source).
+
+**Review the diff** in Cursor's git pane.
+
+```
+/audit
+```
+
+Runs `scripts/audit-doc-drift.sh` (F-1..F-6 + manifest validator). Must exit 0 before commit.
+
+Commit:
+
+```bash
+git add .
+git commit -m "TICKET-DEMO: add kebabCase to string-utils"
+```
+
+That's one full cycle. You now have a contract-valid request, response, decision trail, and tamper-evident manifest. An auditor can verify exactly what the AI did.
+
+## §5 Daily operator workflow (the 7 slash commands)
+
+Once you're past your first cycle, daily usage in your IDE's chat is:
+
+| Command | Drives | Output |
+|---|---|---|
+| `/sync` | `scripts/sync-plugin.sh --ensure` | Refresh plugin cache + regenerate `.cursor/rules/` |
+| `/research <topic>` | `.grok/templates/research.md` | Structured research_refs |
+| `/decompose` | `.grok/templates/decomposition.md` | Atomic, file-scoped tickets |
+| `/dispatch TICKET-NNN` | `.grok/templates/dispatch.md` | Contract-valid `.req.json` |
+| `/inner-loop TICKET-NNN` | `.claude/skills/tdd-pro-cl-workflow/SKILL.md` | `.res.json` + trail + manifest |
+| `/smoke` | `scripts/smoke-e2e.sh` | End-to-end pipeline test (stub mode) |
+| `/audit` | `scripts/audit-doc-drift.sh` | Pre-commit drift sweep — REQUIRED before commit |
+
+For parallel work (multiple non-overlapping tickets at once), invoke the `orchestrating-swarms` skill after `/decompose` produces ≥ 2 non-overlapping tickets. The lead agent spawns N workers on isolated git worktrees per G-rule §8; cap 8 workers per supervisor per G-9.
+
+## §6 Common gotchas (read these before they bite you)
+
+1. **PostToolUse hook only fires in Claude Code, not Cursor.** Inside Cursor the file-fence is enforced via `.cursor/rules/agent-context.mdc` (always-loaded context) + pre-commit F-5 audit. Both catch the same violations; Claude Code catches them earlier (per tool call). This asymmetry is documented in `docs/cursor-integration.md §7`.
+
+2. **The smoke script's trap reverts `examples/string-utils/` to its Red baseline on exit** (per ADR-0008). If you want to keep your work, run `/inner-loop` directly via Cursor — do NOT run `./scripts/smoke-e2e.sh` against the file you're actually editing.
+
+3. **`/inner-loop` requires a `.req.json` to exist.** Always run `/dispatch TICKET-NNN` first, then `/inner-loop TICKET-NNN`. If the request file is missing, the inner-loop driver exits 2 with an explicit error.
+
+4. **TICKETS.md is append-only by convention.** Add a new row for your ticket; don't edit existing rows. Mark prior tickets DONE in the same CL when you ship them; that's the established convention.
+
+5. **`docs/founder-directives.md §1` is immutable per D-6.** Don't ever edit Sources 1-9. New sources land via the ADR process documented in `docs/researcher-discipline.md` (the WebFetch → WebSearch → cross-attribute fallback chain when primary URLs are blocked at the network policy).
+
+6. **The `.harness/` runtime artifacts are gitignored** — they're per-session evidence, not durable repo state. `.harness/handoffs/`, `.harness/trails/`, `.harness/audit/`, `.harness/plugin-cache/` all live in your local checkout, not in version control.
+
+7. **The pinned plugin is a specific commit, not a branch HEAD.** When upstream `claude-tdd-pro` advances, the session-start hook reports a WARN. Bumping the pin requires an ADR per `docs/architecture-principles.md §15`; see ADR-0025 for the diff-classification pattern.
+
+## §7 Where to go from here
+
+After your first successful cycle:
+
+- **Operator reference:** `docs/cursor-integration.md` — full Cursor playbook with surfaces table, driver compatibility, failure modes
+- **Wire format:** `docs/handoff-contract.md` — `.req.json` + `.res.json` schemas
+- **Quality gate:** `docs/quality-gate.md` — 4 sub-gates, severities, override policy
+- **Architecture rules:** `docs/architecture-principles.md` (R-1..R-20), `docs/grok-orchestration-principles.md` (G-1..G-21), `docs/claude-tdd-pro-principles.md` (C-1..C-24)
+- **Authority hierarchy:** TIER 0 corpus → TIER 1 prime directive + founder-directives → TIER 2 rulebooks. Full enumeration in `AGENTS.md §5` and `CLAUDE.md`
+- **Decision history:** `docs/adr/0001-...md` through the latest numbered ADR — every architectural decision recorded
+- **Researcher discipline** (how to verify primary sources when WebFetch is blocked): `docs/researcher-discipline.md`
+- **Provenance bridging design:** `docs/provenance-bridging-design.md`
+
+If you want to extend the harness itself (vs. use it):
+- Read `CLAUDE.md` for the prime directive (plugin-dependency model — this repo consumes `claude-tdd-pro` as a pinned version; never edit upstream).
+- Read `docs/founder-directives.md §3` for the 13 D-rules.
+- Run `/research → /decompose → /dispatch → /inner-loop → /audit` against your proposed change — yes, the harness eats its own dog food (the 33 tickets in `TICKETS.md` are themselves the harness's own development history under its own discipline).
+
+## §8 The honest minimum to start TODAY
+
+Three actions:
+
+1. **Clone + `./scripts/sync-plugin.sh --ensure` + run the 5 verification commands** (§2). 3 minutes. Proves your environment works.
+2. **Open in Cursor, run `/research add kebabCase to string-utils` → all the way through `/audit`** (§4). 15 minutes. Proves the workflow drives real code.
+3. **Pick your real first feature for your real software, run the same cycle.** Your actual usage starts here. Friction profile compounds: subsequent tickets feel lower-friction than the first; audit trail builds; discipline becomes muscle memory.
+
+The harness was created so you don't have to remember all the discipline yourself — the SKILL.md + rules + hooks + audits hold the rules. You focus on what to build.

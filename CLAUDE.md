@@ -2,6 +2,8 @@
 
 Project instructions for Claude when operating in this repo. These instructions apply to **every** session type — local CLI, remote, cloud (web), GitHub Action, IDE — without exception.
 
+**Operator entry point: [`QUICKSTART.md`](QUICKSTART.md) at repo root.** If the operator is bootstrapping the harness for the first time (or asks "how do I start"), route them there — it's the 3-minute environment bootstrap + 15-minute first cycle. This CLAUDE.md file is the prime directive (authority + invariants); QUICKSTART is the operator's "what to do" path.
+
 ## Supreme operating directive (TIER 0): AI engineering corpus
 
 `docs/ai-engineering-corpus.md` is the **highest-priority ruleset and instruction** for architecture, planning, and development done in the repo of and by grok-claude-tdd-pro. It is the supreme operating directive — TIER 0 — and sits above every other rule, directive, principle, or invariant in this codebase. When any rule below conflicts with the corpus, the corpus wins.
