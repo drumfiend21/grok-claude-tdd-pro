@@ -1,0 +1,15 @@
+S-3|rm -rf usage (verify path is bounded)|scripts/audit-cross-references.sh:137:rm -f "$current_sorted"
+S-3|rm -rf usage (verify path is bounded)|scripts/audit-cross-references.sh:52:trap 'rm -f -- "$findings_file"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/audit-doc-drift.sh:51:trap 'rm -f -- "$FINDINGS_FILE"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/audit-manifest.sh:66:trap 'rm -f -- "$findings_file"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/emit-manifest.sh:154:trap 'rm -f -- "$TMP_OUT"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/export-cursor-rules.sh:69:    trap 'rm -rf -- "$OUTDIR"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:166:    rm -f -- "$TEST_OUT"
+S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:172:rm -f -- "$TEST_OUT"
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f "$TMP_CSF"' EXIT
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:193:rm -rf "$CLONE_DIR"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
+S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
+S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
+S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \

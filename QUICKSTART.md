@@ -10,6 +10,30 @@
 
 **The specific problem this solves that a simpler approach cannot.** A `CONTRIBUTING.md` + a few scripts in your repo can document AI-assisted-development conventions, but they cannot enforce TDD discipline *structurally* across **multiple AI agents** (Cursor's chat / Claude Code / Grok Build / headless `claude -p`), **multiple sessions** (provenance trail survives session boundaries), and **multiple IDEs** (same `AGENTS.md` + slash commands + skills compose everywhere). The harness's value is the cross-tool / cross-session enforcement layer, with a drift-detectable audit trail that an auditor can verify without trusting any individual agent's self-report. If you need only single-IDE, single-session, single-author discipline, a `CONTRIBUTING.md` and three scripts probably suffice; the harness is the layer above that.
 
+## §0 Fastest path — your first green ticket in <2 minutes (per Musk-letter §5)
+
+If you just want to see the harness produce a contract-valid green ticket end-to-end without typing a single slash command, run:
+
+```bash
+git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-claude-tdd-pro
+./scripts/sync-plugin.sh --ensure       # ~20 seconds (clones plugin cache)
+./scripts/smoke-e2e.sh                  # ~5 seconds (full 4-artifact pipeline)
+```
+
+Output you'll see:
+
+```
+[smoke-e2e] smoke OK — outer loop → handoff → inner loop → green tests → response
+[smoke-e2e]   request : .harness/handoffs/TICKET-042.req.json
+[smoke-e2e]   response: .harness/handoffs/TICKET-042.res.json
+[smoke-e2e]   trail   : .harness/trails/TICKET-042.md
+[smoke-e2e]   manifest: .harness/audit/TICKET-042.manifest.json
+```
+
+That's your first green ticket. Contract-valid request + response + R-G-R decision trail + drift-detectable manifest. **Total wall-clock: well under 2 minutes from cold clone.** Open the four files; you've seen everything the harness produces per ticket.
+
+Once you understand what the smoke produced, the rest of this doc walks you through running the full operator workflow in your IDE — same artifacts, your real feature.
+
 ## §1 Prerequisites (verify in 60 seconds)
 
 You need:

@@ -138,3 +138,27 @@ These compose on existing primitives (find, grep, awk, the trilogy scripts) per 
 **Filter applied:** 7 expansion candidates evaluated; 6 REJECTED (~86% cut); 1 ACCEPTED (this ADR itself, which persists the rejection rationale). Full table in ADR-0027 §Decision-1.
 
 **Bottom line for interview / pitch posture:** the harness is positioned in the "harness engineering" layer the briefing identifies as the 2026 competitive frontier. Concrete differentiators: enforceability (R-G-R per CL), drift-detectable audit (manifest + sha-chain + `--regenerate` against preserved original; cryptographic signing deferred per ADR-0018 §3), cross-IDE composition (single workflow across Cursor / Claude Code / Grok Build), explicit hybrid orchestration (Grok outer + Claude inner). The "lack of relevant AI work" feedback from prior interviews has a structural counter: this repo IS the relevant AI work.
+
+
+## 2026-05-26 — Musk Engineering Leadership letter receipt + #4 / #5 closure
+
+The user delivered a formal Musk Engineering Leadership review letter (xAI / Tesla / SpaceX lens) with 5 named "Do These Now" prescriptions. Per the user's 30-minute directive, this CL (TICKET-029 / ADR-0034) closes #5 fully and #4 at v1 scope; #1, #2, #3 are explicitly deferred with named triggers per the over-engineering filter.
+
+**Closed in this CL:**
+
+- **#5 Simplify Onboarding** — `QUICKSTART.md §0 "Fastest path — your first green ticket in <2 minutes"` shipped above §1 Prerequisites. Three commands (clone + sync-plugin + smoke-e2e) take the operator from cold clone to contract-valid green harness in under 30 seconds of actual command time. Full §1+ depth path preserved (not orphaned). Per Musk: *"Cut QUICKSTART to one screen: clone, sync-plugin, smoke-e2e, done. Anything else moves into 'further reading'."*
+- **#4 Security Review at v1** — `scripts/audit-hook-security.sh` + `tests/hook-security-baseline.txt` (15 entries; all S-3 bounded `rm -rf` cleanup) + `tests/test-audit-hook-security.sh` (9 assertions) + `docs/security-review.md` (TIER-2 doc) + ADR-0034. Six pattern classes (S-1 eval injection, S-2 curl|bash, S-3 rm -rf, S-4 hardcoded credentials, S-5 sudo, S-6 bash -c with unquoted var) mapped to canonical CWE / OWASP attack vectors. Approval-baseline pattern matches ADR-0032 (cross-reference audit). Zero findings in S-1, S-2, S-4, S-5, S-6 — the harness substrate is clean of the highest-risk patterns at v1.
+
+**Deferred with named triggers (each documented in ADR-0034 §Out of scope):**
+
+- **#1 Benchmark Velocity** — DEFERRED; trigger: first real-project handoff produces a measurable end-to-end time figure. Rationale: synthetic benchmark would be fabrication per founder-directives §1 stance against fabricated content.
+- **#2 Dogfood on Real Project** — DEFERRED; trigger: operator commits to a 2-4 week real-project window. Rationale: calendar item, not CL item.
+- **#3 Metrics with real numbers** — DEFERRED; trigger: operator reports C-24's principle-only DORA framing insufficient. Rationale: synthetic metrics would drift from C-24's "scoreboard with real numbers" stance.
+
+**Filter applied:** 5 letter prescriptions evaluated; 2 ACCEPTED (#4, #5); 3 DEFERRED with named triggers (#1, #2, #3). All deferrals are observable (named trigger conditions; cannot be forgotten).
+
+**Per ADR-0029 `Second voice` field demonstrated for the 5th time.** The Musk Engineering Leadership letter is the second voice; ADR-0034's `Second voice` field quotes Musk's literal closing prescription verbatim.
+
+**Substrate test coverage now 12/12 surfaces** (was 11/11 after ADR-0028; `test-audit-hook-security.sh` brings the 12th).
+
+**Bottom line for interview / pitch posture:** the harness now has a re-runnable security audit codifying the shell-pattern attack surface, an operator-friendly <2-minute onboarding path, and an explicit deferral discipline for prescriptions that require real-project data the harness does not yet have. Musk's literal letter is preserved as the second voice; the filter is calibrated such that named-ask + composes-on-primitives + operator-bitten thresholds determine ship-vs-defer.
