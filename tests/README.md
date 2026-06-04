@@ -38,7 +38,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `.claude/hooks/post-tool-use-review-gate.sh` | `tests/test-post-tool-use-review-gate.sh` | 8 |
 | `.claude/hooks/session-start.sh` | `tests/test-session-start.sh` | 7 |
 | `.claude/skills/orchestrating-swarms/SKILL.md` (Step 5 collection contract) | `tests/test-orchestrating-swarms.sh` | 19 (per TICKET-025 / ADR-0030; Step 4 worktree spawn remains operator-attested by design) |
-| **Total** | **9/9 testable surfaces** | **~91 assertions** |
+| `scripts/audit-rulebook-coverage.sh` | `tests/test-audit-rulebook-coverage.sh` | 12 (per TICKET-026 / ADR-0031; Fowler #1 closure) |
+| **Total** | **10/10 testable surfaces** | **~103 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

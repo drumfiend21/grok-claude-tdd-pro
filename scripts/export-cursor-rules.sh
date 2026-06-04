@@ -99,7 +99,7 @@ Authority hierarchy (full text in `AGENTS.md §5` + `CLAUDE.md`):
 
 - TIER 0: `docs/ai-engineering-corpus.md` — supreme operating directive.
 - TIER 1: `CLAUDE.md` (prime directive: plugin-dependency model) + `docs/founder-directives.md` (D-1..D-13).
-- TIER 2: `docs/architecture-principles.md` (R-1..R-20), `docs/grok-orchestration-principles.md` (G-1..G-21), `docs/claude-tdd-pro-principles.md` (C-1..C-24), `docs/quality-gate.md`, `docs/self-healing-design.md`, `docs/handoff-contract.md`, `docs/cursor-integration.md`, `docs/provenance-bridging-design.md`, `docs/researcher-discipline.md`.
+- TIER 2: `docs/architecture-principles.md` (R-1..R-20), `docs/grok-orchestration-principles.md` (G-1..G-21), `docs/claude-tdd-pro-principles.md` (C-1..C-24), `docs/quality-gate.md`, `docs/self-healing-design.md`, `docs/handoff-contract.md`, `docs/cursor-integration.md`, `docs/provenance-bridging-design.md`, `docs/researcher-discipline.md`, `docs/rulebook-coverage-audit.md`.
 
 Inner-loop skills (read BEFORE writing any spec, substrate, or commit):
 
