@@ -158,7 +158,27 @@ Amendments follow the ADR process in `docs/architecture-principles.md §19`. ADR
 
 Per D-6: §1 (which carries the verification-tier MODEL) is immutable; this doc (which carries the verification-tier PROCEDURE) is amendable via ADR. The two surfaces are intentionally separated to honor the model/procedure distinction.
 
-## §10 Verification (this CL)
+## §10 Wire-vs-authority strictness layering — naming the coherent pattern
+
+Per Fowler critique #7 (closed in TICKET-024 / ADR-0029): the harness has two dispositions toward unknown inputs that look contradictory in isolation but are actually a coherent defense-in-depth layering. Naming the pattern explicitly so future readers don't see contradiction where there is layering:
+
+| Layer | Disposition | Rationale | Source |
+|---|---|---|---|
+| **Data plane — wire format** (`.req.json`, `.res.json`, `.harness/audit/*.manifest.json`) | **TOLERANT** — unknown fields ignored; missing optionals defaulted; field absence treated as not-asserted | Lets the schema evolve (new optional fields can ship without breaking existing consumers); supports R-5 bilateral schema change cadence | R-11 (`docs/architecture-principles.md`); ADR-0010 quality-gate v1 cross-cutting check |
+| **Control plane — authority surface** (`docs/founder-directives.md §1` source elevation) | **STRICT** — ≥ 3 indexed secondary sources required for T-C; at least one primary-operated domain anchor; SEO-spam editorial-quality rejected; single-source → T-D paraphrase only | Keeps the authority hierarchy trustworthy (no fabricated or weakly-attributed sources slip into TIER-1 immutability); D-6 §1 append-only is meaningful only if §5 keeps the entrance gated | §5 of this doc; ADR-0023 / ADR-0024 (the first §1 entry to cite the strict bar) |
+
+**The pattern:** *be permissive at the data-plane wire; be strict at the control-plane authority elevation.* Wire permissiveness keeps the system evolvable. Authority strictness keeps the system trustworthy. The two are not in tension; they are different layers of the same defense-in-depth posture.
+
+**Application to future contract surfaces.** If a new contract surface emerges (e.g., a future MCP tool manifest per deferred TICKET-017, or a self-healing dispatch ticket per ADR-0011), the layering applies symmetrically: tolerant at the new wire format; strict at the authority surface that determines who/what may emit on it.
+
+**Worked example: the per-ticket provenance manifest** (`.harness/audit/*.manifest.json` per ADR-0018):
+
+- **Wire layer (tolerant):** future schema versions can add `signature` content, new `sources[].kind` values, additional `manifest_generator` fields. Consumers per R-11 ignore unknown fields. `provenance_complete` field absence in `.req.json` is tolerated (gate runner treats as implicit-true per ADR-0026).
+- **Authority layer (strict):** the manifest's own STRUCTURE is gated by `scripts/audit-manifest.sh` (ADR-0020) at F-6; required-field-present is enforced strictly; schema_version mutation rejected; the `--regenerate` drift check (ADR-0021) is exit-1 on any source-sha change.
+
+This is the same pattern, applied at the right layers.
+
+## §11 Verification (this CL)
 
 - `test -f docs/researcher-discipline.md` exits 0.
 - §1–§10 section markers grep-detectable.

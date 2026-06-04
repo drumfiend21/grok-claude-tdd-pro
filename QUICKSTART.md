@@ -4,9 +4,11 @@
 
 ## What this is (one paragraph)
 
-`grok-claude-tdd-pro` is a harness that provides **rails for AI-assisted software development**. The AI (Cursor's chat agent / Claude Code / Grok Build CLI / headless `claude -p`) does the actual writing. The harness provides workflow discipline (Red-Green-Refactor per ticket), a JSON wire contract between outer-loop planning and inner-loop execution, tamper-evident provenance manifests, file-fence enforcement, and a 6-pattern pre-commit drift audit. You — the operator — type slash commands, approve plans, review diffs, and commit. The AI writes the code inside the rails.
+`grok-claude-tdd-pro` is a harness that provides **rails for AI-assisted software development**. The AI (Cursor's chat agent / Claude Code / Grok Build CLI / headless `claude -p`) does the actual writing. The harness provides workflow discipline (Red-Green-Refactor per ticket), a JSON wire contract between outer-loop planning and inner-loop execution, drift-detectable provenance manifests, file-fence enforcement, and a 6-pattern pre-commit drift audit. You — the operator — type slash commands, approve plans, review diffs, and commit. The AI writes the code inside the rails.
 
 **This is not autopilot.** It is "AI-assisted with discipline you can show an auditor." The value compounds: Day 1 friction is comparable to a normal Cursor session; Week 1+ shows measurable audit-trail completeness + R-G-R discipline.
+
+**The specific problem this solves that a simpler approach cannot.** A `CONTRIBUTING.md` + a few scripts in your repo can document AI-assisted-development conventions, but they cannot enforce TDD discipline *structurally* across **multiple AI agents** (Cursor's chat / Claude Code / Grok Build / headless `claude -p`), **multiple sessions** (provenance trail survives session boundaries), and **multiple IDEs** (same `AGENTS.md` + slash commands + skills compose everywhere). The harness's value is the cross-tool / cross-session enforcement layer, with a drift-detectable audit trail that an auditor can verify without trusting any individual agent's self-report. If you need only single-IDE, single-session, single-author discipline, a `CONTRIBUTING.md` and three scripts probably suffice; the harness is the layer above that.
 
 ## §1 Prerequisites (verify in 60 seconds)
 
@@ -112,7 +114,7 @@ git add .
 git commit -m "TICKET-DEMO: add kebabCase to string-utils"
 ```
 
-That's one full cycle. You now have a contract-valid request, response, decision trail, and tamper-evident manifest. An auditor can verify exactly what the AI did.
+That's one full cycle. You now have a contract-valid request, response, decision trail, and drift-detectable manifest (sha-chain per source; `--regenerate` re-hashes and exit-1s on any change post-emission). An auditor can verify exactly what the AI did.
 
 ## §5 Daily operator workflow (the 7 slash commands)
 

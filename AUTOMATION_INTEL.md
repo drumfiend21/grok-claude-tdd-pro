@@ -93,7 +93,7 @@ Pitch hook extension (2026-05-26): the harness composes cleanly with both Anthro
 | Dimension | Industry baseline | Harness's edge |
 |---|---|---|
 | Discipline enforcement | Eval-driven + custom rules; varies per shop | R-G-R per CL via plugin skill; structurally enforced, not aspirational |
-| Audit trail | Often session-log-only; rarely tamper-evident | Per-ticket manifest (`.harness/audit/`) with sha256 + `--regenerate` tamper detection |
+| Audit trail | Often session-log-only; rarely drift-detectable | Per-ticket manifest (`.harness/audit/`) with sha256 per source + `--regenerate` for drift detection vs. preserved original (cryptographic signing deferred per ADR-0018 §3) |
 | Quality gate | Eval-loop or post-hoc | 4 REQUIRED sub-gates enforced at CL time (per ADR-0026) |
 | Cross-tool composition | Single-vendor lock typical | AGENTS.md + plugins + hooks + skills + MCP = Cursor + Claude Code + Grok Build all compose |
 | Orchestration model | Custom-glue per shop | Two-tier loop (Grok outer / Claude inner) with documented wire contract |
@@ -137,4 +137,4 @@ These compose on existing primitives (find, grep, awk, the trilogy scripts) per 
 
 **Filter applied:** 7 expansion candidates evaluated; 6 REJECTED (~86% cut); 1 ACCEPTED (this ADR itself, which persists the rejection rationale). Full table in ADR-0027 §Decision-1.
 
-**Bottom line for interview / pitch posture:** the harness is positioned in the "harness engineering" layer the briefing identifies as the 2026 competitive frontier. Concrete differentiators: enforceability (R-G-R per CL), tamper-evident audit (manifest + sha + `--regenerate`), cross-IDE composition (single workflow across Cursor / Claude Code / Grok Build), explicit hybrid orchestration (Grok outer + Claude inner). The "lack of relevant AI work" feedback from prior interviews has a structural counter: this repo IS the relevant AI work.
+**Bottom line for interview / pitch posture:** the harness is positioned in the "harness engineering" layer the briefing identifies as the 2026 competitive frontier. Concrete differentiators: enforceability (R-G-R per CL), drift-detectable audit (manifest + sha-chain + `--regenerate` against preserved original; cryptographic signing deferred per ADR-0018 §3), cross-IDE composition (single workflow across Cursor / Claude Code / Grok Build), explicit hybrid orchestration (Grok outer + Claude inner). The "lack of relevant AI work" feedback from prior interviews has a structural counter: this repo IS the relevant AI work.
