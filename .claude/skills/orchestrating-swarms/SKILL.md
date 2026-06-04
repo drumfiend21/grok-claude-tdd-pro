@@ -90,6 +90,8 @@ After workers complete (or time out):
 
 If a worker's `/inner-loop` was driven by a path that does not call `scripts/emit-manifest.sh` (e.g., headless `claude -p` invoked without manifest emission), the lead can synthesize the manifest itself: `./scripts/emit-manifest.sh --ticket TICKET-NNN --driver swarm-lead-synthesis`. The manifest format does not distinguish synthesis-by-lead from emission-by-worker beyond the `manifest_generator.tool` field.
 
+**Step 5 contract is tested.** Per TICKET-025 / ADR-0030, `tests/test-orchestrating-swarms.sh` verifies the collection contract end-to-end against 3 synthesized worker artifact sets: per-worker manifest emission, validation via `audit-manifest.sh`, `--regenerate` drift detection per worker, and absence of cross-contamination when one worker's source is tampered. The git worktree spawn (Step 4) is git's responsibility + Claude Code's Task tool responsibility and remains operator-validated; the collection + audit contract (Step 5) is now script-verified per ADR-0030 §Decision-2 honest scope statement.
+
 ## Step 6 — Synthesis (per G-7 — synthesis happens in the orchestrator)
 
 Per G-7: *"Synthesis happens in Grok. The orchestrator does not drift into worker territory."* The lead agent's synthesis is operator-facing only at v1:
