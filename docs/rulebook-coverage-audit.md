@@ -111,6 +111,32 @@ This doc is **TIER-2 audit report**. It is captured-at-a-moment and not amended 
 
 History: introduced in TICKET-026 (ADR-0031). Subsequent rulebook-consolidation CLs cite this report's findings as justification for specific deletions.
 
+## §9 Supersession events (per-CL log)
+
+Per §7 the report is captured-at-a-moment. When a consolidation CL deletes rules cited in §3, this section logs the supersession (the report stays at its captured numbers; the log records the deletion).
+
+### 2026-05-26 — C-rule consolidation (TICKET-028 / ADR-0033) — closes Musk #1
+
+Per Musk's review feedback ("C-rules are 83% dead — delete them; consolidate; ship"), the 20 zero-citation C-rules named in §3.4 (C-2 through C-21) were deleted from `docs/claude-tdd-pro-principles.md §16` and consolidated to upstream `claude-tdd-pro` per the CLAUDE.md prime directive. The inner-loop discipline they encoded (Three Laws, refactor cadence, smells, characterization, test pyramid, schools, mocking, naming, coverage, headless `-p`, `--allowedTools`, skill consumption, frontmatter, no substitution, atomic CL, decision-trail emission, no research/no deploy) is now owned by the SKILL.md trio symlinked from the pinned plugin cache.
+
+- **Deleted from §16 table:** C-2, C-3, C-4, C-5, C-6, C-7, C-8, C-9, C-10, C-11, C-12, C-13, C-14, C-15, C-16, C-17, C-18, C-19, C-20, C-21 (20 rules).
+- **Retained in §16 table:** C-1, C-22, C-23, C-24 (4 rules).
+- **Intellectual provenance retained:** `docs/claude-tdd-pro-principles.md §§1-15` (Beck, Bob, Fowler, Feathers, Cohn, London/Chicago, mutation/property, Anthropic, DORA) bodies remain.
+- **Audit script (`scripts/audit-rulebook-coverage.sh`) updated** to iterate only active C-rules (1, 22, 23, 24) per §6.
+- **Operator-visible references updated:** `CLAUDE.md`, `AGENTS.md`, `docs/ai-engineering-corpus.md` §authority-table, `docs/founder-directives.md §5` table, `scripts/export-cursor-rules.sh gen_agent_context` + regenerated `.cursor/rules/agent-context.mdc`.
+
+**Net effect on §2 summary table** (these are post-TICKET-028 numbers; original captured-2026-05-26 table preserved above per §7):
+
+| Rulebook | Source | Total active rules | Zero-citation | % dead |
+|---|---|---|---|---|
+| D-rules | `docs/founder-directives.md §3` | 13 | 0 | 0% |
+| R-rules | `docs/architecture-principles.md` | 20 | 0 | 0% |
+| G-rules | `docs/grok-orchestration-principles.md` | 21 | 0 | 0% |
+| C-rules | `docs/claude-tdd-pro-principles.md` | **4** (was 24) | 0 | 0% |
+| **Total** | — | **58** (was 78) | **0** (was 40) | **0%** (was 51%) |
+
+The C-rule consolidation deleted 20 rules in one CL (per Musk's deletion-pass framing). R-rule cohort retire (12 dead microservices-pattern rules per §3.2) and G-rule rationalization (7 dead per §3.3) remain deferred per §4 sequencing.
+
 ## §8 Composition
 
 This doc composes on:

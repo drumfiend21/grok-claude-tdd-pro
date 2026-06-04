@@ -870,7 +870,7 @@ When D-rules conflict with rules in the other rulebooks, this is the ordering:
 | 1 | This document (founder directives, D-1 .. D-13) | Repo-wide; provenance + derived directives. Co-equal with the prime directive, beneath TIER 0. |
 | 2 | `docs/architecture-principles.md` (R-1 .. R-20) | Architectural design and code structure. |
 | 2 | `docs/grok-orchestration-principles.md` (G-1 .. G-21) | `.grok/` and all Grok-facing surfaces. |
-| 2 | `docs/claude-tdd-pro-principles.md` (C-1 .. C-24) | Acceptance-tested inner-loop work. |
+| 2 | `docs/claude-tdd-pro-principles.md` (active harness-side C-rules: C-1, C-22, C-23, C-24; C-2..C-21 consolidated to upstream per ADR-0033) | Acceptance-tested inner-loop work (harness-side rules + upstream plugin SKILL.md trio). |
 
 When a D-rule and an R- / G- / C- rule conflict, the D-rule wins. When a D-rule conflicts with the TIER-0 supreme operating directive (the AI engineering corpus), the corpus wins. Raise the conflict in the CL (or before, via clarification) rather than silently relaxing either. When the two TIER-1 authorities (prime directive and founder directives) conflict with each other, raise it explicitly — neither defers to the other by default. There is no rulebook above TIER 0; the corpus is the supreme operating directive.
 

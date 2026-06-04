@@ -58,14 +58,15 @@ count_citations() {
 }
 
 audit_family() {
-    local family_label="$1" source_doc="$2" range_start="$3" range_end="$4" prefix="$5"
+    local family_label="$1" source_doc="$2" rule_numbers="$3" prefix="$4"
     emit ""
     emit "${family_label} (source: ${source_doc})"
 
     local zero_count=0 low_count=0 total_count=0
     local zero_list="" low_list=""
-    local i n
-    for i in $(seq "$range_start" "$range_end"); do
+    local i n total_rules=0
+    for i in $rule_numbers; do
+        total_rules=$((total_rules + 1))
         local rule="${prefix}-${i}"
         n=$(count_citations "$rule" "$source_doc")
         total_count=$((total_count + n))
@@ -81,7 +82,7 @@ audit_family() {
         fi
     done
 
-    emit "  Total: ${total_count} citations across $((range_end - range_start + 1)) rules"
+    emit "  Total: ${total_count} citations across ${total_rules} active rules"
     emit "  Zero-citation candidates (${zero_count}):${zero_list}"
     emit "  Low-citation candidates 1-2 (${low_count}):${low_list}"
 }
@@ -89,10 +90,16 @@ audit_family() {
 emit "[rulebook-coverage] starting per-rule citation audit..."
 emit "  Excludes each rule's own source doc + this script."
 
-audit_family "D-rules" "docs/founder-directives.md" 1 13 "D"
-audit_family "R-rules" "docs/architecture-principles.md" 1 20 "R"
-audit_family "G-rules" "docs/grok-orchestration-principles.md" 1 21 "G"
-audit_family "C-rules" "docs/claude-tdd-pro-principles.md" 1 24 "C"
+# Active rule sets per current rulebook state. Deletions are reflected here:
+# - C-2..C-21 CONSOLIDATED into upstream plugin per Musk #1 / TICKET-028 / ADR-0033.
+#   Active C-rules: C-1, C-22, C-23, C-24.
+# - R-rule cohort retire (R-4 R-6..R-10 R-13..R-18) deferred to a future CL.
+# - G-rule rationalization deferred to a future CL.
+# - D-4 consolidation into D-13 deferred (D-rule amendment per D-6 is heaviest).
+audit_family "D-rules" "docs/founder-directives.md"          "1 2 3 4 5 6 7 8 9 10 11 12 13" "D"
+audit_family "R-rules" "docs/architecture-principles.md"     "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" "R"
+audit_family "G-rules" "docs/grok-orchestration-principles.md" "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21" "G"
+audit_family "C-rules" "docs/claude-tdd-pro-principles.md"   "1 22 23 24" "C"
 
 emit ""
 emit "[rulebook-coverage] Audit complete. Per ADR-0031, rules with 0 external"

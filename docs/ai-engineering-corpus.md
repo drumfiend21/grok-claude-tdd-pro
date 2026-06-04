@@ -15,7 +15,7 @@ Elevation to TIER 0 was made by drumfiend21 on 2026-05-25 with the explicit inst
 | 1 | `docs/founder-directives.md` (D-1 .. D-13) | Provenance (§1) + derived directives (§3). Co-equal with the prime directive, beneath TIER 0. |
 | 2 | `docs/architecture-principles.md` (R-1 .. R-20) | Architectural design and code structure. |
 | 2 | `docs/grok-orchestration-principles.md` (G-1 .. G-21) | `.grok/` and Grok-facing surfaces. |
-| 2 | `docs/claude-tdd-pro-principles.md` (C-1 .. C-24) | Acceptance-tested inner-loop work. |
+| 2 | `docs/claude-tdd-pro-principles.md` (active: C-1, C-22, C-23, C-24; C-2..C-21 consolidated to upstream per ADR-0033) | Acceptance-tested inner-loop work. |
 
 When this corpus conflicts with ANY other rulebook in the repo — the prime directive, founder-directives D-rules, R-rules, G-rules, or C-rules — the corpus wins. The only legitimate override of the corpus is an explicit, named amendment to the corpus itself, landed via the ADR process referenced under "Amendment process" below. Silent relaxation, deferred interpretation, or implicit override is forbidden.
 

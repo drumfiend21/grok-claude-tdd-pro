@@ -68,7 +68,7 @@ One **orchestration-tier** skill lives at the harness's repo (NOT a tdd-pro-core
 
 - `docs/architecture-principles.md` — R-1..R-20 (microservice loose coupling, Twelve-Factor, ADR discipline).
 - `docs/grok-orchestration-principles.md` — G-1..G-21 (Grok-as-outer-loop orchestrator; AGENTS.md surface convention at §8).
-- `docs/claude-tdd-pro-principles.md` — C-1..C-24 (TDD discipline for inner-loop consumers).
+- `docs/claude-tdd-pro-principles.md` — active harness-side C-rules (C-1, C-22, C-23, C-24); 20 inner-loop discipline rules consolidated to upstream plugin per Musk #1 / ADR-0033 (intellectual provenance retained §§1-15).
 - `docs/quality-gate.md` — four sub-gates (`tests_must_pass`, `coverage_delta_min`, `lint_clean`, `provenance_complete`).
 - `docs/self-healing-design.md` — design for long-running outer-loop monitor; implementation deferred per ADR-0011.
 - `docs/handoff-contract.md` — wire format (see §3 above).
