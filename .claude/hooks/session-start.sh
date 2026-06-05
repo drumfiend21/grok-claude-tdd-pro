@@ -38,4 +38,11 @@ else
     echo "[session-start] WARN: scripts/sync-plugin.sh missing or not executable; plugin sync skipped."
 fi
 
+# Claude Code host-CLI version compat check (per TICKET-031 / ADR-0036).
+# Mirrors the plugin-pin drift-detect pattern: WARN if outside the declared
+# supported_range; never blocks. Operator follows docs/claude-code-upgrade-runbook.md.
+if [ -x scripts/audit-claude-code-compat.sh ]; then
+    scripts/audit-claude-code-compat.sh || true
+fi
+
 exit 0

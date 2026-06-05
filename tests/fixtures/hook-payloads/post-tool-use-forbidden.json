@@ -1,0 +1,13 @@
+{
+  "session_id": "test-session-003",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": ".cursor/rules/agent-context.mdc",
+    "old_string": "anything",
+    "new_string": "modified"
+  },
+  "tool_response": {
+    "success": true
+  }
+}

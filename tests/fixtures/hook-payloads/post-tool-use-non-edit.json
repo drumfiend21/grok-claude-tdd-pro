@@ -1,0 +1,11 @@
+{
+  "session_id": "test-session-004",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Read",
+  "tool_input": {
+    "file_path": "/tmp/whatever.txt"
+  },
+  "tool_response": {
+    "content": "anything"
+  }
+}

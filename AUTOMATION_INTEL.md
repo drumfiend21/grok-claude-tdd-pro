@@ -188,3 +188,62 @@ Same-session trigger fire: this session's regrade of TICKET-029 graded the closu
 **Filter calibration evidence.** The "ship 2, defer 3" pattern that emerged in TICKETS 027-029 is broken in this CL: when the named trigger fires, the deferral converts to ship — that's the entire point of naming triggers explicitly. The discipline is operating as designed.
 
 **Bottom line for interview / pitch posture:** the harness now ships a re-runnable DORA-style scoreboard reading its own manifest trail. C-24 is no longer principle-only — it has a command behind it. Combined with the security audit (TICKET-029), the cross-reference audit (TICKET-027), the rulebook-coverage audit (TICKET-026), and the manifest trilogy (TICKET-010), the harness has a complete operator dashboard: every audit produces a baseline + a re-runnable artifact + an honest-caveat section + a future-trigger named. This IS the harness-engineering layer the Wayfair 2026 briefing identified as the competitive frontier.
+
+## 2026-05-26 — Claude Code upgrade-handling posture documented (TICKET-031 backlogged)
+
+The user asked: *"We should be intelligent when handling an upgrade to Claude Code in order that nothing breaks and the upgrade path is predictable. How can this be ensured?"* — a structural / best-practices question about how the harness protects itself from host-CLI version drift.
+
+**Answer recorded in `docs/claude-code-upgrade-strategy.md` (TIER-2; 10 sections).** Key findings:
+
+- **The harness has exemplary discipline for *plugin* upgrades** — pin SHA + drift detect + ADR-gated bumps + manifest provenance. Pattern proven across ADRs 0007 (sync-plugin), 0025 (pin bump).
+- **The same discipline does NOT today extend to Claude Code itself.** Four named gaps relative to formal best practices:
+  1. No `docs/claude-code-compat.yaml` declaring supported version range + tested versions list.
+  2. No SessionStart hook reads `claude --version` or warns when outside the declared range.
+  3. No hook-payload contract tests (`tests/fixtures/hook-payloads/` + `tests/test-hook-contracts.sh` missing).
+  4. No operator-facing `docs/claude-code-upgrade-runbook.md`.
+- **The gap is filter-defensible per the harness's deletion-pass discipline.** Operator-bitten threshold NOT met (no Claude Code upgrade has broken this harness yet). Matches the deferral pattern used for Musk-letter #1 / #2 in ADR-0034 §Out-of-scope.
+
+**TICKET-031 (DEFERRED) ships when any one of four named triggers fires:**
+
+1. A Claude Code upgrade visibly breaks the harness (smoke-e2e non-zero post-upgrade, hook stops firing, settings.json keys silently no-op).
+2. Anthropic announces a breaking change with published deprecation timeline.
+3. The harness gains a first external operator (someone other than the architect).
+4. The operator commits to a Claude Code version-pinning policy for production / regulated use.
+
+**Estimated remediation effort when triggered:** ~3 hours single CL — declared compat range + SessionStart extension + hook fixture corpus + contract-test script + runbook + ADR-0036. Symmetric design to the existing plugin-pin pattern.
+
+**Filter calibration evidence (continued).** This is the 4th recent deferral with explicit named triggers (after Musk #1, #2, and the ADR-0027 Next.js examples). The pattern of "name the trigger so it cannot be forgotten" is operating consistently. None of these are silent relaxations.
+
+**Bottom line for interview / pitch posture.** The harness's answer to "what happens when Claude Code upgrades" is: WARN at session start (already shipping), audit chain catches structural breakage (already shipping), operator notices and remediates (manual today). The richer version-range + contract-test + runbook discipline is documented, backlogged, and trigger-named — which IS the responsible disposition for a single-operator system. When the operator-base grows to N>1, TICKET-031 ships.
+
+## 2026-05-26 — Claude Code upgrade strategy SHIPPED (TICKET-031 — user override of prior deferral)
+
+The user directive *"Bring it in line with best practices per the matter"* overrode the prior turn's filter-disciplined deferral in favor of formal best practices. TICKET-031 ships the full symmetric-with-plugin-pin discipline for the host CLI itself.
+
+**Shipped in this CL (TICKET-031 / ADR-0036):**
+
+- `docs/claude-code-compat.yaml` — declared `supported_range: >=2.0.0, <3.0.0` + `tested_versions:` ledger (2.1.163 captured 2026-05-26 green) + `first_known_incompatible: null`. Bumping the range requires an ADR per `architecture-principles §15`.
+- `scripts/audit-claude-code-compat.sh` (~90 lines; bash 3.2 + BSD portable) — reads `claude --version`, semver-compares against declared range; `--version <semver>` override flag for testing. Exit 0 in-range / 1 out-of-range / 2 error. WARN-not-FAIL stance per ADR-0001.
+- `.claude/hooks/session-start.sh` extension — fires the compat audit after plugin sync. Hook still exits 0 always (warn-only); the compat check is one more `[claude-code-compat]` line in the session-start output.
+- `tests/test-audit-claude-code-compat.sh` (9 assertions) — boundary-min inclusive + boundary-max exclusive + below-min + above-max + output-string asserts.
+- `tests/fixtures/hook-payloads/*.json` (4 golden fixtures + README.md) — pin the Claude Code hook payload contract for the currently tested CLI version. Scenarios: allowed-Edit, allowed-Write, forbidden-`.cursor/rules/agent-context.mdc`-edit per ADR-0014, non-edit Read no-op.
+- `tests/test-hook-contracts.sh` (15 assertions) — fixture presence + JSON validity per node + 4 hook scenarios + defensive missing-`tool_name` test.
+- `docs/claude-code-upgrade-runbook.md` — operator procedure: pre-upgrade checklist → upgrade → verification chain → decision tree (green/red) → rollback → post-upgrade smoke → AUTOMATION_INTEL recording → anti-patterns.
+- `docs/claude-code-upgrade-strategy.md` — rewritten from DEFERRED to SHIPPED rulebook documenting the symmetric design.
+
+**Per ADR-0029 `Second voice` field demonstrated for the 7th time.** The user's *"Bring it in line with best practices per the matter"* directive IS the second voice — overriding the strict-filter recommendation. The override is principled, not arbitrary: it elevates formal best practices when the architect explicitly directs it.
+
+**Substrate test coverage now 15/15 surfaces** (was 13/13 after ADR-0035).
+
+**Symmetric protection achieved.** The harness now applies the same R-2 (versioned consumption) discipline to both the plugin AND Claude Code itself:
+
+| Concern | Plugin (shipped ADR-0001 + ADR-0025) | Claude Code (shipped ADR-0036) |
+|---|---|---|
+| Declared version | `docs/claude-tdd-pro.lock.yaml` | `docs/claude-code-compat.yaml` |
+| Drift detection | `sync-plugin.sh --check` + SessionStart WARN | `audit-claude-code-compat.sh` + SessionStart WARN |
+| Contract tests | F-1..F-6 audits | `tests/test-hook-contracts.sh` + golden fixtures |
+| Gated bumps | ADR-0025 precedent | ADR-0036 establishes precedent for compat-range bumps |
+
+**Filter-discipline calibration evidence.** The over-engineering filter is now demonstrably overridable by explicit architect direction. The prior turn's deferral analysis was correct per the strict filter; the user's response elevated formal best practices. This is the principled exception pattern — name when the filter is being overridden so future readers see the rationale, not silent relaxation.
+
+**Bottom line for interview / pitch posture.** The harness's answer to "what happens when Claude Code upgrades" is now: WARN at session start via two complementary checks (plugin pin + CLI version range), full verification chain runnable in <60 seconds, operator-facing runbook with named decision points, all changes ADR-gated. The same discipline that's earned the harness Fowler-team and Musk-letter grades is now applied symmetrically to the host CLI. **This closes the architectural gap that existed since TICKET-001.e shipped the plugin pin** — it took 30 tickets to surface the symmetry need, and one user-directed CL to close it.

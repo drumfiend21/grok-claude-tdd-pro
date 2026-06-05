@@ -42,7 +42,9 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `scripts/audit-cross-references.sh` | `tests/test-audit-cross-references.sh` | 8 (per TICKET-027 / ADR-0032; Fowler #3 closure via approval-baseline pattern; `tests/cross-references-baseline.txt` is the technical-debt registry) |
 | `scripts/audit-hook-security.sh` | `tests/test-audit-hook-security.sh` | 9 (per TICKET-029 / ADR-0034; Musk Engineering Leadership letter #4 closure via S-1..S-6 shell-pattern scan + `tests/hook-security-baseline.txt` approval-baseline) |
 | `scripts/audit-metrics.sh` | `tests/test-audit-metrics.sh` | 17 (per TICKET-030 / ADR-0035; Musk Engineering Leadership letter #3 closure via DORA Four Keys computed from `.harness/audit/*.manifest.json` corpus; fixture corpus exercised) |
-| **Total** | **13/13 testable surfaces** | **~137 assertions** |
+| `scripts/audit-claude-code-compat.sh` | `tests/test-audit-claude-code-compat.sh` | 9 (per TICKET-031 / ADR-0036; host-CLI version-range check; semver boundary tests) |
+| `.claude/hooks/post-tool-use-review-gate.sh` (payload contract) | `tests/test-hook-contracts.sh` | 15 (per TICKET-031 / ADR-0036; golden fixtures at `tests/fixtures/hook-payloads/` pin the Claude Code hook payload contract; 4 scenarios + defensive missing-field test) |
+| **Total** | **15/15 testable surfaces** | **~161 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

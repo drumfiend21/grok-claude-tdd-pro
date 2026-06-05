@@ -1,0 +1,32 @@
+# Claude Code compatibility manifest
+# Per TICKET-031 / ADR-0036 — host-CLI version-range declaration mirroring the
+# plugin-pin discipline (docs/claude-tdd-pro.lock.yaml). Bumping `supported_range`
+# requires an ADR per architecture-principles §15.
+schema_version: "1"
+
+supported_range:
+  # Inclusive minimum; exclusive maximum (semver). Operator's CLI must satisfy
+  # min <= version < max for the SessionStart compat check to PASS.
+  min: "2.0.0"
+  max: "3.0.0"
+
+tested_versions:
+  - version: "2.1.163"
+    tested_at: "2026-05-26"
+    result: "green"
+    notes: "Initial capture; all 13 substrate test suites + smoke-e2e + full audit chain green."
+
+# First Claude Code version known to break the harness. null until observed.
+first_known_incompatible: null
+
+# Operational notes for the upgrade procedure (full runbook in
+# docs/claude-code-upgrade-runbook.md).
+notes: |
+  When an operator's Claude Code version falls outside supported_range, the
+  SessionStart hook prints a WARN line (never blocks). To bump the range:
+    1. Install the candidate Claude Code version.
+    2. Run ./scripts/smoke-e2e.sh and ./tests/test-all.sh.
+    3. If both green, write an ADR bumping supported_range (cite the tested
+       version + capture date + result).
+    4. If red, file an issue with Anthropic + stay on the prior pinned range.
+  See docs/claude-code-upgrade-runbook.md for the full operator procedure.
