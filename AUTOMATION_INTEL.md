@@ -162,3 +162,29 @@ The user delivered a formal Musk Engineering Leadership review letter (xAI / Tes
 **Substrate test coverage now 12/12 surfaces** (was 11/11 after ADR-0028; `test-audit-hook-security.sh` brings the 12th).
 
 **Bottom line for interview / pitch posture:** the harness now has a re-runnable security audit codifying the shell-pattern attack surface, an operator-friendly <2-minute onboarding path, and an explicit deferral discipline for prescriptions that require real-project data the harness does not yet have. Musk's literal letter is preserved as the second voice; the filter is calibrated such that named-ask + composes-on-primitives + operator-bitten thresholds determine ship-vs-defer.
+
+## 2026-05-26 — Musk #3 closure (DORA metrics from manifest corpus)
+
+Same-session trigger fire: this session's regrade of TICKET-029 graded the closure at B, naming the #3 metrics deferral as the weakest defense. Per ADR-0027 §Decision-1 C2 deferral ("trigger: operator reports the one-liners insufficient") AND ADR-0034 §Out-of-scope #3 deferral ("trigger: operator reports C-24's principle-only DORA framing insufficient"), the named trigger conditions fired — converting deferral to ship per the named-trigger discipline shipped throughout this repo.
+
+**Closed in this CL (TICKET-030 / ADR-0035):**
+
+- `scripts/audit-metrics.sh` (~140 lines; bash 3.2 + BSD portable; 3 modes) computes 3 of the 4 DORA Four Keys (Forsgren/Humble/Kim *Accelerate*) from `.harness/audit/*.manifest.json` corpus + `git log --grep` for ticket-mention timestamps:
+  - **Deployment frequency** = green manifests / week over observation window.
+  - **Change failure rate** = (red + blocked) / total × 100 %.
+  - **Lead time (median)** = median(manifest.created_at − first-commit-mentioning-ticket), in seconds.
+  - **Time to restore** = `n/a` at v1 (no restore-event corpus; v2 trigger named).
+- `tests/test-audit-metrics.sh` (17 assertions; synthetic 5-ticket fixture: 3 green + 1 red + 1 blocked → 40 % CFR verified; restore-before-assert; `--dir` flag enables fixture isolation).
+- `docs/dora-metrics.md` TIER-2 operational rulebook (8 sections; honest-caveat section per *Accelerate*'s reporting discipline).
+
+**No fabrication.** Every metric traces to a real manifest field (`status`, `created_at`, `ticket_id`) or a `git log` query against the ticket ID. The harness reports what the corpus contains, not aspirational benchmarks.
+
+**Per ADR-0029 `Second voice` field demonstrated for the 6th time.** The same-session regrade letter is the second voice; ADR-0035 quotes its closing prescription verbatim: *"Stop deferring #3. Compute DORA numbers from the manifest trail you already have. Re-grade: B."*
+
+**Substrate test coverage now 13/13 surfaces** (was 12/12 after ADR-0034).
+
+**Musk Engineering Leadership letter status, post-TICKET-030:** #3 SHIPPED. #4 SHIPPED at v1. #5 SHIPPED. #1 STILL DEFERRED (trigger: first real-project handoff). #2 STILL DEFERRED (trigger: 2-4 week real-project window). 3-of-5 close rate; 2 remaining deferrals are calendar items, not CL items.
+
+**Filter calibration evidence.** The "ship 2, defer 3" pattern that emerged in TICKETS 027-029 is broken in this CL: when the named trigger fires, the deferral converts to ship — that's the entire point of naming triggers explicitly. The discipline is operating as designed.
+
+**Bottom line for interview / pitch posture:** the harness now ships a re-runnable DORA-style scoreboard reading its own manifest trail. C-24 is no longer principle-only — it has a command behind it. Combined with the security audit (TICKET-029), the cross-reference audit (TICKET-027), the rulebook-coverage audit (TICKET-026), and the manifest trilogy (TICKET-010), the harness has a complete operator dashboard: every audit produces a baseline + a re-runnable artifact + an honest-caveat section + a future-trigger named. This IS the harness-engineering layer the Wayfair 2026 briefing identified as the competitive frontier.

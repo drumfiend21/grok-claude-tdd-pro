@@ -10,6 +10,9 @@ S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:193:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-metrics.sh:70:    rm -f "$f.bak"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-metrics.sh:74:rm -rf "$TMPDIR"   # restore BEFORE asserting
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-metrics.sh:90:rm -rf "$TMPDIR"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
