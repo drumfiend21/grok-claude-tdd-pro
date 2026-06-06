@@ -254,5 +254,18 @@ if [ -x "scripts/emit-manifest.sh" ]; then
     fi
 fi
 
+# AIBOM emit (per TICKET-033 / ADR-0038 Batch 8). Wires the plugin's
+# compliance/aibom-emit.sh so every green ticket produces an AI Bill of
+# Materials alongside the manifest. Defensive — non-fatal on error.
+PLUGIN_CACHE=".harness/plugin-cache/claude-tdd-pro"
+AIBOM_EMITTER="$PLUGIN_CACHE/compliance/aibom-emit.sh"
+AIBOM_PATH=".harness/audit/${TICKET_ID}.aibom.json"
+if [ -x "$AIBOM_EMITTER" ]; then
+    CLAUDE_PLUGIN_ROOT="$PLUGIN_CACHE" \
+    bash "$AIBOM_EMITTER" --out "$AIBOM_PATH" 2>/dev/null && \
+        log "  aibom   : $AIBOM_PATH" || \
+        log "  warn: aibom-emit.sh exited non-zero (compliance artifact may be degraded)"
+fi
+
 # trap cleanup restores TOY_SRC from backup on EXIT (preserves Red baseline).
 exit 0

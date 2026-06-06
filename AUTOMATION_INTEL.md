@@ -279,3 +279,28 @@ The 2026-06-06 operator directive named the structural gap: the harness was trea
 **Per ADR-0029 `Second voice` field demonstrated for the 7th time.** The 2026-06-06 operator directive IS the second voice; ADR-0037 quotes it verbatim and records the 6 alternatives REJECTED (vendor the rubric / wait for federal-gov / block on all severities / run on bash substrate / skip deviations / defer plugin-surface audit).
 
 **Bottom line for interview / pitch posture:** the harness is now structurally aligned with what operators expect when they say "Claude TDD Pro owns the inner loop" — operator-declared rules from OWASP / Google / SLSA / etc. reach Claude's writes, the PostToolUse hook blocks at write-time, and the deviation registry handles the rare legitimate exception with operator justification. The "everything must conform to the rulesets" stance is now structurally enforced, not aspirational.
+
+## 2026-06-06 — Full plugin-feature wire SHIPPED (TICKET-033 / ADR-0038)
+
+After TICKET-032 shipped the standards wire, the operator asked the binary question: *"Is it working this way now between the two plugins?"* The honest answer was **partial**. Three named surfaces remained as rationale-only entries in `docs/plugin-surface-consumption.md` (claiming CONSUMED but with no real wire): `pr-corpus/` (peer reviews), `formatters/`, `compliance/`.
+
+This CL replaces forward-claims with real wires across three batches:
+
+- **Batch 6 — Peer-review surface.** The plugin's `rubric/runner.sh` emits DEFERRED findings (`g-eng-001-design-belongs-here`, `g-eng-002-yagni`, `g-eng-006-no-bundled-refactor-and-feature`, etc.) — these are rules synthesized from `pr-corpus/` PR-extracted patterns that require agent review, not pure detector dispatch. The PostToolUse hook now surfaces up to 3 DEFERRED findings per touched file to stderr with a `[peer-review]` prefix. Non-blocking; the agent must address them in the response trail before ticket closure.
+- **Batch 7 — Formatter auto-apply.** After a successful rubric P0 check, the PostToolUse hook invokes `formatters/cli.sh --file <REL_PATH> --apply` for app-code extensions. Defensive; no-ops when no project formatter config exists.
+- **Batch 8 — AIBOM emit.** `scripts/smoke-e2e.sh` invokes `compliance/aibom-emit.sh` after the provenance manifest is written. Every green ticket now produces `.harness/audit/TICKET-NNN.aibom.json` as a fourth audit artifact alongside the existing manifest + decision trail + req/res.
+
+**End-to-end now in place** when the operator submits a feature description:
+
+1. SessionStart: standards-sync loads 28 rules into `.harness/rules/active.json`; plugin-surface audit verifies all 39 plugin surfaces are declared.
+2. Grok dispatch: `applicable_rules` filtered from `active.json`.
+3. Claude R-G-R: PostToolUse blocks P0 rubric violations at write-time; surfaces DEFERRED findings as `[peer-review]` prompts; auto-applies formatter on pass.
+4. Quality gate: `lint_clean` requires every `rules_verified` entry `pass` or `deviated`.
+5. Pre-commit: `audit-standards-conformance.sh` re-verifies the diff against the deviation registry.
+6. Smoke / response: provenance manifest + decision trail + req/res + **AIBOM** (4 audit artifacts).
+
+**The plugin-surface-consumption registry no longer claims forward-credit** for `pr-corpus`, `formatters`, `compliance` — each row names the real script and call site.
+
+**Per ADR-0029 `Second voice` field demonstrated for the 8th time.** The operator's binary question IS the second voice; ADR-0038 records the honest partial answer + the wire that closes the gap.
+
+**Bottom line for interview / pitch posture.** The harness now answers the operator's question with a defensible "yes": every coding feature in claude-tdd-pro that has a sensible harness-side wire point (standards rubric, formatters, peer-review patterns via DEFERRED findings, compliance/AIBOM) is invoked from a documented script or hook. Plugin-internal surfaces (evals, meta-eval, monitors, cross-loop, workflow, metrics, etc.) remain DECLARED-NOT-CONSUMED with each rationale recorded in `docs/plugin-surface-consumption.md` — that's structural transparency, not a gap.

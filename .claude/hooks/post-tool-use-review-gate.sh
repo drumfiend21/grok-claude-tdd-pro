@@ -93,6 +93,11 @@ fi
 # After file-fence check passes, run plugin's rubric/runner.sh against the
 # diff for app-code extensions. Exit 2 on P0 finding for this file; bash +
 # markdown substrate excluded (no detectors; pure noise).
+#
+# Per TICKET-033 / ADR-0038 (Batch 6), also surface DEFERRED findings as
+# peer-review prompts (non-blocking; agent must address before completing
+# the ticket). DEFERRED findings come from rubric rules that require agent
+# review (e.g., design-belongs-here, yagni, no-bundled-refactor-and-feature).
 case "$REL_PATH" in
     *.js|*.jsx|*.ts|*.tsx|*.py|*.go|*.rs|*.java|*.kt|*.swift)
         PLUGIN_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}/.harness/plugin-cache/claude-tdd-pro"
@@ -101,6 +106,7 @@ case "$REL_PATH" in
             findings=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
                        CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}" \
                        bash "$RUNNER" --diff --severity P0 2>/dev/null || true)
+            # Blocking: P0 violations naming this file.
             blocking=$(printf '%s' "$findings" | grep -oE "\"severity\":\"P0\"[^{}]*\"file\":\"[^\"]*$REL_PATH\"" | head -1)
             if [ -n "$blocking" ]; then
                 printf 'PostToolUse review gate: P0 rule violation in %s.\n' "$REL_PATH" >&2
@@ -109,6 +115,20 @@ case "$REL_PATH" in
                 printf '  Source: docs/quality-gate.md §lint_clean (rubric layer); TICKET-032 / ADR-0037.\n' >&2
                 printf '  Fix the violation or add a deviation row to docs/deviations.md before proceeding.\n' >&2
                 exit 2
+            fi
+            # Non-blocking: DEFERRED findings = peer-review prompts.
+            deferred=$(printf '%s' "$findings" | grep -oE '"rule":"[a-z0-9-]+","severity":"[^"]+","file":"[^"]*"[^{}]*"msg":"DEFERRED:[^"]*"' | head -3)
+            if [ -n "$deferred" ]; then
+                printf '[peer-review] DEFERRED findings on %s (agent review required before ticket green):\n' "$REL_PATH" >&2
+                printf '%s\n' "$deferred" | sed 's/^/  /' >&2
+                printf '  Per TICKET-033 / ADR-0038: these findings do not block this write but must be addressed in the response trail before the ticket closes.\n' >&2
+            fi
+            # Formatter auto-fix (per TICKET-033 / ADR-0038 Batch 7).
+            FORMATTER="$PLUGIN_ROOT/formatters/cli.sh"
+            if [ -x "$FORMATTER" ]; then
+                CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
+                CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}" \
+                bash "$FORMATTER" --file "$REL_PATH" --apply 2>/dev/null || true
             fi
         fi
         ;;

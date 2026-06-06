@@ -26,11 +26,11 @@
 | `ci` | DECLARED-NOT-CONSUMED | Plugin's CI workflows; harness CI deferred per ADR-0028. ADR-0037. |
 | `commands` | DECLARED-NOT-CONSUMED | Plugin's slash commands; harness has its own `.cursor/commands/`. ADR-0037. |
 | `community` | DECLARED-NOT-CONSUMED | Plugin-internal community docs. ADR-0037. |
-| `compliance` | CONSUMED via `scripts/standards-sync.sh` AIBOM hook (Batch 5+) | Wire ships in TICKET-032 follow-on batch; v1 status: declared, wire-in-progress. |
+| `compliance` | CONSUMED via `scripts/smoke-e2e.sh` AIBOM emit (per TICKET-033 / ADR-0038 Batch 8) | `compliance/aibom-emit.sh` runs after green response; output at `.harness/audit/TICKET-NNN.aibom.json`. |
 | `cross-loop` | DECLARED-NOT-CONSUMED | Cross-loop wiring is plugin-internal (Grok-via-plugin); harness handles outer loop directly. ADR-0037. |
 | `docs` | DECLARED-NOT-CONSUMED | Plugin's internal docs (architecture-v1.9.md is referenced by hash via `docs/claude-tdd-pro.lock.yaml` contract surface). ADR-0037. |
 | `evals` | CONSUMED via response-gate hook (planned Batch 6) | v1 status: declared, wire-in-progress. |
-| `formatters` | CONSUMED via PostToolUse standards check (Batch 4) | v1 status: declared, wire-in-progress. |
+| `formatters` | CONSUMED via PostToolUse hook (per TICKET-033 / ADR-0038 Batch 7) | `formatters/cli.sh --file <REL_PATH> --apply` runs after the rubric check; auto-applies formatting to app-code extensions. |
 | `generated-code-quality-standards` | CONSUMED via `scripts/standards-sync.sh` (Batch 2) | `.harness/rules/active.json` aggregation source. |
 | `git` | DECLARED-NOT-CONSUMED | Plugin's git tooling; harness uses git directly. ADR-0037. |
 | `hooks` | DECLARED-NOT-CONSUMED | Plugin's hook templates; harness has its own `.claude/hooks/`. ADR-0037. |
@@ -41,7 +41,7 @@
 | `migrations` | CONSUMED via `scripts/sync-plugin.sh` (existing) | Pin bumps consult `migrations/` per ADR-0025 pattern. |
 | `monitors` | DECLARED-NOT-CONSUMED | Plugin's long-running monitors; harness self-healing deferred per ADR-0011. ADR-0037. |
 | `output-styles` | DECLARED-NOT-CONSUMED | Plugin-internal output formatting; harness handles its own. ADR-0037. |
-| `pr-corpus` | CONSUMED via peer-review hook (planned Batch 6) | v1 status: declared, wire-in-progress. |
+| `pr-corpus` | CONSUMED transitively via rubric rules + DEFERRED-findings peer-review surfacing (per TICKET-033 / ADR-0038 Batch 6) | PR-extracted patterns flow through `rubric/aggregator.sh` into rules; DEFERRED findings (rules requiring agent review like `g-eng-001-design-belongs-here`, `g-eng-002-yagni`) surfaced to stderr by PostToolUse hook as peer-review prompts. |
 | `profiles` | DECLARED-NOT-CONSUMED | Plugin's per-team profile templates; harness is single-operator. ADR-0037. |
 | `prompts` | DECLARED-NOT-CONSUMED | Plugin's prompt templates; harness uses `.grok/templates/`. ADR-0037. |
 | `rubric` | CONSUMED via `scripts/standards-sync.sh` (Batch 2) + PostToolUse hook (Batch 4) | `rubric/aggregator.sh` + `rubric/runner.sh` are the consumption surface. |
