@@ -247,3 +247,35 @@ The user directive *"Bring it in line with best practices per the matter"* overr
 **Filter-discipline calibration evidence.** The over-engineering filter is now demonstrably overridable by explicit architect direction. The prior turn's deferral analysis was correct per the strict filter; the user's response elevated formal best practices. This is the principled exception pattern — name when the filter is being overridden so future readers see the rationale, not silent relaxation.
 
 **Bottom line for interview / pitch posture.** The harness's answer to "what happens when Claude Code upgrades" is now: WARN at session start via two complementary checks (plugin pin + CLI version range), full verification chain runnable in <60 seconds, operator-facing runbook with named decision points, all changes ADR-gated. The same discipline that's earned the harness Fowler-team and Musk-letter grades is now applied symmetrically to the host CLI. **This closes the architectural gap that existed since TICKET-001.e shipped the plugin pin** — it took 30 tickets to surface the symmetry need, and one user-directed CL to close it.
+
+## 2026-06-06 — Standards pipeline consumption wire SHIPPED (TICKET-032 / ADR-0037)
+
+The 2026-06-06 operator directive named the structural gap: the harness was treating the plugin as a 3-SKILL surface (cl-workflow, batch-cl, bash32-portability) while the plugin had grown to **39 top-level surfaces** including a full standards pipeline (`standards/sources.yaml` declaring 17 sources: Google TS/JS/Python style guides, OWASP ASVS + Top 10, SLSA, WCAG 2.2, Web Vitals, React docs, Next.js docs, TypeScript handbook, Node.js best practices) and a working rubric (`rubric/aggregator.sh` + `rubric/runner.sh` + per-language detectors).
+
+**Shipped in 5 batches of ~15 min each:**
+
+1. **Plugin surface declaration audit.** `scripts/audit-plugin-surface.sh` + `docs/plugin-surface-consumption.md` (39 entries: 11 CONSUMED + 28 DECLARED-NOT-CONSUMED) + test. Prevents this gap from recurring — any future plugin pin bump introducing a new top-level directory fails the audit until declared.
+2. **Standards rule registry sync.** `scripts/standards-sync.sh` invokes the plugin's `rubric/aggregator.sh` and persists `.harness/rules/active.json` (28 rules from 9 namespaces). SessionStart hook calls it at session start.
+3. **Handoff contract + agent bindings.** `docs/handoff-contract.md` extended: `applicable_rules` in `.req.json`, `rules_verified` in `.res.json` with fail-closed semantics. `docs/quality-gate.md §lint_clean` consumes the rubric output as a layer above any project linter. `CLAUDE.md` gains TIER-1 "Operator-declared standards" section requiring Claude to read `active.json` at session start. `AGENTS.md §7` names `standards-sync` as the second session-start action for both Grok and Claude.
+4. **PostToolUse runtime enforcement.** `.claude/hooks/post-tool-use-review-gate.sh` now runs `rubric/runner.sh --diff --severity P0` after Edit/Write/MultiEdit on app-code extensions (js/jsx/ts/tsx/py/go/rs/java/kt/swift). Exit 2 on P0 finding for the touched file — Claude cannot continue past a write that broke a rule. Bash + Markdown substrate excluded (no detectors; pure noise).
+5. **Deviation registry + pre-commit audit.** `docs/deviations.md` append-only registry (mirrors §1 immutability) + `scripts/audit-standards-conformance.sh` (approval-baseline pattern per ADR-0032 / 0034) + test. Each deviation row carries rule_id, file_scope, justification, ADR ref, expiry trigger.
+
+**End-to-end flow when operator submits a feature description:**
+
+1. Session start: standards-sync writes `.harness/rules/active.json` (28 rules currently); plugin-surface audit verifies all 39 plugin surfaces are declared.
+2. Grok dispatch: filter `active.json` against ticket file_scope + language → populate `applicable_rules` in `.req.json`.
+3. Claude R-G-R: PostToolUse hook blocks writes that violate P0 rules at write-time; Claude must fix or add a deviation row before continuing.
+4. Quality gate: `lint_clean` sub-gate passes only if every `rules_verified` entry is `pass` OR `deviated`.
+5. Pre-commit: `audit-standards-conformance.sh` re-verifies the diff against deviation rows.
+
+**4 enforcement points, each documented.** No conflict/gap/backlog discussion in the operator path — either the rule passes, or the PostToolUse hook surfaces it for Claude to fix immediately, or a pre-approved deviation row carries it through with operator justification.
+
+**Why this was not already specified and built** (honest post-mortem in the conversation trail): the harness was scoped at TICKET-004 to consume only 3 SKILLs; R-3 ("cite, don't duplicate") over-extended to "don't wire plugin internals either"; the over-engineering filter rejected the wire on every prior CL because "no app code shipped yet"; nobody ran `ls .harness/plugin-cache/claude-tdd-pro/` until this session. The structural fix (`scripts/audit-plugin-surface.sh`) ensures the same blindspot can't recur — future plugin pin bumps that add directories will fail the audit until acknowledged.
+
+**Substrate test coverage:** 15/15 → 18/18 surfaces (+ audit-plugin-surface, standards-sync, audit-standards-conformance).
+
+**Federal Government namespace** (TICKET-033 candidate): DEFERRED until operator pastes the URLs. The wire is ready; adding a namespace folder under `generated-code-quality-standards/us-government/` + entries to `standards/sources.yaml` is mechanical when URLs arrive.
+
+**Per ADR-0029 `Second voice` field demonstrated for the 7th time.** The 2026-06-06 operator directive IS the second voice; ADR-0037 quotes it verbatim and records the 6 alternatives REJECTED (vendor the rubric / wait for federal-gov / block on all severities / run on bash substrate / skip deviations / defer plugin-surface audit).
+
+**Bottom line for interview / pitch posture:** the harness is now structurally aligned with what operators expect when they say "Claude TDD Pro owns the inner loop" — operator-declared rules from OWASP / Google / SLSA / etc. reach Claude's writes, the PostToolUse hook blocks at write-time, and the deviation registry handles the rare legitimate exception with operator justification. The "everything must conform to the rulesets" stance is now structurally enforced, not aspirational.

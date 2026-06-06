@@ -45,7 +45,12 @@ No streaming. No partial updates. One JSON document per direction per ticket.
     "tests_must_pass": true,
     "coverage_delta_min": 0,
     "lint_clean": true
-  }
+  },
+  "applicable_rules": [
+    "g-react-001",
+    "g-node-001",
+    "g-ts-001"
+  ]
 }
 ```
 
@@ -56,6 +61,7 @@ Field rules:
 - `file_scope.may_edit` is an allowlist. Claude MUST NOT edit files outside it. `must_not_touch` is a denylist that wins ties.
 - `context_ttl_seconds` is how long the receiver may treat research_refs as fresh. Past TTL, Claude returns `status: "blocked"` with `error.code: "context_stale"` rather than acting on stale facts.
 - `quality_gate` defines what counts as "green". The semantics of each sub-field — `tests_must_pass`, `coverage_delta_min`, `lint_clean`, and the recommended-at-v1 `provenance_complete` — are formalized in [`quality-gate.md`](quality-gate.md). This field is the contract surface; per-sub-gate definitions, defaults, override policies, and the reviewer checklist live in the formalization doc.
+- `applicable_rules` (added per TICKET-032 / ADR-0037) is an array of rule IDs from `.harness/rules/active.json` (the aggregated standards registry from the plugin's `rubric/aggregator.sh`). Grok populates this by filtering the active registry against the ticket's `file_scope` + detected language(s). Claude MUST run `rubric/runner.sh` against each rule ID and report results in the response's `rules_verified` field. If the field is absent, Claude treats it as "all rules from active.json apply" — fail-closed.
 
 ## Claude → Grok (response)
 
@@ -78,10 +84,22 @@ Field rules:
   "coverage_delta": 0.4,
   "decision_trail_ref": ".harness/trails/TICKET-NNN.md",
   "skills_invoked": ["tdd-pro-cl-workflow"],
+  "rules_verified": {
+    "g-react-001": "pass",
+    "g-node-001": "pass",
+    "g-ts-001": "pass"
+  },
   "notes": "optional, single short paragraph",
   "error": null
 }
 ```
+
+`rules_verified` field rules (added per TICKET-032 / ADR-0037):
+
+- Keys are rule IDs from `applicable_rules` in the matching request.
+- Values are `"pass"`, `"fail"`, or `"deviated"` (= violation justified by a row in `docs/deviations.md`).
+- A `green` status requires every applicable rule to be `pass` OR `deviated`. Any `fail` forces `status: "red"` with `error.code: "gate_failed"`.
+- Missing keys (request named a rule but response omits it) force `status: "red"` with `error.code: "gate_failed"`.
 
 `status` enum:
 

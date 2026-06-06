@@ -79,6 +79,8 @@ One **orchestration-tier** skill lives at the harness's repo (NOT a tdd-pro-core
 - `docs/dora-metrics.md` — TIER-2 operational rulebook operationalizing C-24 (DORA metrics are the scoreboard). Computes 3 of the 4 DORA Four Keys (Deployment frequency, Change failure rate, Lead time for changes) from the existing `.harness/audit/*.manifest.json` corpus; Time to restore deferred to v2. Re-runnable via `scripts/audit-metrics.sh` (human / `--json` / `--quiet` modes). Per ADR-0035 (Musk Engineering Leadership letter #3 closure).
 - `docs/claude-code-upgrade-strategy.md` — TIER-2 operational rulebook documenting the harness's host-CLI (Claude Code) upgrade posture. Mirrors the plugin-pin discipline (declared range + drift detect + ADR-gated bumps + contract tests) for Claude Code itself. Per ADR-0036 (Musk-letter-class upgrade discipline; symmetric with ADR-0001 + ADR-0025).
 - `docs/claude-code-upgrade-runbook.md` — TIER-2 operator procedure for Claude Code version bumps: pre-upgrade checklist → upgrade → verification chain → decision tree (green/red) → rollback path → post-upgrade smoke → AUTOMATION_INTEL recording → anti-patterns. Re-runnable via `scripts/audit-claude-code-compat.sh`. Per ADR-0036.
+- `docs/plugin-surface-consumption.md` — TIER-2 registry of every plugin top-level surface (39 entries) classified CONSUMED / DECLARED-NOT-CONSUMED with ADR rationale. Per TICKET-032 / ADR-0037; enforced by `scripts/audit-plugin-surface.sh` at SessionStart and pre-commit.
+- `docs/deviations.md` — TIER-2 append-only registry of accepted deviations from operator-declared standards in `.harness/rules/active.json`. Each row: rule_id, file_scope, justification, ADR, expiry_trigger. Per TICKET-032 / ADR-0037; enforced by `scripts/audit-standards-conformance.sh` + the PostToolUse hook.
 
 Conflict-resolution: TIER 0 > TIER 1 > TIER 2. Within TIER 1, prime-directive vs. founder-directives conflicts must be raised explicitly — neither defers to the other by default. See `CLAUDE.md` and `docs/founder-directives.md §5`.
 
@@ -95,6 +97,8 @@ Any agent capable of following structured-output instructions can drive these. T
 ## 7. Session-start ritual
 
 **First action in any session: `./scripts/sync-plugin.sh --ensure`.** This materializes the pinned plugin commit under `.harness/plugin-cache/claude-tdd-pro/`, validates the symlinks at `.claude/skills/`, and reports plugin/upstream drift. Without it, the SKILL.md files enumerated in §4 will not resolve.
+
+**Second action: `./scripts/standards-sync.sh`** (per TICKET-032 / ADR-0037). This aggregates the plugin's standards pipeline (`standards/sources.yaml` → `rubric/aggregator.sh` → `generated-code-quality-standards/*`) into `.harness/rules/active.json` — the operator-declared rule registry covering OWASP ASVS + Top 10, Google TS/JS/Python style guides, SLSA build provenance, WCAG 2.2, Web Vitals, React + Next.js, Node.js best practices, TypeScript handbook. **Both Grok and Claude MUST read `.harness/rules/active.json` and treat it as TIER-1 binding** when handling any ticket that touches application code. Grok populates `applicable_rules` in the request; Claude returns `rules_verified` in the response. See `docs/quality-gate.md §lint_clean` for enforcement details and `docs/handoff-contract.md` for the contract surface.
 
 Equivalent intent across tools:
 

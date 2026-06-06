@@ -108,6 +108,18 @@ This file adds only what is specific to the hybrid harness.
 
 Violating either rule means the harness is not being used; it's just two tools running adjacent.
 
+## Operator-declared standards (TIER 1 — non-negotiable, per TICKET-032 / ADR-0037)
+
+Both agents MUST consult `.harness/rules/active.json` at session start. This file is the aggregated rule registry from the plugin's `standards/` + `rubric/` + `generated-code-quality-standards/` pipeline — currently 28 rules across the namespaces `google`, `node`, `owasp`, `react`, `slsa`, `typescript`, `w3c`, `web-vitals`, `_community`. Operator-declared sources include Google's TS/JS/Python style guides, OWASP ASVS + Top 10, SLSA build provenance, WCAG 2.2, Web Vitals, React + Next.js best practices, Node.js best practices, TypeScript handbook.
+
+Workflow enforcement:
+
+- **Grok (outer loop):** when emitting a `.harness/handoffs/TICKET-NNN.req.json`, populate `applicable_rules` by filtering `active.json` against the ticket's `file_scope` + detected language(s). The field is REQUIRED for any ticket touching app code.
+- **Claude (inner loop):** when receiving a request, run `rubric/runner.sh` against each rule in `applicable_rules` as part of the R-G-R green check. The response's `rules_verified` field carries pass/fail/deviated per rule ID. A `green` status requires every applicable rule to be `pass` OR `deviated` (= violation with a row in `docs/deviations.md`). Any `fail` is `red`.
+- **Both:** if a deviation is genuinely needed, surface back through the response trail; the operator lands an ADR + a row in `docs/deviations.md`. Neither agent silently accepts a rule violation.
+
+The `.claude/hooks/post-tool-use-review-gate.sh` enforces this at write-time (per Batch 4 of TICKET-032).
+
 ## Working in this repo
 
 - One ticket per CL. Ticket IDs come from `TICKETS.md`.

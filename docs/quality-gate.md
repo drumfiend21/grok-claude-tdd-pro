@@ -58,13 +58,16 @@ Promotion history: `provenance_complete` was originally **Recommended (additive)
 
 ### Sub-gate 3: `lint_clean`
 
-**Definition.** The project-configured linter (ESLint for JS/TS, ruff for Python, golangci-lint for Go, clippy for Rust, etc.) exits 0 on at least the diff. If the linter does not support diff-mode, full-repo is acceptable and the run is recorded in the response notes.
+**Definition.** As of TICKET-032 / ADR-0037, `lint_clean` is backed by **two layers**:
+
+1. **The plugin's standards rubric** — `rubric/runner.sh` dispatched against each rule in the request's `applicable_rules` array (sourced from `.harness/rules/active.json`, the aggregated OWASP / Google / SLSA / etc. registry). The response's `rules_verified` field carries pass/fail/deviated per rule ID. `lint_clean` PASSES only if every applicable rule is `pass` OR `deviated` (with a row in `docs/deviations.md`). Any `fail` forces gate failure.
+2. **The project-configured linter** (ESLint, ruff, golangci-lint, clippy, etc.) — runs after the rubric layer; exits 0 on at least the diff. If the linter does not support diff-mode, full-repo is acceptable and the run is recorded in the response notes.
 
 **Severity** (per §2.1 style): **P1**. Warnings count as findings unless the response notes documents a per-warning exemption.
 
-**Tooling-absent rule.** Identical to coverage: if no linter is configured, the gate vacuously passes and the response notes documents the exemption.
+**Tooling-absent rule.** Rubric layer is never absent (the plugin always ships rules). If a project has no project-configured linter, the second layer vacuously passes and the response notes documents the exemption — but the rubric layer still runs.
 
-**Override policy.** A per-warning exemption is acceptable when the warning is a known false positive (logged in the project's lint-config) or when the lint rule is itself deprecated (per `§2.1 Rubric rule schema` `deprecated: true` semantics — the harness composes on the plugin's deprecation surface here).
+**Override policy.** A rule fail can be converted to `deviated` only by adding a row to `docs/deviations.md` with rule_id, file_path, justification, ADR ref, and expiry trigger. The PostToolUse hook blocks unauthorized deviations at write-time. A per-warning exemption from the project linter remains acceptable when the warning is a known false positive (logged in the project's lint-config) or when the lint rule is itself deprecated (per `§2.1 Rubric rule schema` `deprecated: true` semantics).
 
 **Reviewer checklist:**
 

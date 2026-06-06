@@ -89,4 +89,29 @@ if [ -n "$violation" ]; then
     exit 2
 fi
 
+# Standards-rubric enforcement (per TICKET-032 / ADR-0037).
+# After file-fence check passes, run plugin's rubric/runner.sh against the
+# diff for app-code extensions. Exit 2 on P0 finding for this file; bash +
+# markdown substrate excluded (no detectors; pure noise).
+case "$REL_PATH" in
+    *.js|*.jsx|*.ts|*.tsx|*.py|*.go|*.rs|*.java|*.kt|*.swift)
+        PLUGIN_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}/.harness/plugin-cache/claude-tdd-pro"
+        RUNNER="$PLUGIN_ROOT/rubric/runner.sh"
+        if [ -x "$RUNNER" ]; then
+            findings=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
+                       CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}" \
+                       bash "$RUNNER" --diff --severity P0 2>/dev/null || true)
+            blocking=$(printf '%s' "$findings" | grep -oE "\"severity\":\"P0\"[^{}]*\"file\":\"[^\"]*$REL_PATH\"" | head -1)
+            if [ -n "$blocking" ]; then
+                printf 'PostToolUse review gate: P0 rule violation in %s.\n' "$REL_PATH" >&2
+                printf '  Tool: %s\n' "$TOOL_NAME" >&2
+                printf '  Detail: %s\n' "$blocking" >&2
+                printf '  Source: docs/quality-gate.md §lint_clean (rubric layer); TICKET-032 / ADR-0037.\n' >&2
+                printf '  Fix the violation or add a deviation row to docs/deviations.md before proceeding.\n' >&2
+                exit 2
+            fi
+        fi
+        ;;
+esac
+
 exit 0
