@@ -16,6 +16,7 @@
 | `context_ttl_seconds` | optional, default 3600 | Per handoff-contract §Freshness. Use 1800 for fast-moving research, 86400 for stable specs. |
 | `quality_gate` | optional, default `{tests_must_pass: true, coverage_delta_min: 0, lint_clean: true}` | Per handoff-contract §quality_gate. TICKET-007 will replace these defaults. |
 | `prior_decisions` | optional | Array of `{ticket_id, decision}` extracted from prior decision trails. |
+| `applicable_rules` | REQUIRED for app-code tickets, optional otherwise | Per TICKET-032 / ADR-0037 + TICKET-033 / ADR-0038. Filter `.harness/rules/active.json` (28 rules; aggregated from the plugin's `standards/sources.yaml` — OWASP / Google / SLSA / WCAG / Web Vitals / React / Node / TypeScript) against the ticket's `file_scope` + detected language(s); populate the rule IDs that apply. Claude returns matching `rules_verified` map in the response. Fail-closed default if missing: "all rules from active.json apply" (safe but slow). Populate this field explicitly to scope enforcement to the languages that matter for this ticket. |
 
 ## Output shape
 
@@ -35,6 +36,7 @@ The minimum fields a Grok run MUST populate (cross-reference, not duplicate, the
 - `context.decomposition_parent` — copied from `ticket_seed.feature_id` (or from `decomposition.md` output's `feature_id`).
 - `context.prior_decisions` — from input variable or `[]`.
 - `quality_gate` — from input variable or default.
+- `applicable_rules` — REQUIRED for app-code tickets (per ADR-0037). Read `.harness/rules/active.json`; filter rule IDs whose `applies_to` matches the languages detected from `file_scope`; emit the filtered array. If the harness produced an empty registry (rare; means standards-sync failed), refuse with `error.code: "rules_unavailable"` rather than emit a request that would be enforced under the fail-closed "all rules apply" default by accident.
 
 ## System prompt skeleton (cache-stable per G-5)
 
@@ -50,6 +52,7 @@ The minimum fields a Grok run MUST populate (cross-reference, not duplicate, the
 - [ ] `issued_at` is now-UTC, second precision.
 - [ ] `context_ttl_seconds` in `[60, 86400]`.
 - [ ] If `ticket_id` already exists at `.harness/handoffs/<ticket_id>.req.json` AND the existing doc is byte-identical, exit success without write (G-19 idempotency). Otherwise refuse with `error.code: "dispatch_collision"` and require explicit human approval to overwrite.
+- [ ] `applicable_rules` populated (or explicitly empty `[]` for non-app-code tickets). Per ADR-0037, this is the operator-declared standards gate. Empty array on an app-code ticket logs a WARN — fail-closed default ("all rules apply") still enforces, but the explicit population is the documented happy path.
 
 ## Failure modes
 
