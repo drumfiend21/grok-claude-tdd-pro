@@ -14,6 +14,7 @@
 |---|---|---|
 | `research_output` | yes | A JSON document conforming to `research.md`'s output schema. |
 | `decomposition_brief` | yes | One paragraph: what feature is being decomposed and what "done" looks like at the feature level. |
+| `architecture_consult` | yes | A JSON document at `.harness/handoffs/FEATURE-NNN.architecture.json` produced by `architecture-consult.md` BEFORE this template runs. Provides test-shape summary, recommended ticket structure with `applicable_rules` + `complexity`, `depends_on` graph, `prior_decisions` array. Per TICKET-034 / ADR-0039 this is the closed feedback loop: Grok is no longer blind to claude-tdd-pro's technical-approach discipline. If `consult_skipped: true`, the consult was bypassed for a trivial ticket; decomposition falls back to pre-TICKET-034 behavior with a WARN. |
 | `max_tickets` | optional, default 8 | Hard ceiling per G-9. If decomposition needs more, return `needs_supervisor: true` and decompose the decomposition itself. |
 
 ## Output shape (JSON Schema fragment)
@@ -52,13 +53,17 @@ Field semantics:
 
 ## System prompt skeleton (cache-stable per G-5)
 
-> You are Grok, the outer-loop orchestrator. Your job in this run is decomposition only. Given a research bundle and a decomposition brief, you emit between 1 and `max_tickets` atomic tickets. Each ticket MUST: (a) have non-empty `acceptance_criteria` (observable behaviors, not implementation steps); (b) declare `file_scope` with at least one `may_edit` glob; (c) be reachable in one CL by Claude TDD Pro; (d) carry only `research_refs` that appear in the input research bundle. If the decomposition would exceed `max_tickets`, return `needs_supervisor: true` and a smaller decomposition that points to the supervisor split. You do not edit files. You do not dispatch. You return JSON.
+> You are Grok, the outer-loop orchestrator. Your job in this run is decomposition only. Given a research bundle, a decomposition brief, AND the architecture-consult artifact (per TICKET-034 / ADR-0039), you emit between 1 and `max_tickets` atomic tickets. The consult artifact carries Claude-TDD-Pro's technical-approach recommendations — use them. Each ticket MUST: (a) have non-empty `acceptance_criteria` (observable behaviors, not implementation steps); (b) declare `file_scope` with at least one `may_edit` glob; (c) be reachable in one CL by Claude TDD Pro; (d) carry only `research_refs` that appear in the input research bundle; (e) populate `applicable_rules` from the consult's recommendation, or filter `.harness/rules/active.json` by language as fallback. If you override a `prior_decisions` entry from the consult, record the override rationale in `context.prior_decisions` of the affected ticket. If the decomposition would exceed `max_tickets`, return `needs_supervisor: true` and a smaller decomposition that points to the supervisor split. You do not edit files. You do not dispatch. You return JSON.
 
 ## Pre-emit checks
 
+- [ ] `architecture_consult` input is present AND validates against `docs/handoff-contract.md §Architecture-Consult` (or `consult_skipped: true` with rationale recorded).
 - [ ] `tickets[*].acceptance_criteria` non-empty AND each entry reads as an observable behavior (not "implement X" / "refactor Y").
 - [ ] `tickets[*].file_scope.may_edit` non-empty.
+- [ ] `tickets[*].applicable_rules` populated (defaults from consult; fallback = filter `active.json` by detected language).
 - [ ] No `tickets[*].research_refs[i].ref` outside the input `research_output.research_refs`.
 - [ ] `tickets.length ≤ max_tickets` OR `needs_supervisor: true`.
 - [ ] Per ticket: dependencies in `depends_on` either exist in this output or are already-DONE tickets in `TICKETS.md`.
 - [ ] Per D-1 deletion pass: every ticket that's "polish" or "refactor for its own sake" is dropped with a reason recorded in `run_id`'s observability log (G-15).
+- [ ] If any consult `prior_decisions[].kind == "delete"` entries exist, the corresponding scope is NOT in the decomposition output.
+- [ ] If any consult `prior_decisions[].kind == "adr_required"` entries exist, the ticket containing that scope has `acceptance_criteria` including the ADR landing OR the ticket is deferred with a recorded reason.

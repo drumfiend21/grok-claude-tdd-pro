@@ -16,6 +16,8 @@ docs/adr/0030-swarm-integration-test.md references missing path: tests/test-orch
 docs/adr/0031-rulebook-coverage-audit.md references missing path: docs/rulebook-coverage-audit-2026-07-01.md
 docs/adr/0032-cross-reference-audit.md references missing path: docs/wire-vs-authority-strictness.md
 docs/adr/0038-full-plugin-feature-wire.md references missing path: scripts/audit-aibom.sh
+docs/adr/0039-architecture-consult-phase.md references missing path: scripts/audit-architecture-consult.sh
+docs/adr/0039-architecture-consult-phase.md references missing path: tests/test-architecture-consult.sh
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
 docs/founder-directives.md references missing path: docs/adr/000N-*.md
 docs/plugin-sync.md references missing path: docs/adr/000N-*.md

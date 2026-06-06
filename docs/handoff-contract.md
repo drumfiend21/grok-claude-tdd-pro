@@ -118,6 +118,51 @@ When `status != "green"`, `error` MUST be populated:
 }
 ```
 
+## Architecture-Consult (FEATURE → consult artifact)
+
+Per TICKET-034 / ADR-0039. Grok calls Claude-TDD-Pro BEFORE `decomposition.md` runs and persists the structured architecture review to `.harness/handoffs/FEATURE-NNN.architecture.json`. The artifact is a required input to `decomposition.md`. Schema:
+
+```json
+{
+  "schema_version": "1",
+  "feature_id": "FEATURE-NNN",
+  "consult_timestamp": "2026-06-06T...Z",
+  "consult_skipped": false,
+  "consult_skip_rationale": null,
+  "cache_key": "<sha256 of canonicalized research_bundle + brief>",
+  "test_shape_summary": "<one paragraph>",
+  "recommended_tickets": [
+    {
+      "ticket_id": "TICKET-XXX",
+      "title": "<imperative short title>",
+      "test_shape": "<one paragraph>",
+      "file_scope": {
+        "may_edit":       ["path/glob"],
+        "may_read":       ["path/glob"],
+        "must_not_touch": ["path/glob"]
+      },
+      "depends_on": ["TICKET-YYY"],
+      "applicable_rules": ["<rule_id from .harness/rules/active.json>"],
+      "complexity": "small|medium|large",
+      "rationale": "<one paragraph>"
+    }
+  ],
+  "prior_decisions": [
+    {"kind": "adr_required|extract|delete|other", "ref": "<optional>", "summary": "<one line>"}
+  ],
+  "grok_notes": "<optional Grok observations>"
+}
+```
+
+Field rules:
+
+- `consult_skipped: true` is permitted ONLY for trivial / single-line tickets where the round-trip cost exceeds the benefit (per ADR-0039). When `true`, `consult_skip_rationale` is REQUIRED and `recommended_tickets` MUST be empty.
+- `recommended_tickets[].applicable_rules` IDs MUST resolve in `.harness/rules/active.json`. Unknown rule = pre-emit error `unknown_rule`.
+- `recommended_tickets[].file_scope.must_not_touch` MUST include the prime-directive denylist (`.grok/**`, `.claude/**`, `claude-tdd-pro/**`).
+- `prior_decisions` becomes `context.prior_decisions` in each downstream `.req.json` via `decomposition.md`.
+
+Authority: the consult artifact is **advisory input** to decomposition, not a hard contract. Grok retains decomposition authority but is no longer blind to the inner-loop's technical-approach knowledge. Per ADR-0039: when Grok overrides a `prior_decisions` entry, the override is recorded in `grok_notes` of the FEATURE-level artifact AND in `context.prior_decisions` of the relevant ticket.
+
 ## Freshness rules
 
 - A request older than `issued_at + context_ttl_seconds` MUST be rejected as `context_stale`.

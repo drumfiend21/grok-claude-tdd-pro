@@ -32,6 +32,7 @@ Inner-loop skills (read BEFORE writing any spec, substrate, or commit):
 Outer-loop templates (read when the operator invokes research / decomposition / dispatch):
 
 - `.grok/templates/research.md`
+- `.grok/templates/architecture-consult.md`
 - `.grok/templates/decomposition.md`
 - `.grok/templates/dispatch.md`
 

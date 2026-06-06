@@ -25,6 +25,11 @@
 # a single JSON registry consumed by both Grok and Claude at session start.
 .harness/rules/
 
+# Architecture-consult cache (TICKET-034 / ADR-0039). Per-feature consult
+# artifacts keyed by sha256(research_bundle + brief). Plugin pin bumps
+# invalidate the cache; sync-plugin.sh --ensure clears it on pin change.
+.harness/cache/
+
 # OS / editor noise
 .DS_Store
 *.swp

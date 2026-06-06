@@ -304,3 +304,44 @@ This CL replaces forward-claims with real wires across three batches:
 **Per ADR-0029 `Second voice` field demonstrated for the 8th time.** The operator's binary question IS the second voice; ADR-0038 records the honest partial answer + the wire that closes the gap.
 
 **Bottom line for interview / pitch posture.** The harness now answers the operator's question with a defensible "yes": every coding feature in claude-tdd-pro that has a sensible harness-side wire point (standards rubric, formatters, peer-review patterns via DEFERRED findings, compliance/AIBOM) is invoked from a documented script or hook. Plugin-internal surfaces (evals, meta-eval, monitors, cross-loop, workflow, metrics, etc.) remain DECLARED-NOT-CONSUMED with each rationale recorded in `docs/plugin-surface-consumption.md` — that's structural transparency, not a gap.
+
+## 2026-06-06 — Architecture-consult phase SHIPPED (TICKET-034 / ADR-0039)
+
+After TICKET-033 + TICKET-033.a shipped, the operator surfaced a sharper architectural question: *"when the planning is being done, it should consider how Claude TDD Pro is going to plan the architecture. ... how can you size something if you don't know the actual technical approach?"* Verified by grepping `.grok/templates/decomposition.md`: **0 references to consult / technical-approach / inner-loop / any callback into claude-tdd-pro**. Grok was decomposing blind.
+
+The operator-bitten gap was real: tickets were getting auto-corrected during R-G-R because the outer-loop sized them without consulting the inner-loop that holds production-grade engineering knowledge (test-shape, refactor sequencing, mutation seams, ADR triggers, C-23 portability, per-rule design impact).
+
+**Grok itself reviewed the proposal** and ratified shipping with four refinements: (1) caching to manage round-trip latency/cost; (2) operator toggle for trivial tickets; (3) advisory-not-gospel framing preserving Grok's decomposition authority; (4) schema discipline to prevent bloat. Grok's literal closing position: *"Yes — ship it. The current blind decomposition is the biggest remaining source of 'ticket rework.' Adding this consult phase will materially improve ticket quality and reduce downstream waste."* The 9th application of the `Second voice` field per ADR-0029 — Grok IS the second voice this time, not the operator.
+
+**Shipped:**
+
+- `.grok/templates/architecture-consult.md` — new template asking the **six questions**: (1) test-shape, (2) decomposition, (3) sequencing, (4) scope per ticket, (5) applicable rules from `active.json`, (6) complexity + ADR-required flags. Caching via sha256(research_bundle + brief); operator toggle (`consult_toggle: off` for trivial tickets); operator-visible only on cache miss.
+- `docs/handoff-contract.md §Architecture-Consult` — new schema for `.harness/handoffs/FEATURE-NNN.architecture.json` with `recommended_tickets`, `prior_decisions`, `cache_key`, and skip semantics. Cross-references the prime-directive denylist for `must_not_touch`.
+- `.grok/templates/decomposition.md` — 3rd input variable (`architecture_consult`) is now REQUIRED. Pre-emit checks added: consult validates against schema; `recommended_tickets[].applicable_rules` must resolve in `active.json`; `prior_decisions[].kind == "delete"` entries forbid the corresponding scope; `prior_decisions[].kind == "adr_required"` entries enforce ADR-landing in the ticket's acceptance criteria.
+- `.gitignore` excludes `.harness/cache/` (architecture-consult cache; invalidated by plugin pin bumps).
+- ADR-0039 records the decision + the four refinements + 7 alternatives REJECTED.
+
+**End-to-end planning flow now:**
+
+```
+research.md → architecture-consult.md (NEW) → decomposition.md → dispatch.md → Claude
+                                                                                  ↑
+                                                                          (with applicable_rules
+                                                                           sourced from the consult,
+                                                                           not from blind language detection)
+```
+
+**The closed feedback loop:**
+
+1. Operator describes a feature.
+2. `research.md` produces the research bundle.
+3. **`architecture-consult.md` (NEW)** — Grok calls Claude-TDD-Pro with the brief + bundle; Claude reads `active.json` + the SKILL.md trio + answers the six questions; emits `.harness/handoffs/FEATURE-NNN.architecture.json` (cached for byte-identical inputs).
+4. `decomposition.md` REQUIRES the consult artifact; emits atomic tickets sized against the technical-approach, not blind guess.
+5. `dispatch.md` populates `applicable_rules` per ticket from the consult's recommendation.
+6. Claude R-G-R: PostToolUse blocks P0 violations; peer-review prompts on DEFERRED findings; formatter auto-applies.
+7. Quality gate `lint_clean` requires `rules_verified` pass-or-deviated.
+8. Smoke / response: 5 audit artifacts (req + res + trail + manifest + AIBOM).
+
+**Decomposition is no longer blind.** Tickets get sized correctly the first time. Mid-ticket scope expansion (one-ticket-per-CL violation) becomes structurally rarer. The "ticket rework" loss Grok identified as "the biggest remaining source of waste" is closed.
+
+**Bottom line for interview / pitch posture.** The harness now operates as the operator originally described it: a planning helper that orchestrates a planning layer with Claude-TDD-pro, the coding layer that handles everything technical. The architecture consult is the structural bridge between those two layers. When the operator describes a feature, Grok doesn't size it blind — it consults Claude-TDD-Pro for the technical approach, then sizes accordingly, then dispatches with applicable_rules pre-populated. PR-ready code emerges with provenance + AIBOM, conformant to OWASP / Google / SLSA / etc. rules — and federal-government adds when those URLs land upstream.

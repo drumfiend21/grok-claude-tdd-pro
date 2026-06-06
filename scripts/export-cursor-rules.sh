@@ -110,6 +110,7 @@ Inner-loop skills (read BEFORE writing any spec, substrate, or commit):
 Outer-loop templates (read when the operator invokes research / decomposition / dispatch):
 
 - `.grok/templates/research.md`
+- `.grok/templates/architecture-consult.md`
 - `.grok/templates/decomposition.md`
 - `.grok/templates/dispatch.md`
 
@@ -141,7 +142,8 @@ Two-tier loop:
 **Outer loop (Grok-orchestrated; template-driven, not code-driven):**
 
 - `.grok/templates/research.md` — produce `research_refs` for a topic.
-- `.grok/templates/decomposition.md` — turn research into atomic, contract-shaped tickets.
+- `.grok/templates/architecture-consult.md` — consult Claude-TDD-Pro for the technical approach BEFORE decomposition (per ADR-0039).
+- `.grok/templates/decomposition.md` — turn research + consult into atomic, contract-shaped tickets.
 - `.grok/templates/dispatch.md` — emit a contract-valid `.harness/handoffs/TICKET-NNN.req.json` for one ticket per `docs/handoff-contract.md §Grok→Claude`.
 
 **Inner loop (Claude-TDD-Pro-skilled; R-G-R per ticket):**
