@@ -45,4 +45,19 @@ if [ -x scripts/audit-claude-code-compat.sh ]; then
     scripts/audit-claude-code-compat.sh || true
 fi
 
+# Standards rule registry sync (per TICKET-032 / ADR-0037).
+# Aggregates the plugin's standards/rubric pipeline into .harness/rules/active.json
+# so both Grok and Claude consume operator-declared rules (OWASP, Google, SLSA, etc.)
+# at session start. WARN-not-FAIL: a sync failure surfaces but does not block.
+if [ -x scripts/standards-sync.sh ]; then
+    scripts/standards-sync.sh || true
+fi
+
+# Plugin surface declaration audit (per TICKET-032 / ADR-0037).
+# Catches the regression class where a plugin pin bump introduces a new
+# top-level directory and the consumption registry doesn't acknowledge it.
+if [ -x scripts/audit-plugin-surface.sh ]; then
+    scripts/audit-plugin-surface.sh || true
+fi
+
 exit 0

@@ -19,6 +19,12 @@
 # so fresh clones have it before sync-plugin.sh --ensure runs).
 .harness/cursor-sessions/
 
+# Generated rule registry from the plugin's standards pipeline (TICKET-032 /
+# ADR-0037). Written by scripts/standards-sync.sh at session start; aggregates
+# .harness/plugin-cache/claude-tdd-pro/generated-code-quality-standards/ into
+# a single JSON registry consumed by both Grok and Claude at session start.
+.harness/rules/
+
 # OS / editor noise
 .DS_Store
 *.swp
