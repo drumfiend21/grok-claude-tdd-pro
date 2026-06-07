@@ -60,6 +60,10 @@ Key contracts:
 
 For parallel work, the **orchestrating-swarms** skill (`.claude/skills/orchestrating-swarms/SKILL.md`) fans out atomic tickets across git worktrees (one ticket = one worktree = one branch = one PR; per G-rule §8; cap 8 workers per supervisor per G-9).
 
+### External planner context (per ADR-0040 + ADR-0041)
+
+At every session start, `scripts/sync-plugin.sh --ensure` copies `docs/PROJECT_CONTEXT_FOR_PLANNER.md` from the pinned `claude-tdd-pro` plugin into `.harness/context/`. Grok's decomposition template reads this file BEFORE proposing tickets, so the planner is informed by the plugin's durable engineering discipline — test-shape patterns, R-G-R sizing, refactor sequencing, architecture-fidelity invariants, ADR triggers, the six CLAUDE.md drift mechanisms, and the seven bash 3.2 portability gotchas — without any per-feature round-trip cost. The static-context approach replaces an earlier dynamic per-feature consult mechanism (ADR-0039, SUPERSEDED) that was rejected as framework-itis. See `docs/adr/0040-static-context-injection-supersedes-consult.md` and `docs/adr/0041-plugin-pin-bump-23e5c2b-to-bba77df.md`; cross-paired with plugin-side `docs/adr/0006-static-context-injection-for-external-planners.md`.
+
 ## Setup — get ready to use it
 
 ### Prerequisites
