@@ -118,9 +118,11 @@ When `status != "green"`, `error` MUST be populated:
 }
 ```
 
-## Architecture-Consult (FEATURE → consult artifact)
+## Architecture-Consult (FEATURE → consult artifact) — SUPERSEDED
 
-Per TICKET-034 / ADR-0039. Grok calls Claude-TDD-Pro BEFORE `decomposition.md` runs and persists the structured architecture review to `.harness/handoffs/FEATURE-NNN.architecture.json`. The artifact is a required input to `decomposition.md`. Schema:
+> **STATUS: SUPERSEDED by ADR-0040 (TICKET-035).** The per-feature consult mechanism is deprecated in favor of static context injection at session start (`.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md`). The schema below remains documented for historical reference per Nygard append-only; the consult artifact is no longer required input to `decomposition.md`.
+
+Per TICKET-034 / ADR-0039 (SUPERSEDED). Grok calls Claude-TDD-Pro BEFORE `decomposition.md` runs and persists the structured architecture review to `.harness/handoffs/FEATURE-NNN.architecture.json`. The artifact is a required input to `decomposition.md`. Schema:
 
 ```json
 {

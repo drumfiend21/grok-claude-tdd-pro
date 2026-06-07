@@ -14,7 +14,7 @@
 |---|---|---|
 | `research_output` | yes | A JSON document conforming to `research.md`'s output schema. |
 | `decomposition_brief` | yes | One paragraph: what feature is being decomposed and what "done" looks like at the feature level. |
-| `architecture_consult` | yes | A JSON document at `.harness/handoffs/FEATURE-NNN.architecture.json` produced by `architecture-consult.md` BEFORE this template runs. Provides test-shape summary, recommended ticket structure with `applicable_rules` + `complexity`, `depends_on` graph, `prior_decisions` array. Per TICKET-034 / ADR-0039 this is the closed feedback loop: Grok is no longer blind to claude-tdd-pro's technical-approach discipline. If `consult_skipped: true`, the consult was bypassed for a trivial ticket; decomposition falls back to pre-TICKET-034 behavior with a WARN. |
+| `architecture_consult` | **DEPRECATED — optional, ignored as of ADR-0040** | Originally added by TICKET-034 / ADR-0039 as a REQUIRED input. Per TICKET-035 / ADR-0040 the per-feature consult is SUPERSEDED by static context injection at session start. The static context lives at `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` (copied from the pinned plugin by `scripts/sync-plugin.sh --ensure`); Grok reads it as session context, not as a per-feature handoff. If supplied, this variable is informational only and produces a WARN. |
 | `max_tickets` | optional, default 8 | Hard ceiling per G-9. If decomposition needs more, return `needs_supervisor: true` and decompose the decomposition itself. |
 
 ## Output shape (JSON Schema fragment)
@@ -57,13 +57,11 @@ Field semantics:
 
 ## Pre-emit checks
 
-- [ ] `architecture_consult` input is present AND validates against `docs/handoff-contract.md §Architecture-Consult` (or `consult_skipped: true` with rationale recorded).
 - [ ] `tickets[*].acceptance_criteria` non-empty AND each entry reads as an observable behavior (not "implement X" / "refactor Y").
 - [ ] `tickets[*].file_scope.may_edit` non-empty.
-- [ ] `tickets[*].applicable_rules` populated (defaults from consult; fallback = filter `active.json` by detected language).
+- [ ] `tickets[*].applicable_rules` populated (filter `.harness/rules/active.json` by detected language; supplement with rule IDs surfaced by the static context at `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md`).
 - [ ] No `tickets[*].research_refs[i].ref` outside the input `research_output.research_refs`.
 - [ ] `tickets.length ≤ max_tickets` OR `needs_supervisor: true`.
 - [ ] Per ticket: dependencies in `depends_on` either exist in this output or are already-DONE tickets in `TICKETS.md`.
 - [ ] Per D-1 deletion pass: every ticket that's "polish" or "refactor for its own sake" is dropped with a reason recorded in `run_id`'s observability log (G-15).
-- [ ] If any consult `prior_decisions[].kind == "delete"` entries exist, the corresponding scope is NOT in the decomposition output.
-- [ ] If any consult `prior_decisions[].kind == "adr_required"` entries exist, the ticket containing that scope has `acceptance_criteria` including the ADR landing OR the ticket is deferred with a recorded reason.
+- [ ] Per ADR-0040: the static planner context at `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` (if present) is consulted for test-shape patterns, refactor sequencing, mutation seams, ADR triggers, and Bash 3.2 portability gotchas. The legacy `architecture_consult` input variable is ignored even if supplied.

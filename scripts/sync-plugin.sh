@@ -161,6 +161,21 @@ if [ "$MODE" = "ensure" ]; then
         log "  cursor    : .cursor/rules/*.mdc generated"
     fi
 
+    # Static context injection (per TICKET-035 / ADR-0040; supersedes ADR-0039).
+    # Copies docs/PROJECT_CONTEXT_FOR_PLANNER.md from the pinned plugin into the
+    # harness's planner-readable context path. Defensive: no-op when the source
+    # is absent at the current pin (will activate on the next pin bump that
+    # includes the file). Per claude-tdd-pro/docs/adr/0006 (upstream decision).
+    PLUGIN_CONTEXT_SRC="$CLONE_DIR_E/docs/PROJECT_CONTEXT_FOR_PLANNER.md"
+    HARNESS_CONTEXT_DST=".harness/context/PROJECT_CONTEXT_FOR_PLANNER.md"
+    if [ -f "$PLUGIN_CONTEXT_SRC" ]; then
+        mkdir -p "$(dirname "$HARNESS_CONTEXT_DST")"
+        cp "$PLUGIN_CONTEXT_SRC" "$HARNESS_CONTEXT_DST"
+        log "  context   : PROJECT_CONTEXT_FOR_PLANNER.md injected at $HARNESS_CONTEXT_DST"
+    else
+        log "  context   : PROJECT_CONTEXT_FOR_PLANNER.md not present at this pin (defer to pin bump per ADR-0040)"
+    fi
+
     exit 0
 fi
 

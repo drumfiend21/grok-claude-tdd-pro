@@ -32,9 +32,9 @@ Inner-loop skills (read BEFORE writing any spec, substrate, or commit):
 Outer-loop templates (read when the operator invokes research / decomposition / dispatch):
 
 - `.grok/templates/research.md`
-- `.grok/templates/architecture-consult.md`
-- `.grok/templates/decomposition.md`
+- `.grok/templates/decomposition.md` (consults `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` if present, per ADR-0040)
 - `.grok/templates/dispatch.md`
+- `.grok/templates/architecture-consult.md` — SUPERSEDED by ADR-0040; do not invoke.
 
 File-edit fences (full list in `AGENTS.md §2`): do NOT edit `.harness/plugin-cache/`, `claude-tdd-pro/`, `.claude/skills/tdd-pro-*` symlinks, `docs/founder-directives.md §1` (immutable), `docs/founder-directives.md §3` D-rule bodies, or `.cursor/rules/*.mdc` (these files — generator output).
 

@@ -25,10 +25,16 @@
 # a single JSON registry consumed by both Grok and Claude at session start.
 .harness/rules/
 
-# Architecture-consult cache (TICKET-034 / ADR-0039). Per-feature consult
-# artifacts keyed by sha256(research_bundle + brief). Plugin pin bumps
-# invalidate the cache; sync-plugin.sh --ensure clears it on pin change.
+# Architecture-consult cache (TICKET-034 / ADR-0039 — SUPERSEDED by ADR-0040).
+# The dynamic consult mechanism is deprecated; this entry stays so legacy cache
+# artifacts (if any) remain ignored. New work uses static context injection.
 .harness/cache/
+
+# Static planner-context (TICKET-035 / ADR-0040). Derived artifact copied from
+# the pinned plugin's docs/PROJECT_CONTEXT_FOR_PLANNER.md by sync-plugin.sh
+# --ensure. Plugin pin bumps refresh it; never committed to the harness tree
+# (R-2 versioned-consumption: source-of-truth lives in the plugin).
+.harness/context/
 
 # OS / editor noise
 .DS_Store

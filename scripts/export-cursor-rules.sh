@@ -110,9 +110,9 @@ Inner-loop skills (read BEFORE writing any spec, substrate, or commit):
 Outer-loop templates (read when the operator invokes research / decomposition / dispatch):
 
 - `.grok/templates/research.md`
-- `.grok/templates/architecture-consult.md`
-- `.grok/templates/decomposition.md`
+- `.grok/templates/decomposition.md` (consults `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` if present, per ADR-0040)
 - `.grok/templates/dispatch.md`
+- `.grok/templates/architecture-consult.md` — SUPERSEDED by ADR-0040; do not invoke.
 
 File-edit fences (full list in `AGENTS.md §2`): do NOT edit `.harness/plugin-cache/`, `claude-tdd-pro/`, `.claude/skills/tdd-pro-*` symlinks, `docs/founder-directives.md §1` (immutable), `docs/founder-directives.md §3` D-rule bodies, or `.cursor/rules/*.mdc` (these files — generator output).
 
@@ -142,9 +142,9 @@ Two-tier loop:
 **Outer loop (Grok-orchestrated; template-driven, not code-driven):**
 
 - `.grok/templates/research.md` — produce `research_refs` for a topic.
-- `.grok/templates/architecture-consult.md` — consult Claude-TDD-Pro for the technical approach BEFORE decomposition (per ADR-0039).
-- `.grok/templates/decomposition.md` — turn research + consult into atomic, contract-shaped tickets.
+- `.grok/templates/decomposition.md` — turn research into atomic, contract-shaped tickets; consults `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` (static planner context per ADR-0040, copied from the pinned plugin) for design discipline.
 - `.grok/templates/dispatch.md` — emit a contract-valid `.harness/handoffs/TICKET-NNN.req.json` for one ticket per `docs/handoff-contract.md §Grok→Claude`.
+- `.grok/templates/architecture-consult.md` — SUPERSEDED by ADR-0040 (per-feature consult replaced by static context injection); do not invoke.
 
 **Inner loop (Claude-TDD-Pro-skilled; R-G-R per ticket):**
 

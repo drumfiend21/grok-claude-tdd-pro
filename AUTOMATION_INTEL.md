@@ -345,3 +345,31 @@ research.md → architecture-consult.md (NEW) → decomposition.md → dispatch.
 **Decomposition is no longer blind.** Tickets get sized correctly the first time. Mid-ticket scope expansion (one-ticket-per-CL violation) becomes structurally rarer. The "ticket rework" loss Grok identified as "the biggest remaining source of waste" is closed.
 
 **Bottom line for interview / pitch posture.** The harness now operates as the operator originally described it: a planning helper that orchestrates a planning layer with Claude-TDD-pro, the coding layer that handles everything technical. The architecture consult is the structural bridge between those two layers. When the operator describes a feature, Grok doesn't size it blind — it consults Claude-TDD-Pro for the technical approach, then sizes accordingly, then dispatches with applicable_rules pre-populated. PR-ready code emerges with provenance + AIBOM, conformant to OWASP / Google / SLSA / etc. rules — and federal-government adds when those URLs land upstream.
+
+## 2026-06-06 — TICKET-035 / ADR-0040: static context injection SUPERSEDES architecture-consult (ADR-0039)
+
+Two hours after TICKET-034 merged, the operator brought in an adversarial second-opinion review of the dynamic per-feature consult mechanism. The reviewer's literal verdict: *"Right diagnosis, wrong prescription. Static context injection at session start solves the same problem with no new orchestration, no new schema, no round-trip cost, no coupling increase. Draft that instead."*
+
+**Four substantive critiques** of TICKET-034:
+1. **Framework-itis.** Eight artifacts and a per-feature round-trip to solve a knowledge-gap problem — opposite direction of "simplify ruthlessly."
+2. **Static vs dynamic data mismatch.** Test-shape discipline, refactoring sequencing, mutation seams, ADR triggers, Bash 3.2 portability are static properties of `claude-tdd-pro`. A per-feature consult is dynamic dispatch for static data.
+3. **Coupling cost.** Consult schema locks two repos in step. Sam Newman bounded-context guidance specifically warns against this.
+4. **Unfalsifiable success criterion.** "Evals confirm improved ticket quality" — measured how, against what baseline?
+
+**The plugin upstream then made the simpler approach concrete.** `claude-tdd-pro` published `docs/PROJECT_CONTEXT_FOR_PLANNER.md` (static knowledge surface) + ADR-0006 (decision to publish for external planners) at `b3e17c0`. The harness side now has a real artifact to consume rather than a hypothetical proposal.
+
+**Shipped (TICKET-035):**
+
+- `scripts/sync-plugin.sh --ensure` extended to defensively copy `docs/PROJECT_CONTEXT_FOR_PLANNER.md` from the pinned plugin cache into `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md`. No-op when the source is absent at the current pin (operator-visible log line names the deferral); activation lands when the pin bumps to a commit including the file.
+- `.gitignore` excludes `.harness/context/` (derived artifact; source-of-truth lives in plugin).
+- ADR-0040 supersedes ADR-0039 with the static-context approach; quotes the reviewer's closing position verbatim as the 10th application of the `Second voice` field per ADR-0029. 7 alternatives REJECTED — keep both mechanisms (framework-itis preserved), hard-delete (no Nygard trail), embed in CLAUDE.md (R-2 violation), vendor (R-2 violation), wait for pin bump (defensive ship is cleaner), combine with pin bump (two concerns one CL), A/B test (cost > value).
+- SUPERSEDED markers added at the top of `.grok/templates/architecture-consult.md`, `docs/handoff-contract.md §Architecture-Consult`, and the `architecture_consult` input-variable note in `.grok/templates/decomposition.md` (per Nygard append-only convention; bodies retained, status flagged).
+- AGENTS.md §6 + cursor rules generator + regenerated `.cursor/rules/*.mdc` reflect the supersession.
+
+**The reviewer's "framework-itis" framing applies retroactively to multiple prior CLs.** Not a regression-blocker; logged as a future "deletion pass" trigger. Matches the ADR-0033 Musk #1 trigger pattern — accumulate signal, then bulk delete with operator approval.
+
+**Pin bump CL is the activation trigger.** Current pin `23e5c2b` predates `PROJECT_CONTEXT_FOR_PLANNER.md`. Next CL bumps to a commit including the file (separate ADR per architecture-principles §15, precedent ADR-0025). The harness-side wire ships now defensively so the bump CL is small + focused.
+
+**Cross-repo ADR pairing.** Plugin-side ADR-0006 (publish static context for external planners) + harness-side ADR-0040 (consume the contract) together record the same decision at the two repos' boundaries.
+
+**Bottom line.** The honest meta-observation in the reviewer's note: *"when a real problem surfaces, the system reaches for more orchestration rather than more static context or less orchestration."* That's the recurring failure mode this CL reverses. Decomposition is no longer blind, but the closure is via static context Grok reads once per session — not a per-feature dispatch protocol. R-2 versioned consumption flows the knowledge; framework-itis is closed.

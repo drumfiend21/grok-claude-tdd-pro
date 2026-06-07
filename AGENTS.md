@@ -89,9 +89,9 @@ Conflict-resolution: TIER 0 > TIER 1 > TIER 2. Within TIER 1, prime-directive vs
 The outer loop (research / decomposition / dispatch) is template-driven, not code-driven. Templates live at:
 
 - `.grok/templates/research.md` — produce structured `research_refs` for a topic.
-- `.grok/templates/architecture-consult.md` — call Claude-TDD-Pro for the technical approach BEFORE decomposition (per TICKET-034 / ADR-0039); answers 6 questions (test-shape, decomposition, sequencing, scope, applicable_rules, complexity); cached by sha256(research_bundle + brief); operator toggle for trivial tickets.
-- `.grok/templates/decomposition.md` — turn research + consult into atomic, contract-shaped tickets (REQUIRES the consult artifact per ADR-0039).
-- `.grok/templates/dispatch.md` — emit a contract-valid `.harness/handoffs/TICKET-NNN.req.json` for one ticket; populates `applicable_rules` from the consult's recommendation.
+- `.grok/templates/architecture-consult.md` — **SUPERSEDED by ADR-0040 (TICKET-035).** The per-feature consult is replaced by static context injection at session start (`.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md`, copied from the pinned plugin by `scripts/sync-plugin.sh --ensure`). Template body retained per Nygard append-only; do not invoke.
+- `.grok/templates/decomposition.md` — turn research into atomic, contract-shaped tickets. Consults the static planner context for test-shape patterns, refactor sequencing, mutation seams, ADR triggers, and Bash 3.2 portability gotchas.
+- `.grok/templates/dispatch.md` — emit a contract-valid `.harness/handoffs/TICKET-NNN.req.json` for one ticket; populates `applicable_rules` from `.harness/rules/active.json` filtered by detected language.
 
 Any agent capable of following structured-output instructions can drive these. The original driver was Grok CLI (`grok -p`); Cursor's chat agent, Claude Code, and other AGENTS.md-conformant tools drive them equivalently by reading the template and following its documented output schema.
 

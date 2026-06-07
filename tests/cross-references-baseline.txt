@@ -1,3 +1,5 @@
+AUTOMATION_INTEL.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
+TICKETS.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 TICKETS.md references missing path: docs/skill-consumption.md
 docs/adr/0009-doc-drift-audit-and-checklist.md references missing path: docs/skill-consumption.md
 docs/adr/0020-manifest-schema-validator.md references missing path: path/to/file.json
@@ -18,6 +20,7 @@ docs/adr/0032-cross-reference-audit.md references missing path: docs/wire-vs-aut
 docs/adr/0038-full-plugin-feature-wire.md references missing path: scripts/audit-aibom.sh
 docs/adr/0039-architecture-consult-phase.md references missing path: scripts/audit-architecture-consult.sh
 docs/adr/0039-architecture-consult-phase.md references missing path: tests/test-architecture-consult.sh
+docs/adr/0040-static-context-injection-supersedes-consult.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
 docs/founder-directives.md references missing path: docs/adr/000N-*.md
 docs/plugin-sync.md references missing path: docs/adr/000N-*.md

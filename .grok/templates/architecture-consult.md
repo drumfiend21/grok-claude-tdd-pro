@@ -1,8 +1,10 @@
 # Architecture-consult template — Grok → Claude-TDD-Pro
 
+> **STATUS: SUPERSEDED by ADR-0040 (TICKET-035).** The per-feature consult mechanism is deprecated in favor of static context injection at session start (`.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md`, copied from the pinned plugin by `scripts/sync-plugin.sh --ensure`). The body below is retained per Nygard append-only convention; do not invoke this template. See `docs/adr/0040-static-context-injection-supersedes-consult.md` for the supersession rationale.
+
 **Purpose.** Close the technical-approach feedback loop **before** decomposition. Grok calls Claude-TDD-Pro with the feature brief + research bundle and asks the six architecture questions. The structured output (`.harness/handoffs/FEATURE-NNN.architecture.json`) becomes a required input to `decomposition.md` so atomic tickets are sized against the real test-shape, real refactor sequencing, and real applicable rules — not Grok's blind guess.
 
-Per TICKET-034 / ADR-0039. Operator-visible only on cache-miss; cached otherwise.
+Per TICKET-034 / ADR-0039 (SUPERSEDED by ADR-0040). Operator-visible only on cache-miss; cached otherwise.
 
 **Drawn from** (per D-1): Claude Code's plan-then-implement separation; Anthropic's "Building Effective Agents" reviewer-pattern; the existing handoff contract round-trip pattern; Musk Algorithm step 1 ("question every requirement"). Difference here: the consult is *advisory input to decomposition*, not a hard contract — Grok retains decomposition authority but is no longer blind.
 
