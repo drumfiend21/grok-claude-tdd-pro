@@ -34,6 +34,23 @@
 └─────────────────────┘
 ```
 
+### Table of contents
+
+1. [What it is](#what-it-is)
+2. [Why use it](#why-use-it)
+3. [How it works](#how-it-works)
+4. [External planner context](#external-planner-context-per-adr-0040--adr-0041)
+5. [Status (2026-06-07)](#status-2026-06-07)
+6. [Engineering standards enforced](#engineering-standards-enforced)
+7. [Live evidence](#live-evidence)
+8. [See actual per-ticket output](examples/sample-output/) — committed sample artifacts
+9. [Reproducibility model](#reproducibility-model)
+10. [Setup — get ready to use it](#setup--get-ready-to-use-it)
+11. [How to use it (daily operator workflow)](#how-to-use-it-daily-operator-workflow)
+12. [Repo map (one-screen orientation)](#repo-map-one-screen-orientation)
+13. [Authority](#authority)
+14. [Changelog](CHANGELOG.md) — milestone history
+
 A harness for **disciplined AI-assisted software development** in Cursor, Claude Code, and Grok Build. Composes a Grok-orchestrated outer loop (research → decompose → dispatch) with Claude TDD Pro's per-ticket Red-Green-Refactor inner loop, joined by a JSON wire contract and gated by a drift-detectable audit trail (sha-chain via `--regenerate`; cryptographic signing deferred per ADR-0018 §3).
 
 > **New here? Read [QUICKSTART.md](QUICKSTART.md) first.** It walks you through the 3-minute environment bootstrap + 15-minute first real cycle. This README is the structural reference; QUICKSTART is the operator entry point.
@@ -356,6 +373,28 @@ Per-ticket artifacts produced (gitignored runtime; the harness commits only the 
 ├── audit/TICKET-NNN.manifest.json   ← sha256 + schema; --regenerate verifies tamper-free
 └── audit/TICKET-NNN.aibom.json      ← AI Bill of Materials (compliance artifact)
 ```
+
+For committed examples of these artifacts (real files, real sha256 hashes, no re-execution needed to inspect), see [`examples/sample-output/TICKET-042/`](examples/sample-output/TICKET-042/).
+
+## Reproducibility model
+
+The harness pins both of its external dependencies — the engineering plugin (`claude-tdd-pro`) and Claude Code itself — to specific versions, with ADR-gated upgrade discipline. This is **deliberate**, not fragile:
+
+| Concern | Mechanism | Why |
+|---|---|---|
+| **Plugin freshness** | `docs/claude-tdd-pro.lock.yaml` pins commit SHA; `sync-plugin.sh --check` reports drift at every session start; `--ensure` materializes the pinned commit | Architectural rule R-2 (versioned consumption). Plugin auto-refreshes daily on its own side; harness consumes via the pin so every machine sees identical rule sets and identical SKILL.md trio behavior. Pin bumps are explicit ADR-gated CLs (precedent: ADRs 0025 + 0041). |
+| **Claude Code version** | `docs/claude-code-compat.yaml` declares supported semver range; SessionStart hook checks running CLI against the range and emits WARN if outside; ADR-gated range bumps | Per ADR-0036. Mirrors the plugin pin discipline for the host CLI itself. Closes the "what happens when Anthropic ships breaking changes?" gap. |
+| **Wire-format stability** | `schema_version: "1"` on every `.req.json` / `.res.json` / `.manifest.json`; bumps are bilateral and explicit per architectural rule R-5 | Stable contracts between Grok and Claude regardless of inner-loop or outer-loop model substitution. |
+| **Substrate stability** | 18/18 substrate test suites + 10 audit lenses run at every commit; the SessionStart message itself is the live health check | Catches regressions before any operator-visible artifact ships. |
+| **Decision history** | 41 ADRs in `docs/adr/` (Nygard append-only with explicit `SUPERSEDES:` chains; never rewritten in place) | A future reader walking the ADR series sees the full evolution including reversed decisions (e.g., ADR-0039 architecture-consult superseded by ADR-0040 static-context). |
+
+What this gets the operator:
+
+- **Same input + same pin = same output** on every machine, every session. The "works on my laptop" failure mode is structurally prevented.
+- **Freshness on operator-controlled cadence.** Daily / weekly / monthly pin-bump cadence — pick what fits the engagement. Pin bumps are small, documented, ADR-gated; demonstrated as a 1-CL operation in TICKET-036.
+- **Documented rollback path** on every dimension. Plugin pin rolls back to the prior SHA; Claude Code range narrows to exclude a known-broken version; ADR supersedes mark a course correction without rewriting history.
+
+This is the "boring, predictable, audit-friendly" stance: reproducibility wins over freshness defaults; operators control the trade-off; nothing is silent.
 
 ## Authority
 
