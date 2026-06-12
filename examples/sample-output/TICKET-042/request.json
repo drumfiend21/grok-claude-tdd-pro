@@ -1,0 +1,40 @@
+{
+  "schema_version": "1",
+  "ticket_id": "TICKET-042",
+  "title": "trim whitespace in slugify()",
+  "issued_at": "2026-06-12T04:29:32Z",
+  "context_ttl_seconds": 1800,
+  "acceptance_criteria": [
+    "slugify(\"  hello world  \") returns \"hello-world\"",
+    "slugify(\"\") returns \"\""
+  ],
+  "file_scope": {
+    "may_edit": [
+      "examples/string-utils/src/string-utils.mjs",
+      "examples/string-utils/test/string-utils.test.mjs"
+    ],
+    "may_read": [
+      "examples/string-utils/**"
+    ],
+    "must_not_touch": [
+      ".grok/**",
+      ".claude/**",
+      "claude-tdd-pro/**"
+    ]
+  },
+  "context": {
+    "research_refs": [],
+    "decomposition_parent": "FEATURE-007",
+    "prior_decisions": [
+      {
+        "ticket_id": "TICKET-005",
+        "decision": "toy ships at 4 pass / 1 fail; the fail is the cycle the harness must close"
+      }
+    ]
+  },
+  "quality_gate": {
+    "tests_must_pass": true,
+    "coverage_delta_min": 0,
+    "lint_clean": true
+  }
+}

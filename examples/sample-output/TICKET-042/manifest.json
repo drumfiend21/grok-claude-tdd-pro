@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "ticket_id": "TICKET-042",
+  "created_at": "2026-06-12T04:29:33Z",
+  "status": "green",
+  "sources": [
+    {
+      "kind": "request",
+      "path": ".harness/handoffs/TICKET-042.req.json",
+      "sha256": "d5884d46bca0832caad76aadec951c7f94fdf88d011d8f04db7f75716d44296c",
+      "size_bytes": 977
+    },
+    {
+      "kind": "response",
+      "path": ".harness/handoffs/TICKET-042.res.json",
+      "sha256": "ffd9fc998a8b6a10d9f750546d2d301cb371f174fb00e5b238c9509a7a06ebcd",
+      "size_bytes": 686
+    },
+    {
+      "kind": "decision_trail",
+      "path": ".harness/trails/TICKET-042.md",
+      "sha256": "23b5a8c1a7cf67e3932792dff423881490cb8ab4a51e4aa6a28f65997bb35f36",
+      "size_bytes": 1045
+    }
+  ],
+  "upstream_provenance_manifest_ref": null,
+  "manifest_generator": {
+    "tool": "smoke-e2e.sh",
+    "version": null
+  },
+  "signature": null
+}
