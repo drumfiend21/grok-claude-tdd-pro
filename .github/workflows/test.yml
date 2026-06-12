@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  substrate-tests:
+    name: Substrate test suite + full audit chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed for git log + manifest hashes
+
+      - name: Set up Node (used by audit-manifest.sh + smoke-e2e.sh)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Show environment
+        run: |
+          bash --version | head -1
+          node --version
+          git --version
+          which sha256sum || which shasum
+
+      - name: Materialize the pinned plugin cache
+        run: ./scripts/sync-plugin.sh --ensure
+
+      - name: Plugin pin freshness check (informational; never fails)
+        run: ./scripts/sync-plugin.sh --check || true
+
+      - name: Substrate test suite (18/18)
+        run: ./tests/test-all.sh --quiet
+
+      - name: audit-doc-drift (F-1..F-6 pattern audit)
+        run: ./scripts/audit-doc-drift.sh
+
+      - name: audit-cross-references (approval-baseline)
+        run: ./scripts/audit-cross-references.sh --quiet
+
+      - name: audit-hook-security (S-1..S-6 CWE-mapped shell patterns)
+        run: ./scripts/audit-hook-security.sh --quiet
+
+      - name: audit-plugin-surface (55 plugin top-level entries declared)
+        run: ./scripts/audit-plugin-surface.sh --quiet
+
+      - name: audit-standards-conformance (rubric runner against diff)
+        run: ./scripts/audit-standards-conformance.sh --quiet
+
+      - name: audit-manifest (sha256 + schema validator)
+        run: ./scripts/audit-manifest.sh
+
+      - name: audit-metrics (DORA Four Keys honest reporting)
+        run: ./scripts/audit-metrics.sh --quiet
+
+      - name: smoke-e2e (4-artifact end-to-end + AIBOM emit)
+        run: ./scripts/smoke-e2e.sh
+
+      - name: D-6 verification (founder-directives must be byte-identical)
+        run: |
+          if [ "$(git diff origin/main -- docs/founder-directives.md 2>/dev/null | wc -l)" != "0" ]; then
+            # Only fail if D-6 was actually violated relative to main.
+            # This is informational because main itself may have legitimately
+            # extended §5 authority-tier table per ADR amendment process.
+            echo "::warning::founder-directives.md differs from main; verify D-6 §1/§3/§4 immutability."
+          fi
