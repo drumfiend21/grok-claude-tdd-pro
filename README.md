@@ -189,7 +189,13 @@ docs/
   plugin-sync.md                       Plugin pin management runbook
   architecture.md                      Harness role-split overview
   claude-tdd-pro.lock.yaml             Pinned plugin commit + contract-surface sha256s
-  adr/                                 26 numbered ADRs (0001-0026)
+  adr/                                 41 numbered ADRs (0001-0041; Nygard append-only with SUPERSEDES chains)
+  plugin-surface-consumption.md        Registry of every plugin top-level surface (CONSUMED / DECLARED-NOT-CONSUMED)
+  deviations.md                        Append-only operator-justified standards-rule exceptions
+  security-review.md                   TIER-2 threat model + S-1..S-6 scan policy
+  dora-metrics.md                      TIER-2 operationalization of C-24 (Four Keys from manifest corpus)
+  claude-code-upgrade-strategy.md      TIER-2 host-CLI version-range discipline (symmetric with plugin pin)
+  rulebook-coverage-audit.md           Per-rule operational-citation audit report
 .claude/
   settings.json                        Hooks config (SessionStart + PostToolUse)
   hooks/session-start.sh               Auto-run sync-plugin.sh --ensure
@@ -223,9 +229,16 @@ examples/
   audit/           (gitignored)        Per-ticket provenance manifests
 ```
 
-## Status
+## Status (2026-06-07)
 
-All numbered tickets DONE through TICKET-019. 26 ADRs landed (`docs/adr/0001-...md` through `0026-...md`). Plugin pin synced with upstream `claude-tdd-pro` main HEAD. Every audit lens (sync-plugin --check + audit-doc-drift + smoke-e2e + export-cursor-rules --check + audit-manifest) exits 0.
+All numbered tickets DONE through **TICKET-036**. **41 ADRs** landed (`docs/adr/0001-...md` through `0041-...md`; Nygard append-only with explicit SUPERSEDES chains). Plugin pin synced at `bba77df`; cross-repo paired with `claude-tdd-pro` ADR-0006. Full audit chain (10 audits + smoke-e2e + 18/18 substrate test suites) exits 0 at every commit.
+
+- **Substrate tests:** 18/18 suites passing (~194 assertions). One test per executable substrate script + every Claude Code hook + the swarm coordinator's collection contract.
+- **Audit chain (all exit 0):** `audit-doc-drift` (F-1..F-6 patterns), `audit-cross-references` (approval-baseline), `audit-hook-security` (S-1..S-6 CWE-mapped patterns), `audit-manifest` (sha256 + schema), `audit-plugin-surface` (55 plugin surfaces declared), `audit-standards-conformance` (rubric runner against the diff), `audit-metrics` (DORA Four Keys), `audit-claude-code-compat` (host-CLI semver range), `sync-plugin --check`, `smoke-e2e`.
+- **Plugin surface:** 55 top-level surfaces declared (11 CONSUMED + 44 DECLARED-NOT-CONSUMED + 0 UNKNOWN).
+- **Standards loaded:** 28 rules at session start from 9 namespaces — `google`, `owasp`, `slsa`, `react`, `node`, `typescript`, `w3c` (WCAG 2.2), `web-vitals`, `_community`.
+- **PR-quality corpus:** 10 elite engineering-org sources (see "Engineering standards enforced" section below).
+- **Claude Code:** declared range `>=2.0.0,<3.0.0`; current tested version `2.1.x`.
 
 What's explicitly deferred (with documented rationale in ADR Out-of-scope sections):
 
@@ -233,9 +246,85 @@ What's explicitly deferred (with documented rationale in ADR Out-of-scope sectio
 - **MCP server / devcontainer / Cursor extension** — per D-8 / D-13; permanent deferrals unless evidence demands.
 - **Cryptographic manifest signing** — `signature: null` at v1 per ADR-0018 §3.
 - **Live-Claude smoke driver mode** — `smoke-e2e.sh` stub mode is the default per ADR-0008.
+- **Two-week falsification window** for the static-context wire (ADR-0040 §Out-of-scope) — active since `bba77df` pin bump landed.
+
+## Engineering standards enforced
+
+The plugin maintains a versioned standards inventory (refreshed daily on the publisher side) that aggregates into a single rule registry at `.harness/rules/active.json` on every session start. The PostToolUse hook runs `rubric/runner.sh --diff --severity P0` after every Edit/Write on app-code files; **P0 violations block the write at keystroke-time**, not at commit-time.
+
+Sources currently enforced (28 rules across 9 namespaces, from plugin `bba77df`):
+
+| Namespace | Examples |
+|---|---|
+| `google` | TypeScript style guide, JavaScript style guide, Python style guide, eng-practices, testing-blog |
+| `owasp` | ASVS (boundary schema validation, secret hygiene), Top 10 |
+| `slsa` | Build provenance attestation level 2+ for dependencies |
+| `w3c` | WCAG 2.2 (alt-text, focus indicators, ARIA usage) |
+| `web-vitals` | LCP / INP bundle-size budgets, image + font optimization |
+| `react` | RSC boundary integrity, exhaustive-deps, no-effect-for-derived-state, Suspense around async |
+| `node` | Schema validation at boundary, structured logging (pino/winston), fetch timeout + retry, supply-chain provenance |
+| `typescript` | strict tsconfig flags, discriminated-union exhaustiveness, no-any-without-justification, branded types at library boundaries |
+| `_community` | Operator-extensible namespace |
+
+**PR-quality bar** — the plugin's `pr-corpus/` extracts review patterns from public PRs at named engineering orgs and converts them into rubric rules. DEFERRED findings (rules that require agent review, not pure detection) are surfaced by the PostToolUse hook as `[peer-review]` prompts that the agent must address in the response trail before a ticket can close:
+
+| Source | Class | Tier |
+|---|---|---|
+| JPMorgan Chase (mosaic) | financial-industry | 1 |
+| Stripe (node) | financial-industry | 1 |
+| Capital One (cloud-custodian) | financial-industry | 1 |
+| FINOS (perspective) | financial-industry-consortium | 1 |
+| Kubernetes (core) | gold-standard-process | 1 |
+| CFPB (consumerfinance.gov) | federal-financial-regulator | 1 |
+| 18F (identity-idp) | fedramp-high | 1 |
+| VA (vets-website) | federal-digital-services | 1 |
+| GSA (site-scanning) | federal-infrastructure | 1 |
+| Bloomberg (memray) | financial-industry | 2 |
+
+**Freshness model.** Plugin auto-refreshes the rule corpus and PR pattern set daily (`standards/auto-refresh-daily.sh` + `pr-corpus/auto-refresh-daily.sh`). The harness consumes via R-2 versioned consumption — pinned to a specific plugin commit. Effective freshness window = the operator's pin-bump cadence (small, ADR-gated CL; demonstrated repeatable in TICKET-036).
+
+## Live evidence
+
+What a fresh `claude` session prints when this harness opens (real output captured at branch HEAD):
+
+```
+[plugin-sync] https://github.com/drumfiend21/claude-tdd-pro
+  pinned    : bba77df  (2026-06-07T00:43:02+00:00)
+  upstream  : <upstream HEAD>
+  contract  : <0 files drifted, or N files drifted with named list>
+  status    : OK
+[plugin-ensure] https://github.com/drumfiend21/claude-tdd-pro @ bba77df
+  status    : OK (cache materialized at bba77df)
+  cursor    : .cursor/rules/*.mdc generated
+  context   : PROJECT_CONTEXT_FOR_PLANNER.md injected at .harness/context/PROJECT_CONTEXT_FOR_PLANNER.md
+[claude-code-compat] OK — 2.1.x is inside supported_range (2.0.0 <= version < 3.0.0)
+[standards-sync] wrote .harness/rules/active.json
+  rules:      28
+  namespaces: google,node,owasp,react,slsa,typescript,w3c,web-vitals,_community
+  source:     .harness/plugin-cache/claude-tdd-pro/generated-code-quality-standards/
+[plugin-surface] scanning .harness/plugin-cache/claude-tdd-pro top-level entries...
+
+[plugin-surface] summary:
+  total entries:           55
+  CONSUMED:                11
+  DECLARED-NOT-CONSUMED:   44
+  UNKNOWN:                 0
+[plugin-surface] OK — every plugin surface is declared.
+```
+
+Per-ticket artifacts produced (gitignored runtime; the harness commits only the substrate, not the per-ticket trails):
+
+```
+.harness/
+├── handoffs/TICKET-NNN.req.json     ← contract-valid request (Grok → Claude)
+├── handoffs/TICKET-NNN.res.json     ← contract-valid response (Claude → Grok)
+├── trails/TICKET-NNN.md             ← R-G-R decision trail
+├── audit/TICKET-NNN.manifest.json   ← sha256 + schema; --regenerate verifies tamper-free
+└── audit/TICKET-NNN.aibom.json      ← AI Bill of Materials (compliance artifact)
+```
 
 ## Authority
 
 This file is operator orientation. The canonical sources of truth are the documents under `docs/` enumerated above. When this README conflicts with any TIER-0/1/2 source, the TIER-0/1/2 source wins (per `CLAUDE.md` and `docs/founder-directives.md §5` conflict-resolution).
 
-History: introduced as `README.md` in TICKET-001; refreshed in TICKET-020 to reflect TICKETS 011-019 shipping (cross-IDE surface, swarm orchestration, provenance trilogy, researcher discipline, Source 9, pin bump, quality-gate v2).
+History: introduced as `README.md` in TICKET-001; refreshed in TICKET-020 to reflect TICKETS 011-019; refreshed again in this branch's optimization + cleanup pass to reflect TICKETS 020-036 (standards pipeline wire, peer-review surface, formatters + AIBOM, static-context injection per ADR-0040, pin bump per ADR-0041, security review per ADR-0034, DORA metrics per ADR-0035, Claude Code upgrade discipline per ADR-0036). Full milestone trail in `CHANGELOG.md`.
