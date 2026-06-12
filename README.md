@@ -1,5 +1,39 @@
 # grok-claude-tdd-pro
 
+> **An AI software-development harness that ships PR-ready code at the engineering bar of JPMorgan Chase, Stripe, Capital One, FINOS, Kubernetes, and federal-government high-rigor shops (CFPB, 18F, VA, GSA).** Standards from OWASP ASVS + Top 10, Google's TS/JS/Python style guides, SLSA build provenance, WCAG 2.2, Web Vitals, React/Next.js, Node, and TypeScript are enforced **at write-time** — a P0 rule violation blocks the keystroke, not the merge. Every ticket leaves a drift-detectable audit trail (request + response contracts, decision trail, sha256 provenance manifest, AI Bill of Materials). Reproducible across every machine via versioned pins to both the engineering plugin and Claude Code itself. **18/18 substrate test suites + 10 audit lenses + smoke-e2e all green at every commit. 36 tickets DONE, 41 ADRs documented (Nygard append-only with supersession chains).**
+
+### How it works at a glance
+
+```
+┌─────────────────────┐  feature description in plain English
+│      Operator       │  ───────────────────────────────────────┐
+└─────────────────────┘                                         │
+                                                                ▼
+┌─────────────────────┐  reads static planner context from the pinned plugin
+│   Outer loop:       │  (test-shape, R-G-R sizing, ADR triggers, portability)
+│      Grok           │  decomposes the feature into atomic tickets
+│   (planning)        │  populates `applicable_rules` per ticket from
+│                     │  active.json (28 rules across 9 namespaces)
+└─────────────────────┘
+          │
+          ▼ contract-valid request via .harness/handoffs/TICKET-NNN.req.json
+          │
+┌─────────────────────┐  runs Red → Green → Refactor under the ticket's file_scope
+│   Inner loop:       │  PostToolUse hook runs the rubric runner per Edit/Write —
+│  Claude TDD Pro     │  blocks the write on any P0 rule violation; surfaces
+│  (engineering)      │  peer-review prompts derived from JPMorgan / Stripe /
+│                     │  Capital One / FINOS / Kubernetes / federal-gov PR corpus
+└─────────────────────┘
+          │
+          ▼ contract-valid response + 4 audit artifacts per ticket
+          │
+┌─────────────────────┐  request.json + response.json + decision-trail.md +
+│   Audit trail       │  manifest.json (sha256 + --regenerate drift detect) +
+│   (compliance-      │  aibom.json (AI Bill of Materials)
+│    ready)           │
+└─────────────────────┘
+```
+
 A harness for **disciplined AI-assisted software development** in Cursor, Claude Code, and Grok Build. Composes a Grok-orchestrated outer loop (research → decompose → dispatch) with Claude TDD Pro's per-ticket Red-Green-Refactor inner loop, joined by a JSON wire contract and gated by a drift-detectable audit trail (sha-chain via `--regenerate`; cryptographic signing deferred per ADR-0018 §3).
 
 > **New here? Read [QUICKSTART.md](QUICKSTART.md) first.** It walks you through the 3-minute environment bootstrap + 15-minute first real cycle. This README is the structural reference; QUICKSTART is the operator entry point.
