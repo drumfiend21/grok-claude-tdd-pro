@@ -1,0 +1,8 @@
+      6 "source_namespace":"react"
+      6 "source_namespace":"node"
+      6 "source_namespace":"google"
+      4 "source_namespace":"typescript"
+      2 "source_namespace":"web-vitals"
+      2 "source_namespace":"owasp"
+      1 "source_namespace":"w3c"
+      1 "source_namespace":"slsa"

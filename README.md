@@ -340,6 +340,8 @@ Sources currently enforced (28 rules across 9 namespaces, from plugin `bba77df`)
 | GSA (site-scanning) | federal-infrastructure | 1 |
 | Bloomberg (memray) | financial-industry | 2 |
 
+**Language coverage.** Beyond JavaScript/TypeScript, the rubric routes Python rules through ruff/mypy/pylint, accessibility rules through `a11y-axe`, supply-chain rules through SLSA attestation verification, and so on — 50 distinct detectors in the pinned plugin's `rubric/detectors/`. See [`examples/sample-output/detector-coverage/`](examples/sample-output/detector-coverage/) for the full detector list + per-namespace rule counts captured from the current pin.
+
 **Freshness model.** Plugin auto-refreshes the rule corpus and PR pattern set daily (`standards/auto-refresh-daily.sh` + `pr-corpus/auto-refresh-daily.sh`). The harness consumes via R-2 versioned consumption — pinned to a specific plugin commit. Effective freshness window = the operator's pin-bump cadence (small, ADR-gated CL; demonstrated repeatable in TICKET-036).
 
 ## Live evidence
