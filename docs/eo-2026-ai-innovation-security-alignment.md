@@ -218,6 +218,15 @@ Because every ticket the harness hands to the plugin carries the EO subset in `a
 - **The layer (primary):** the standing posture above — wired by **TICKET-050** (enforcement-spine wiring; rule-content activation pin-bump-gated on the plugin's EO work).
 - **The instances (secondary):** F-EO-1..F-EO-10 / TICKET-043..049 are individual capabilities that *populate* the layer (the vuln gate, the cyber report, signing/SBOM, readiness checklist, misuse profile, swarm, compliance mapping). They are not the governance; they are governed-by-and-contribute-to it.
 
+### Two-phase enforcement: design-before-code AND code (per ADR-0046)
+
+EO governance is **two-phase**, and the enforcer is **Claude TDD Pro itself** (the inner loop), not only a harness gate applied after code exists:
+
+- **Phase 1 — design-before-code.** The EO patterns the spec/plan the inner loop produces *before* writing code. Enforcement is the plugin's (`tdd-pro-cl-workflow` design step, its in-flight EO work). The harness requires the **decision-trail / response to attest** design-phase EO conformance — which EO-relevant rules/standards shaped the design, which patterns were chosen or rejected and why.
+- **Phase 2 — code.** The EO patterns the code itself (the existing teeth: EO sub-gates F-EO-1/F-EO-4 + `rules_verified`).
+- **Gate semantics.** `green` requires EO conformance evidence for **both** phases. Code that passes the rule checks but whose pre-code design carries no EO-conformance attestation is **not** `green`. The harness thus verifies the EO shaped the *design*, not just the output — the most leveraged point, since design decisions constrain everything downstream.
+- **Division of labor (prime directive).** The **plugin enforces** at both phases (its repo, its in-flight EO work); the **harness demands + verifies** via the contract (handoff requires both-phase conformance; decision-trail attests; gate enforces). Neither reaches into the other; they meet at the contract surface. Rides the existing decision-trail + `rules_verified` + gate — **no new mechanism**.
+
 ### What is explicitly NOT done here
 
 - **No harness-native EO rules.** Rule content is the plugin's; the harness sources it.
