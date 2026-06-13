@@ -192,6 +192,15 @@ The Bezos review's "strict scoping to avoid backlog bloat" is itself **ADOPTED a
 
 Per operator directive 2026-06-13 (recorded in ADR-0045), the EO is **not a siloed feature set** — it is a **cross-cutting governance layer** that patterns quality, process, and security across **every** ticket, handoff, and CL the harness dispatches. This section reframes §1–§8 so the **enforcement spine** is the primary artifact and F-EO-1..F-EO-10 are *instances* hanging off it.
 
+### Additive, never subtractive (per ADR-0047)
+
+The EO layer is **strictly additive** to the world-class standards this repo was built on — it never replaces, relaxes, or substitutes for them. In force and untouched: the full `active.json` registry (`google`, `node`, `owasp`, `react`, `slsa`, `typescript`, `w3c`, `web-vitals`, `_community`), the architecture R-rules, the founder-directives D-rules, the TIER-0 corpus, and the TDD/C-rule discipline. Semantics:
+
+- **Add-only.** The EO layer may only ADD required rules, gates, and attestations; never remove, relax, weaken, or substitute for an existing standard.
+- **Conjunction (AND), not disjunction.** `green` requires the base standards **and** the EO layer. An EO pass never excuses a base miss, and vice versa.
+- **Strictest-wins on overlap (monotonic).** Where EO and base standards touch the same concern, the stricter governs — adding the EO layer can only tighten the bar, never loosen it.
+- **Deviation discipline unchanged, per-rule.** An EO deviation never waives a base standard; a base deviation never waives an EO requirement. Each is scoped to its own rule and still needs an ADR + a `docs/deviations.md` row.
+
 ### The ownership split (why this honors the prime directive)
 
 The operator confirmed `claude-tdd-pro` is concurrently doing **its own EO architecture/design work in its own repo**. So:
