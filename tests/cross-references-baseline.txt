@@ -2,7 +2,14 @@ AUTOMATION_INTEL.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 README.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 README.md references missing path: docs/adr/0006-static-context-injection-for-external-planners.md
 TICKETS.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
+TICKETS.md references missing path: docs/compliance-profiles/eo-2026.md
+TICKETS.md references missing path: docs/frontier-model-readiness.md
+TICKETS.md references missing path: docs/secure-deployment-checklist.md
 TICKETS.md references missing path: docs/skill-consumption.md
+TICKETS.md references missing path: scripts/audit-vuln-scan.sh
+TICKETS.md references missing path: scripts/emit-cyber-report.sh
+TICKETS.md references missing path: tests/test-audit-vuln-scan.sh
+TICKETS.md references missing path: tests/test-emit-cyber-report.sh
 docs/adr/0009-doc-drift-audit-and-checklist.md references missing path: docs/skill-consumption.md
 docs/adr/0020-manifest-schema-validator.md references missing path: path/to/file.json
 docs/adr/0021-manifest-regenerate-cli.md references missing path: scripts/regenerate-manifest.sh
@@ -26,6 +33,11 @@ docs/adr/0040-static-context-injection-supersedes-consult.md references missing 
 docs/adr/0041-plugin-pin-bump-23e5c2b-to-bba77df.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 docs/adr/0041-plugin-pin-bump-23e5c2b-to-bba77df.md references missing path: docs/architecture-v1.9.md
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
+docs/eo-2026-ai-innovation-security-alignment.md references missing path: docs/compliance-profiles/eo-2026.md
+docs/eo-2026-ai-innovation-security-alignment.md references missing path: docs/frontier-model-readiness.md
+docs/eo-2026-ai-innovation-security-alignment.md references missing path: docs/secure-deployment-checklist.md
+docs/eo-2026-ai-innovation-security-alignment.md references missing path: scripts/audit-vuln-scan.sh
+docs/eo-2026-ai-innovation-security-alignment.md references missing path: scripts/emit-cyber-report.sh
 docs/founder-directives.md references missing path: docs/adr/000N-*.md
 docs/plugin-sync.md references missing path: docs/adr/000N-*.md
 docs/plugin-sync.md references missing path: docs/architecture-v1.9.md
