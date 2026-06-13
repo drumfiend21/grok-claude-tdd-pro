@@ -120,6 +120,17 @@ Workflow enforcement:
 
 The `.claude/hooks/post-tool-use-review-gate.sh` enforces this at write-time (per Batch 4 of TICKET-032).
 
+### EO-2026 as a standing governance dimension (per ADR-0045)
+
+The 2026-06-02 Executive Order *"Promoting Advanced Artificial Intelligence Innovation and Security"* is elevated to a **cross-cutting governance layer**, not a siloed feature — it patterns quality, process, and security across **every** ticket, handoff, and CL the harness dispatches, by construction. It is a first-class, **always-on** member of this operator-declared-standards regime, governed by the same `applicable_rules` → `rules_verified` → quality-gate machinery above. Mechanics:
+
+- **Rule content is sourced from the plugin, never forked here.** The harness MUST NOT invent harness-native EO rules. The EO-aligned standards/rubric content is authored in `claude-tdd-pro` (its own in-flight EO architecture work) and flows into `.harness/rules/active.json` via `standards-sync.sh` on the next pin bump. The harness owns the **enforcement spine**; the plugin owns the **rule content**. The two meet at the contract surface (`active.json` + `applicable_rules`) — neither reaches into the other (prime directive).
+- **Always-on, not opt-in.** EO-namespaced rules in `active.json` are applicable to every ticket by default — the existing fail-closed default (absent `applicable_rules` ⇒ all rules apply, per `docs/handoff-contract.md`) already enforces this; the EO layer makes it explicit and removes any per-ticket exemption for the EO subset.
+- **Gate teeth.** The harness-native EO sub-gates (vulnerability remediation, provenance/signing) are standing `green` requirements per `docs/quality-gate.md`; the EO compliance profile (`docs/eo-2026-ai-innovation-security-alignment.md`) maps them to NIST AI RMF / SSDF / CISA controls.
+- **TICKET-043..049 are *instances* of this layer, not the layer itself.** The layer is the standing posture; the tickets are individual capabilities that hang off it.
+
+Design + decision record: `docs/eo-2026-ai-innovation-security-alignment.md` + ADR-0043/0044/0045. This dimension sits **within** the operator-declared-standards TIER-1 regime — it does not outrank the prime directive, the founder-directives, or the TIER-0 corpus.
+
 ## Working in this repo
 
 - One ticket per CL. Ticket IDs come from `TICKETS.md`.

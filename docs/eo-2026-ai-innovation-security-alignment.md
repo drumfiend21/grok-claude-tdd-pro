@@ -141,6 +141,7 @@ Cross-references:
 - `docs/security-review.md`, `docs/self-healing-design.md`, `orchestrating-swarms` skill — composed by F-EO-7/F-EO-8.
 - ADR-0043 — the decision record for this design.
 - ADR-0044 — review-driven refinements (the §8 triage below).
+- ADR-0045 — governance-layer elevation (the §9 reframe below).
 
 ---
 
@@ -184,4 +185,43 @@ The Bezos review's "strict scoping to avoid backlog bloat" is itself **ADOPTED a
 ### Out of band (not a design change)
 
 - **Recruiting/portfolio positioning** (logging this in a `RECRUITING.md`): there is no `RECRUITING.md` in this repo, and creating one is outside EO-alignment design scope. Noted for the operator; not actioned here.
+
+---
+
+## §9 Governance-layer elevation (the spine is primary; F-EO-1..F-EO-10 are instances)
+
+Per operator directive 2026-06-13 (recorded in ADR-0045), the EO is **not a siloed feature set** — it is a **cross-cutting governance layer** that patterns quality, process, and security across **every** ticket, handoff, and CL the harness dispatches. This section reframes §1–§8 so the **enforcement spine** is the primary artifact and F-EO-1..F-EO-10 are *instances* hanging off it.
+
+### The ownership split (why this honors the prime directive)
+
+The operator confirmed `claude-tdd-pro` is concurrently doing **its own EO architecture/design work in its own repo**. So:
+
+| Concern | Owner | Mechanism |
+|---|---|---|
+| **EO rule *content*** (the standards/rubric that encode EO patterning into the inner loop's DNA) | **`claude-tdd-pro`** (in-flight, that repo) | Authored upstream; flows into `.harness/rules/active.json` via `standards-sync.sh` on the next pin bump. |
+| **EO enforcement *spine*** (making that content non-optional on every unit of work) | **This harness** | `applicable_rules` always-on default + quality-gate dimension + review-gate/session-start binding (the ADR-0037 regime). |
+
+The two meet at the contract surface (`active.json` + `applicable_rules`). **The harness MUST NOT invent harness-native EO *rules*** — that would duplicate and diverge from the plugin's in-flight work (a prime-directive smell). The harness invents only *enforcement* (gates, defaults, bindings) and *harness-native infrastructure* sub-gates (vuln scan, provenance/signing) that are not "rules" in the rubric sense.
+
+### How "governs everything" is achieved by construction
+
+The harness already controls the three surfaces that gate every unit of work; the EO becomes universal by riding them:
+
+1. **`applicable_rules` (always-on default).** The handoff contract's fail-closed default — *absent `applicable_rules` ⇒ all rules in `active.json` apply* — already makes every registry rule universal. The EO layer makes the EO subset **non-exemptible**: no ticket may drop EO-namespaced rules from `applicable_rules`. → enforced for every dispatch to the plugin.
+2. **Quality gate (`green` contract).** The harness-native EO sub-gates (vuln remediation F-EO-1; provenance/signing F-EO-4) are standing `green` requirements (`docs/quality-gate.md`). No CL is `green` without satisfying them. → enforced for every CL.
+3. **Review-gate + session-start binding.** `.claude/hooks/post-tool-use-review-gate.sh` checks at write-time; `session-start.sh` + `CLAUDE.md` / `AGENTS.md` bind both agents to the layer every session. → enforced for every write, every session.
+
+Because every ticket the harness hands to the plugin carries the EO subset in `applicable_rules`, and every response is gated on `rules_verified` + the EO sub-gates, **everything the plugin does on behalf of the harness is EO-governed by construction** — without editing the plugin.
+
+### Reframe: the layer vs. the instances
+
+- **The layer (primary):** the standing posture above — wired by **TICKET-050** (enforcement-spine wiring; rule-content activation pin-bump-gated on the plugin's EO work).
+- **The instances (secondary):** F-EO-1..F-EO-10 / TICKET-043..049 are individual capabilities that *populate* the layer (the vuln gate, the cyber report, signing/SBOM, readiness checklist, misuse profile, swarm, compliance mapping). They are not the governance; they are governed-by-and-contribute-to it.
+
+### What is explicitly NOT done here
+
+- **No harness-native EO rules.** Rule content is the plugin's; the harness sources it.
+- **No new enforcement mechanism.** The EO rides the existing ADR-0037 regime (avoids framework-itis per ADR-0040).
+- **No new authority tier.** The EO sits inside the TIER-1 operator-declared-standards regime — below the prime directive, founder-directives, and the TIER-0 corpus.
+- **No plugin edit, no plugin proposal authored here.** The plugin owns its EO work in its repo.
 
