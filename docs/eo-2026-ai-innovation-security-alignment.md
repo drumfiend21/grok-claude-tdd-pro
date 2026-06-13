@@ -140,3 +140,48 @@ Cross-references:
 - `docs/researcher-discipline.md` — the verification-tier procedure §0 applies.
 - `docs/security-review.md`, `docs/self-healing-design.md`, `orchestrating-swarms` skill — composed by F-EO-7/F-EO-8.
 - ADR-0043 — the decision record for this design.
+- ADR-0044 — review-driven refinements (the §8 triage below).
+
+---
+
+## §8 Review-driven refinements (multi-perspective second-voice triage)
+
+On 2026-06-13 the operator supplied four simulated engineering-leadership reviews (Musk/xAI, Gates/Microsoft, Bezos/Amazon, Cook/Apple) of the §1–§7 design. Per the ADR-0029 `Second voice` pattern, each review is a second voice. This section triages every concrete suggestion into **ADOPT** (folded into a named ticket now), **DEFER** (named trigger; the over-engineering filter says wait for an operator-bitten signal), or **REJECT** (permanent). Recorded in ADR-0044.
+
+The Bezos review's "strict scoping to avoid backlog bloat" is itself **ADOPTED as the governing meta-rule for this triage** — which is precisely why the five heavyweight suggestions below are deferred, not ticketed.
+
+### Adopted (folded into existing tickets — no new tickets, no scope bloat)
+
+| Suggestion | Source | Disposition | Target |
+|---|---|---|---|
+| CISA **KEV** (Known-Exploited-Vulnerabilities) prioritization — rank known-exploited CVEs first | Gates | ADOPT | TICKET-043 (vuln gate ranks KEV-listed CVEs ahead of generic high/critical) |
+| **Security-score + vuln-MTTR** quantifiable metric | Bezos | ADOPT | TICKET-044 (cyber-report adds a score + MTTR field; **reuses existing `audit-metrics.sh` / `docs/dora-metrics.md`** — no new metrics substrate) |
+| **in-toto attestations** + target **SLSA Build L3+** when signing enabled | Gates, Musk | ADOPT | TICKET-045 (cosign stays opt-in/off-by-default for airgapped portability — documented rationale; in-toto attestation emitted when enabled) |
+| **Data-minimization / on-device-edge / insider-risk** checklist lines; lighter critical-infra posture | Cook, Gates | ADOPT | TICKET-046 (checklist line-items; doc-only) |
+| **WCAG 2.2 accessibility + ethical** section in compliance profile | Cook | ADOPT | TICKET-049 (**reuses existing `w3c` / `web-vitals` namespaces** in `active.json`) |
+| **Model-extraction + sandboxed-agent-action + prompt-injection** defenses | Cook, Musk | REAFFIRM (already in scope) | TICKET-047 (defenses) + TICKET-048 (red/blue swarm); the *skills* remain plugin-amendment proposals per §4 |
+| Auto-generated **trusted-partner SBOM/provenance pack** (a signed bundle) | Bezos | ADOPT | TICKET-045/046 (the SBOM + signature *is* the pack; bundle them) |
+
+### Deferred (named trigger — over-engineering filter applies)
+
+| Suggestion | Source | Why deferred | Trigger to revisit |
+|---|---|---|---|
+| **Fast-track / spike mode** (post-hoc gate reconciliation) | Musk | No operator-bitten process-drag signal yet. Hard constraint: a mode that *bypasses* the `green` gate conflicts with the non-negotiable quality gate (`docs/quality-gate.md`); the only defensible form **defers gates to merge-time, never removes them**. Designing that safely is its own ADR. | Operator hits real process drag on a spike and directs it (ADR-0031 override pattern). |
+| **STRIDE threat-modeling audit** | Gates | A new structured-analysis capability; premature without a ticket that needs it. | A ticket requires formal threat modeling of a shipped surface. |
+| **Exportable compliance dashboard** (UI) | Gates, Bezos | The JSON cyber-report (TICKET-044) is the data substrate; a visual layer is a separate heavyweight surface. | An external buyer/reviewer asks for a visual artifact. |
+| **Chaos-style swarm testing** | Bezos | No critical-infra scaffold ships yet to chaos-test. | A utilities/finance/healthcare scaffold lands (would pair with TICKET-047). |
+| **Real-time CISA feed monitoring** automation | Bezos | Live outbound monitoring is a new always-on automation surface; the vuln gate (043) already pulls advisories at CL-time. | Operator wants live alerting between CLs. |
+| **Differential-privacy evals** in swarms | Cook, Gates | Specialized; no model-training surface in the harness today. | A ticket processes sensitive data through an eval. |
+
+### Rejected (permanent)
+
+| Suggestion (or its strong form) | Why rejected |
+|---|---|
+| Auto-**upload** reports to CISA/OMB | EO framework is **voluntary**; harness produces shareable reports, the operator chooses to share. Restates §6. |
+| Replicate the EO **classified** cyber-capability benchmark | Classified/government-run; harness ships only a public self-assessment proxy (F-EO-6). Restates §4/§6. |
+| Sigstore/cosign **on by default** (Musk's strong form) | Conflicts with airgapped/offline-operator portability (over-engineering filter for the default path). Kept opt-in; SLSA L3+ is the target *when enabled*. |
+
+### Out of band (not a design change)
+
+- **Recruiting/portfolio positioning** (logging this in a `RECRUITING.md`): there is no `RECRUITING.md` in this repo, and creating one is outside EO-alignment design scope. Noted for the operator; not actioned here.
+
