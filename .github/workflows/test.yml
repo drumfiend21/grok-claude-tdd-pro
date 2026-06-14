@@ -54,6 +54,9 @@ jobs:
       - name: audit-standards-conformance (rubric runner against diff)
         run: ./scripts/audit-standards-conformance.sh --quiet
 
+      - name: audit-eo-governance (EO-2026 non-exemptibility + two-phase attestation)
+        run: ./scripts/audit-eo-governance.sh --quiet
+
       - name: audit-manifest (sha256 + schema validator)
         run: ./scripts/audit-manifest.sh
 

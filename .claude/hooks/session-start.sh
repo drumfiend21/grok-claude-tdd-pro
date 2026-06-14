@@ -60,4 +60,15 @@ if [ -x scripts/audit-plugin-surface.sh ]; then
     scripts/audit-plugin-surface.sh || true
 fi
 
+# EO-2026 governance enforcement spine (per TICKET-050 / ADR-0045..0048).
+# Verifies the always-on, non-exemptible EO governance invariants over present
+# handoff artifacts: every active EO-namespace rule appears in each request's
+# applicable_rules, and every green response carries the two-phase design
+# attestation (eo_design_conformance). Content-agnostic: vacuous until an
+# EO-namespace rule lands in active.json via a plugin pin bump. WARN-not-FAIL
+# at session start; CI (.github/workflows/test.yml) is the hard gate.
+if [ -x scripts/audit-eo-governance.sh ]; then
+    scripts/audit-eo-governance.sh || true
+fi
+
 exit 0

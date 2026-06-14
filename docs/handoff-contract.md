@@ -62,6 +62,7 @@ Field rules:
 - `context_ttl_seconds` is how long the receiver may treat research_refs as fresh. Past TTL, Claude returns `status: "blocked"` with `error.code: "context_stale"` rather than acting on stale facts.
 - `quality_gate` defines what counts as "green". The semantics of each sub-field — `tests_must_pass`, `coverage_delta_min`, `lint_clean`, and the recommended-at-v1 `provenance_complete` — are formalized in [`quality-gate.md`](quality-gate.md). This field is the contract surface; per-sub-gate definitions, defaults, override policies, and the reviewer checklist live in the formalization doc.
 - `applicable_rules` (added per TICKET-032 / ADR-0037) is an array of rule IDs from `.harness/rules/active.json` (the aggregated standards registry from the plugin's `rubric/aggregator.sh`). Grok populates this by filtering the active registry against the ticket's `file_scope` + detected language(s). Claude MUST run `rubric/runner.sh` against each rule ID and report results in the response's `rules_verified` field. If the field is absent, Claude treats it as "all rules from active.json apply" — fail-closed.
+- **EO-governance non-exemptibility (added per TICKET-050 / ADR-0045/0048).** Rules whose `source_namespace` is in the EO set (canonical: `eo`) are **always-on and non-exemptible**: when `applicable_rules` is present, it MUST include every EO-namespace rule in `active.json`, regardless of `file_scope` or language. Grok MUST NOT filter them out per-ticket. (Absent `applicable_rules` already covers them via the fail-closed default above.) Verified by `scripts/audit-eo-governance.sh`. This is **additive** — it never relaxes any other rule (ADR-0047). EO rule *content* is owned by `claude-tdd-pro` and arrives via a pin bump; until then the EO set is empty and this clause is vacuous.
 
 ## Claude → Grok (response)
 
@@ -89,6 +90,12 @@ Field rules:
     "g-node-001": "pass",
     "g-ts-001": "pass"
   },
+  "eo_design_conformance": {
+    "design_phase_attested": true,
+    "rules_considered": ["<eo-namespace rule ids that shaped the pre-code design>"],
+    "patterns_applied": ["<EO design/coding patterns chosen>"],
+    "notes": "<one line: patterns chosen/rejected and why, at the design phase>"
+  },
   "notes": "optional, single short paragraph",
   "error": null
 }
@@ -100,6 +107,13 @@ Field rules:
 - Values are `"pass"`, `"fail"`, or `"deviated"` (= violation justified by a row in `docs/deviations.md`).
 - A `green` status requires every applicable rule to be `pass` OR `deviated`. Any `fail` forces `status: "red"` with `error.code: "gate_failed"`.
 - Missing keys (request named a rule but response omits it) force `status: "red"` with `error.code: "gate_failed"`.
+
+`eo_design_conformance` field rules (added per TICKET-050 / ADR-0046/0048):
+
+- This is the **two-phase** attestation: the EO governs both the design Claude TDD Pro produces *before* it codes AND the code. This field attests the **design-before-code** phase — which EO-namespace rules/standards shaped the design, and which patterns were chosen or rejected and why.
+- Additive optional field; `schema_version` stays `"1"` (R-11 tolerant reader — a reader that does not know the field ignores it).
+- **When EO-namespace rules are active in `active.json`**, a `green` response MUST carry a non-empty `eo_design_conformance` (not `null`, `{}`, `[]`, or `""`). A green response missing it (or empty) is rejected by `scripts/audit-eo-governance.sh` — code that passes the rule checks but whose pre-code design carries no EO attestation is **not** green (ADR-0046).
+- **When the EO set is empty** (no `eo`-namespace rule yet; pin-bump-gated), the field is optional and the check is vacuous — existing green responses remain valid.
 
 `status` enum:
 
