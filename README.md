@@ -4,7 +4,7 @@
 ![Audits](https://img.shields.io/badge/audits-10%2F10%20green-brightgreen)
 ![Tickets](https://img.shields.io/badge/tickets-36%20DONE-blue)
 ![ADRs](https://img.shields.io/badge/ADRs-41%20landed-blue)
-![Plugin pin](https://img.shields.io/badge/plugin%20pin-4354903-informational)
+![Plugin pin](https://img.shields.io/badge/plugin%20pin-3432b52-informational)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%3E%3D2.0.0%2C%3C3.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -29,7 +29,7 @@
 │   Outer loop:       │  (test-shape, R-G-R sizing, ADR triggers, portability)
 │      Grok           │  decomposes the feature into atomic tickets
 │   (planning)        │  populates `applicable_rules` per ticket from
-│                     │  active.json (28 rules across 9 namespaces)
+│                     │  active.json (42 rules across 15 rule-bearing namespaces)
 └─────────────────────┘
           │
           ▼ contract-valid request via .harness/handoffs/TICKET-NNN.req.json
@@ -316,7 +316,7 @@ All numbered tickets DONE through **TICKET-036**. **41 ADRs** landed (`docs/adr/
 - **Substrate tests:** 18/18 suites passing (~194 assertions). One test per executable substrate script + every Claude Code hook + the swarm coordinator's collection contract.
 - **Audit chain (all exit 0):** `audit-doc-drift` (F-1..F-6 patterns), `audit-cross-references` (approval-baseline), `audit-hook-security` (S-1..S-6 CWE-mapped patterns), `audit-manifest` (sha256 + schema), `audit-plugin-surface` (55 plugin surfaces declared), `audit-standards-conformance` (rubric runner against the diff), `audit-metrics` (DORA Four Keys), `audit-claude-code-compat` (host-CLI semver range), `sync-plugin --check`, `smoke-e2e`.
 - **Plugin surface:** 55 top-level surfaces declared (11 CONSUMED + 44 DECLARED-NOT-CONSUMED + 0 UNKNOWN).
-- **Standards loaded:** 28 rubric rules at session start from 8 rule-bearing namespaces — `google`, `owasp`, `slsa`, `react`, `node`, `typescript`, `w3c` (WCAG 2.2), `web-vitals` — plus `_community`. Since ADR-0052 the registry also *sees* CTP's cloud + governance guidance corpora (`aws`, `azure`, `gcp`, `hashicorp`, `linux-foundation`, `security-governance`, `us-government`), which feed CTP's `/architect` grounding engine rather than the rubric detectors (0 rubric rules — guidance only).
+- **Standards loaded:** 42 rubric rules at session start across 15 rule-bearing namespaces — the original 8 (`google`, `owasp`, `slsa`, `react`, `node`, `typescript`, `w3c` (WCAG 2.2), `web-vitals`) plus, since the Layer-A activation in ADR-0053, the cloud + governance namespaces `aws`, `azure`, `gcp`, `hashicorp`, `linux-foundation`, `security-governance`, `us-government` (2 grounded detector rules each) — plus `_community`. The `security-governance` rules encode the EO authorities (CISA SSDF/KEV, NIST AI RMF, SLSA).
 - **PR-quality corpus:** 10 elite engineering-org sources (see "Engineering standards enforced" section below).
 - **Claude Code:** declared range `>=2.0.0,<3.0.0`; current tested version `2.1.x`.
 
@@ -332,7 +332,7 @@ What's explicitly deferred (with documented rationale in ADR Out-of-scope sectio
 
 The plugin maintains a versioned standards inventory (refreshed daily on the publisher side) that aggregates into a single rule registry at `.harness/rules/active.json` on every session start. The PostToolUse hook runs `rubric/runner.sh --diff --severity P0` after every Edit/Write on app-code files; **P0 violations block the write at keystroke-time**, not at commit-time.
 
-Sources currently enforced (28 rubric rules across 8 rule-bearing namespaces + `_community`, from plugin `4354903`):
+Sources currently enforced (42 rubric rules across 15 rule-bearing namespaces + `_community`, from plugin `3432b52`):
 
 | Namespace | Examples |
 |---|---|

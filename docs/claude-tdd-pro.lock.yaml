@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   4354903d56cc7a4382ad47c920df4a7b806ee1b5
-pinned_at:       2026-06-15T17:53:45+00:00
-pinned_message:  "Merge origin/main: cloud-architect (v1.13-v1.16) + EO security-governance (v1.18) + generative-integration suite + dog-walker E2E demo"
+pinned_commit:   3432b52ea0e081a05d107de8b75f52cedf2e0f3b
+pinned_at:       2026-06-15T21:20:28+00:00
+pinned_message:  "impl: CL-475 (§28.15) -- activate cloud/EO sources as enforced detector rules, Layer-A (4241->4253)"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -29,7 +29,7 @@ contract_surface_files:
   - path:   CLAUDE.md
     sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: 78eb164b05801215d88dc8a74ad666499c1974489028f73a78f2ad113e532b3e
+    sha256: a0cbd737c4b28aaf5742eaaec4d16db73db9e522bfcb59e8ed408eaded9d0e23
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-06-15T20:15:00Z
-last_synced_session: "TICKET-056 pin bump bba77df→4354903 per ADR-0052"
+last_synced_at:      2026-06-15T22:20:00Z
+last_synced_session: "TICKET-057 pin bump 4354903→3432b52 (Layer-A activation) per ADR-0053"

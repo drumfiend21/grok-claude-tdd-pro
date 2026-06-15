@@ -30,8 +30,8 @@ Full walk-through: [`QUICKSTART.md`](../QUICKSTART.md). See a complete worked ex
 first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
 
 > **Why automatic?** GCTP consumes CTP *by reference* at a pinned commit
-> (currently `4354903`) so every machine gets identical behavior. The pin is bumped
-> only via an ADR (most recently ADR-0052; see [`docs/plugin-sync.md`](plugin-sync.md)).
+> (currently `3432b52`) so every machine gets identical behavior. The pin is bumped
+> only via an ADR (most recently ADR-0053; see [`docs/plugin-sync.md`](plugin-sync.md)).
 > You never hand-install CTP for this path.
 
 ---
