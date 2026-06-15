@@ -46,8 +46,10 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `.claude/hooks/post-tool-use-review-gate.sh` (payload contract) | `tests/test-hook-contracts.sh` | 15 (per TICKET-031 / ADR-0036; golden fixtures at `tests/fixtures/hook-payloads/` pin the Claude Code hook payload contract; 4 scenarios + defensive missing-field test) |
 | `scripts/audit-plugin-surface.sh` | `tests/test-audit-plugin-surface.sh` | 9 (per TICKET-032 / ADR-0037; injected-unknown-surface; declaration registry contract) |
 | `scripts/standards-sync.sh` | `tests/test-standards-sync.sh` | 16 (per TICKET-032 / ADR-0037; aggregator wrapper; freshness `--check` contract; rule-count + namespace assertions) |
-| `scripts/audit-standards-conformance.sh` | `tests/test-audit-standards-conformance.sh` | 8 (per TICKET-032 / ADR-0037; pre-commit conformance gate; deviation registry contract) |
-| **Total** | **18/18 testable surfaces** | **~194 assertions** |
+| `scripts/audit-standards-conformance.sh` | `tests/test-audit-standards-conformance.sh` | 17 (per TICKET-032 / ADR-0037; pre-commit conformance gate; deviation registry contract; +registry breadth + 8-namespace fullstack/cloud coverage per TICKET-051 / ADR-0049) |
+| `scripts/audit-eo-governance.sh` | `tests/test-audit-eo-governance.sh` | 12 (per TICKET-050 / ADR-0048; EO non-exemptibility + two-phase `eo_design_conformance` attestation; +green-only-bite + `deviated`-tolerance edge cases per TICKET-051 / ADR-0049) |
+| `scripts/audit-source-citations.sh` | `tests/test-source-citations.sh` | 17 (per TICKET-051 / ADR-0049; authoritative-source citation-integrity gate — PART A registry provenance/namespace coverage incl. fullstack+cloud, PART B source-doc integrity incl. the TIER-0 corpus) |
+| **Total** | **20/20 testable surfaces** | **~235 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

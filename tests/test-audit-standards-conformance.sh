@@ -56,6 +56,22 @@ grep -q "Rule ID.*File scope.*Justification.*ADR.*Expiry trigger" docs/deviation
     && { log "  ✓ deviations registry has correct columns"; passes=$((passes+1)); } \
     || { log "  ✗ deviations registry columns missing"; failures=$((failures+1)); }
 
+# Test 8: the active registry the gate runs against exists + is non-empty.
+REG=.harness/rules/active.json
+[ -s "$REG" ] && { log "  ✓ active rule registry present + non-empty"; passes=$((passes+1)); } \
+              || { log "  ✗ active rule registry missing/empty"; failures=$((failures+1)); }
+
+# Test 9: the registry covers the full operator-declared authoritative-source set
+# (fullstack + cloud) — a regression that silently dropped a whole source category
+# would be caught here as well as by audit-source-citations.sh.
+reg=$(cat "$REG" 2>/dev/null)
+for ns in google node owasp react slsa typescript w3c web-vitals; do
+    case "$reg" in
+        *"\"source_namespace\":\"$ns\""*) log "  ✓ registry covers namespace: $ns"; passes=$((passes+1)) ;;
+        *) log "  ✗ registry missing namespace: $ns"; failures=$((failures+1)) ;;
+    esac
+done
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-audit-standards-conformance] OK — $passes/$total passed."; exit 0
 else log "[test-audit-standards-conformance] FAIL — $failures/$total."; exit 1; fi

@@ -36,7 +36,7 @@ jobs:
       - name: Plugin pin freshness check (informational; never fails)
         run: ./scripts/sync-plugin.sh --check || true
 
-      - name: Substrate test suite (18/18)
+      - name: Substrate test suite (all suites; exit 0 on all-pass)
         run: ./tests/test-all.sh --quiet
 
       - name: audit-doc-drift (F-1..F-6 pattern audit)
@@ -56,6 +56,9 @@ jobs:
 
       - name: audit-eo-governance (EO-2026 non-exemptibility + two-phase attestation)
         run: ./scripts/audit-eo-governance.sh --quiet
+
+      - name: audit-source-citations (every enforced rule traces to a cited authoritative source)
+        run: ./scripts/audit-source-citations.sh --quiet
 
       - name: audit-manifest (sha256 + schema validator)
         run: ./scripts/audit-manifest.sh

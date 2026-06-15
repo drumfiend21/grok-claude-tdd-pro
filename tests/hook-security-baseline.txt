@@ -14,6 +14,7 @@ S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf 
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:208:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:109:rm -f "$TMP/handoffs/TICKET-901.req.json" "$TMP/handoffs/TICKET-901.res.json"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:115:rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:24:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:87:rm -f "$TMP/handoffs/TICKET-900.req.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:94:rm -f "$TMP/handoffs/TICKET-900.res.json"
@@ -26,3 +27,4 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f 
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
+S-3|rm -rf usage (verify path is bounded)|tests/test-source-citations.sh:31:trap 'rm -rf -- "$TMP"' EXIT INT TERM

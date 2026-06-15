@@ -110,6 +110,26 @@ rm -f "$TMP/handoffs/TICKET-901.req.json" "$TMP/handoffs/TICKET-901.res.json"
 EO_NAMESPACES="node" EO_RULES_FILE="$TMP/active-noeo.json" EO_HANDOFFS_DIR="$TMP/handoffs" "$SCRIPT" --quiet
 assert_eq "$?" "1" "EO_NAMESPACES override is honored (node-as-EO; req omits g-node-007 → violation)"
 
+# Test 11: a NON-green (red) response missing the attestation is NOT a violation
+# (the two-phase design attestation is only required for green responses).
+rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json
+cat > "$TMP/handoffs/TICKET-903.req.json" <<'JSON'
+{"schema_version":"1","ticket_id":"TICKET-903","applicable_rules":["g-node-007","eo-cyber-001"]}
+JSON
+cat > "$TMP/handoffs/TICKET-903.res.json" <<'JSON'
+{"schema_version":"1","ticket_id":"TICKET-903","status":"red","error":{"code":"gate_failed"}}
+JSON
+EO_RULES_FILE="$TMP/active-eo.json" EO_HANDOFFS_DIR="$TMP/handoffs" "$SCRIPT" --quiet
+assert_eq "$?" "0" "red response without attestation is not flagged (only green requires it)"
+
+# Test 12: a green response whose rules_verified marks the EO rule 'deviated'
+# (not 'pass') is still acceptable so long as the design attestation is present.
+cat > "$TMP/handoffs/TICKET-903.res.json" <<'JSON'
+{"schema_version":"1","ticket_id":"TICKET-903","status":"green","rules_verified":{"eo-cyber-001":"deviated"},"eo_design_conformance":{"design_phase_attested":true,"rules_considered":["eo-cyber-001"]}}
+JSON
+EO_RULES_FILE="$TMP/active-eo.json" EO_HANDOFFS_DIR="$TMP/handoffs" "$SCRIPT" --quiet
+assert_eq "$?" "0" "green + deviated EO rule + attestation present → exit 0"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-audit-eo-governance] OK — $passes/$total passed."; exit 0
 else log "[test-audit-eo-governance] FAIL — $failures/$total."; exit 1; fi

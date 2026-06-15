@@ -71,4 +71,13 @@ if [ -x scripts/audit-eo-governance.sh ]; then
     scripts/audit-eo-governance.sh || true
 fi
 
+# Authoritative-source citation-integrity gate (per TICKET-051 / ADR-0049).
+# Verifies every enforced rule in .harness/rules/active.json traces to a cited
+# authoritative source (full fullstack + cloud namespace coverage) AND that every
+# authoritative-source doc named in CLAUDE.md — including the TIER-0 supreme corpus
+# — exists and is cross-referenced. WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-source-citations.sh ]; then
+    scripts/audit-source-citations.sh || true
+fi
+
 exit 0
