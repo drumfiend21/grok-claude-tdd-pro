@@ -14,13 +14,14 @@
 
 ## §0 Fastest path — your first green ticket in <2 minutes (per Musk-letter §5)
 
-If you just want to see the harness produce a contract-valid green ticket end-to-end without typing a single slash command, run:
+If you just want to see the harness set up and prove itself end-to-end without typing a single slash command, run the one-line installer:
 
 ```bash
 git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-claude-tdd-pro
-./scripts/sync-plugin.sh --ensure       # ~20 seconds (clones plugin cache)
-./scripts/smoke-e2e.sh                  # ~5 seconds (full 4-artifact pipeline)
+./install.sh                            # sets up + self-checks; ~20–30s (mostly a one-time download)
 ```
+
+`./install.sh` materializes the pinned plugin and runs the end-to-end self-check for you, printing plain-language ✓/✗ and a "what now" pointer. (Prefer the two steps by hand? They're `./scripts/sync-plugin.sh --ensure` then `./scripts/smoke-e2e.sh`.)
 
 Output you'll see:
 
@@ -59,18 +60,22 @@ You will use at least one of:
 git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git
 cd grok-claude-tdd-pro
 
-# Materialize the plugin cache + regenerate .cursor/rules/
-./scripts/sync-plugin.sh --ensure
+# One command: materialize the pinned plugin + run the end-to-end self-check
+./install.sh
+```
 
-# Verify your environment — all 5 should exit 0
-./scripts/sync-plugin.sh --check
-./scripts/smoke-e2e.sh
+If you see `✅ Done`, the harness is operationally ready. The installer works on any recent Node version (the self-check pins a stable test-output format, so Node 24+ is fine). If something is wrong it prints a plain-language ✗ telling you exactly what to fix.
+
+Prefer to run each check yourself? The longhand is:
+
+```bash
+./scripts/sync-plugin.sh --ensure        # materialize the pinned plugin cache
+./scripts/sync-plugin.sh --check         # drift report (leaves cache at the pin)
+./scripts/smoke-e2e.sh                   # end-to-end 4-artifact pipeline
 ./scripts/audit-doc-drift.sh
 ./scripts/export-cursor-rules.sh --check
 ./scripts/audit-manifest.sh
 ```
-
-If all five exit 0, the harness is operationally ready. If any fail, the failure message will name the specific drift; address it before proceeding.
 
 ## §3 Pick your usage mode (5 minutes — answer for yourself)
 

@@ -60,6 +60,17 @@ case "$toy_test_output" in
         ;;
 esac
 
+# Test 8: the test gate pins the TAP reporter (regression guard per TICKET-054 /
+# ADR-0051). Node >= 24 defaults to the `spec` reporter ("ℹ pass N"), which the
+# "^# pass " parse cannot read; forcing --test-reporter=tap makes the gate work on
+# every Node version. This assertion fails loudly if the flag is ever dropped, even
+# on a Node version whose default output happens to still parse.
+if grep -q -- '--test-reporter=tap' scripts/smoke-e2e.sh; then
+    log "  ✓ test gate pins --test-reporter=tap (Node-version-robust)"; passes=$((passes+1))
+else
+    log "  ✗ test gate no longer pins --test-reporter=tap (will break on Node >= 24)"; failures=$((failures+1))
+fi
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-smoke-e2e] OK — $passes/$total passed."; exit 0
 else log "[test-smoke-e2e] FAIL — $failures/$total."; exit 1; fi

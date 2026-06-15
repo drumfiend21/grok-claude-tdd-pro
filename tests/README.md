@@ -50,7 +50,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `scripts/audit-eo-governance.sh` | `tests/test-audit-eo-governance.sh` | 12 (per TICKET-050 / ADR-0048; EO non-exemptibility + two-phase `eo_design_conformance` attestation; +green-only-bite + `deviated`-tolerance edge cases per TICKET-051 / ADR-0049) |
 | `scripts/audit-source-citations.sh` | `tests/test-source-citations.sh` | 17 (per TICKET-051 / ADR-0049; authoritative-source citation-integrity gate — PART A registry provenance/namespace coverage incl. fullstack+cloud, PART B source-doc integrity incl. the TIER-0 corpus) |
 | `tests/integration/` generative pipeline (`simulate.mjs` + 6 scenarios) | `tests/integration/test-generative-integration.sh` | 17 (per TICKET-052 / ADR-0050; non-technical user → world-class delivery across cloud + fullstack; real EO + citation gates over emitted artifacts; 3 negative gate-rejection modes — see `tests/integration/README.md`) |
-| **Total** | **21/21 testable surfaces** | **~252 assertions** |
+| `install.sh` | `tests/test-install.sh` | 9 (per TICKET-054 / ADR-0051; one-command setup + self-check; exit-code contract 0/1/2; `--quick`; prerequisite/location guard) |
+| **Total** | **22/22 testable surfaces** | **~261 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

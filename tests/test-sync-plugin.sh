@@ -71,6 +71,16 @@ else
     failures=$((failures + 1))
 fi
 
+# Test 7: --check leaves the cache at the PINNED commit, not branch HEAD
+# (regression guard per TICKET-054 / ADR-0051). A read-only --check must not park
+# the cache on branch HEAD: the .claude/skills/* symlinks resolve into the cache at
+# the pinned commit, and a drifted cache silently loads the wrong plugin AND trips
+# audit-plugin-surface on the next run once upstream adds a top-level dir.
+"$SCRIPT" --check --quiet >/dev/null 2>&1
+PIN=$(grep '^pinned_commit:' "$LOCKFILE" | awk '{print $2}')
+CACHE_HEAD=$(git -C .harness/plugin-cache/claude-tdd-pro rev-parse HEAD 2>/dev/null || echo "")
+assert_eq "$CACHE_HEAD" "$PIN" "--check leaves cache at the pinned commit (not branch HEAD)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-sync-plugin] OK — $passes/$total passed."; exit 0
 else log "[test-sync-plugin] FAIL — $failures/$total."; exit 1; fi

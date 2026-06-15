@@ -160,17 +160,24 @@ log "  ok: .trim() inserted after .toLowerCase()"
 log "step 3/4: test gate"
 TEST_OUT="$(mktemp)"
 TEST_EXIT=0
-node --test "$TOY_TEST" > "$TEST_OUT" 2>&1 || TEST_EXIT=$?
+# Force the TAP reporter so the parse below is deterministic across Node versions.
+# Node >= 24 defaults to the `spec` reporter (emits "ℹ pass N", not "# pass N") even
+# when piped, which silently broke the `grep '^# pass '` parse under set -o pipefail.
+# TAP output is identical on the LTS line and stable going forward (per ADR-0051).
+node --test --test-reporter=tap "$TOY_TEST" > "$TEST_OUT" 2>&1 || TEST_EXIT=$?
 if (( TEST_EXIT != 0 )); then
     if (( VERBOSE )); then cat -- "$TEST_OUT" >&2; fi
     rm -f -- "$TEST_OUT"
     fail "test gate failed (node --test exit=$TEST_EXIT); inner loop did not close the Red test"
 fi
-TESTS_PASSED="$(grep -- '^# pass ' "$TEST_OUT" | awk '{print $3}')"
-TESTS_FAILED="$(grep -- '^# fail ' "$TEST_OUT" | awk '{print $3}')"
-DURATION_MS="$(grep -- '^# duration_ms ' "$TEST_OUT" | awk '{printf "%d", $3}')"
+# `|| true` so a no-match never aborts the pipeline under `set -o pipefail` before
+# the explicit guard below — the script reports a clear parse error instead of dying
+# silently (the failure mode that masked the Node-24 reporter change; ADR-0051).
+TESTS_PASSED="$(grep -- '^# pass ' "$TEST_OUT" | awk '{print $3}' || true)"
+TESTS_FAILED="$(grep -- '^# fail ' "$TEST_OUT" | awk '{print $3}' || true)"
+DURATION_MS="$(grep -- '^# duration_ms ' "$TEST_OUT" | awk '{printf "%d", $3}' || true)"
 rm -f -- "$TEST_OUT"
-[[ -n "$TESTS_PASSED" ]] || fail "could not parse test pass count"
+[[ -n "$TESTS_PASSED" ]] || fail "could not parse test pass count (node --test output format?)"
 [[ "$TESTS_FAILED" == "0" ]] || fail "test gate reported $TESTS_FAILED failures"
 log "  ok: $TESTS_PASSED passed, $TESTS_FAILED failed"
 

@@ -4,8 +4,8 @@ S-3|rm -rf usage (verify path is bounded)|scripts/audit-doc-drift.sh:51:trap 'rm
 S-3|rm -rf usage (verify path is bounded)|scripts/audit-manifest.sh:66:trap 'rm -f -- "$findings_file"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/emit-manifest.sh:154:trap 'rm -f -- "$TMP_OUT"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/export-cursor-rules.sh:69:    trap 'rm -rf -- "$OUTDIR"' EXIT INT TERM
-S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:166:    rm -f -- "$TEST_OUT"
-S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:172:rm -f -- "$TEST_OUT"
+S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:170:    rm -f -- "$TEST_OUT"
+S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:179:rm -f -- "$TEST_OUT"
 S-3|rm -rf usage (verify path is bounded)|scripts/standards-sync.sh:50:trap 'rm -f -- "$TMP_OUT"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/standards-sync.sh:67:        rm -f "$TMP_OUT.norm" "$TMP_OUT.cur"
 S-3|rm -rf usage (verify path is bounded)|scripts/standards-sync.sh:70:    rm -f "$TMP_OUT.norm" "$TMP_OUT.cur"
@@ -27,5 +27,6 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-plugin-surface.sh:51:
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
+S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
 S-3|rm -rf usage (verify path is bounded)|tests/test-source-citations.sh:31:trap 'rm -rf -- "$TMP"' EXIT INT TERM

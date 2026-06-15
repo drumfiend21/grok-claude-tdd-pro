@@ -232,6 +232,19 @@ while IFS="	" read -r CSF_PATH CSF_EXPECTED_SHA; do
     fi
 done < "$TMP_CSF"
 
+# Read-only restore (per TICKET-054 / ADR-0051): the upstream comparison above
+# needs the cache cloned at branch HEAD, but a `--check` must NOT leave it there —
+# the .claude/skills/* symlinks resolve into this cache at the PINNED commit, so a
+# cache parked on branch HEAD silently loads the wrong plugin (and, once upstream
+# adds a top-level dir, trips audit-plugin-surface on the next run). Restore the pin
+# now that the comparison is done. `--update` intentionally skips this: it leaves the
+# cache at the new HEAD, which it is about to make the pin.
+if [ "$MODE" = "check" ]; then
+    git -C "$CLONE_DIR" fetch --depth=1 origin "$PINNED_COMMIT" >/dev/null 2>&1 \
+        && git -C "$CLONE_DIR" checkout "$PINNED_COMMIT" >/dev/null 2>&1 \
+        || log "  note      : could not restore cache to pin (offline?); run --ensure"
+fi
+
 if [ "$DRIFTED_COUNT" -eq 0 ]; then
     log "  contract  : 0 files drifted (commits moved, contract surface stable)"
     if [ "$MODE" = "update" ]; then

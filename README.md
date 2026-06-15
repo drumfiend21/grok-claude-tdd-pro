@@ -153,7 +153,15 @@ git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git
 cd grok-claude-tdd-pro
 ```
 
-### 2. Materialize the plugin cache
+### 2. Install (one command)
+
+```bash
+./install.sh
+```
+
+This materializes the pinned plugin and runs the end-to-end self-check, printing plain-language ✓/✗ and a "what now" pointer. It typically finishes in **20–30 seconds** (almost all of which is the one-time plugin download) and works on any recent Node version. If you'd rather run each step yourself, the manual breakdown is below.
+
+### 2b. (Manual alternative) Materialize the plugin cache
 
 This is the **session-start ritual**. It runs automatically in Claude Code (via `.claude/hooks/session-start.sh`) and in Cursor (via `.cursor/rules/agent-context.mdc` always-loaded context). Run it manually for first-time setup:
 
@@ -233,6 +241,7 @@ For the alternative inner-loop driver (when you want a guaranteed-Claude model r
 ## Repo map (one-screen orientation)
 
 ```
+install.sh                 One-command setup + self-check (run this first)
 AGENTS.md                  Cross-tool agent-binding surface (Cursor/Codex/Amp/Jules/Grok Build)
 CLAUDE.md                  Claude Code prime directive + authority hierarchy
 TICKETS.md                 Ticket ledger (one ticket per CL; all rows marked DONE)
