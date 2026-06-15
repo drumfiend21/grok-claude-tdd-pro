@@ -19,12 +19,15 @@ git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-clau
 ```
 
 `./install.sh` downloads the pinned CTP plugin, wires it in, and runs an end-to-end
-self-check (~20–30 seconds, mostly the one-time download). When you see `✅ Done`,
-open the folder in **Cursor** or **Claude Code** and drive the workflow:
+self-check (~20–30 seconds, mostly the one-time download). When you see `✅ Done`:
 
-```
-/research <your idea>     → /decompose → /dispatch TICKET-NNN → /inner-loop TICKET-NNN → /audit
-```
+- In **Cursor** (the smoother surface) drive the workflow with slash commands:
+  ```
+  /research <your idea> → /decompose → /dispatch TICKET-NNN → /inner-loop TICKET-NNN → /audit
+  ```
+- In **Claude Code** those slash commands don't appear (the harness wires 3 skills + hooks,
+  not Claude Code commands) — just **describe what you want in plain English** and the skills
+  take over, or use headless `claude -p`.
 
 Full walk-through: [`QUICKSTART.md`](../QUICKSTART.md). See a complete worked example
 first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
@@ -36,18 +39,27 @@ first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
 
 ---
 
-## Path B — Use CTP on its own (the plugin, in any Claude Code project)
+## Path B — Use CTP on its own (the plugin, in your own project)
 
 If you just want the engineering plugin inside your own project (no GCTP harness),
-install it with **CTP's own one-line installer** — the latest, straight from CTP:
+install it with **CTP's own one-line installer**:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/drumfiend21/claude-tdd-pro/main/scripts/install.sh | bash
 ```
 
-It's interactive and finishes in under a minute. It runs a quick preflight
-(`bash ≥ 3.2`, `node ≥ 18`, `ruby ≥ 3.0`, `git`), detects conflicts with other
-plugins, and walks you through a few choices in plain language.
+> ⚠️ **Before you run it, two real constraints (verified on a fresh machine):**
+> - **It needs `ruby ≥ 3.0` on your PATH, or it stops cold** (`exit 3`, nothing installed).
+>   Many targets don't have it: **stock macOS ships ruby 2.6** (too old — you need
+>   Homebrew's ruby on PATH), and **Claude Code's web/cloud sandbox has no ruby at all.**
+> - **It is Cursor-oriented.** It writes `.cursorrules`, installs CTP's commands under
+>   `~/.claude-tdd-pro/`, and finishes by telling you to *open in Cursor*. It does **not**
+>   register CTP as a Claude Code plugin, so CTP's slash commands appear in **Cursor**,
+>   not in a plain Claude Code chat.
+
+It's interactive and (when ruby is present) finishes in under a minute: a preflight
+(`bash ≥ 3.2`, `node ≥ 18`, `ruby ≥ 3.0`, `git`), conflict detection, then a few
+plain-language choices.
 
 **Useful forms:**
 
@@ -70,29 +82,40 @@ Canonical, always-current details live in CTP's own docs:
 
 ---
 
-## Once CTP is installed, the commands you'll actually use
+## Once it's installed — how you actually drive it
 
-Type a **slash command** in Claude Code. The friendliest starting points:
+**Important:** in this ecosystem the slash commands are a **Cursor** surface. In a plain
+**Claude Code** chat you don't get slash commands from either path — instead the 3
+`tdd-pro-*` skills auto-trigger and the hooks enforce quality as you work, so you just
+**describe what you want in plain English** (or use headless `claude -p`). For the full
+guided, slash-command flow, **Cursor is the smoother surface.**
 
-| Type this | When you want to… | What it does |
+If you're in **Cursor**, these slash commands are available:
+
+| Type this (in Cursor) | From | What it does |
 |---|---|---|
-| **`/architect`** then describe your idea | design something new | Interviews you in plain English, turns your idea into decisions, gives you **grounded options with trade-offs**, and writes the design records (ADRs) — then hands off to build. |
-| **`/analyze`** | check code you already have | Read-only audit of your working tree → a plain-English report with cited findings (and a list of risky files). |
-| **`/onboard`** | get oriented in an existing project | Tours the codebase and proposes conventions. |
-| **`/feature` `<description>`** | build a feature | Builds it test-first (Red → Green → Refactor). |
-| **`/doctor`** | make sure setup is healthy | Smoke-tests every tool and reports a green/yellow/red matrix. |
-| **`/help`** | you're not sure | Explains your options. |
+| **`/analyze`** | CTP | Read-only audit of existing code → a plain-English report with cited findings + risky-file list. |
+| **`/onboard`** | CTP | Tours an existing codebase and proposes conventions. |
+| **`/feature` `<description>`** | CTP | Builds a feature test-first (Red → Green → Refactor). |
+| **`/spec`** / **`/plan-first`** `<description>` | CTP | Writes a spec / a plan before any code. |
+| **`/doctor`** | CTP | Smoke-tests the toolchain; green/yellow/red matrix. |
+| **`/research` → `/decompose` → `/dispatch` → `/inner-loop` → `/audit`** | GCTP | The harness's outer→inner loop. |
 
-> Every choice `/architect` and `/analyze` make is **backed by a cited source** —
-> OWASP, Google's style guides, SLSA, WCAG, and more — so the professional-grade
+> **There is no `/architect` or `/help` slash command.** "Architect" is a *skill/agent*
+> the engine runs when you describe an architecture need — so for a new design you just
+> **describe your idea in plain English** (or use `/spec` / `/plan-first` in Cursor); it
+> then interviews you, gives grounded options with trade-offs, and writes the design records.
+
+> Every choice `/analyze`, `/feature`, and the architect skill make is **backed by a cited
+> source** — OWASP, Google's style guides, SLSA, WCAG, and more — so the professional-grade
 > parts you'd never know to ask for are added (and justified) for you.
 
 ---
 
 ## If you get stuck
 
-- Run **`/doctor`** (CTP) or **`./install.sh`** again (GCTP) — both are safe to re-run.
-- Or just **ask in plain English**: "what should I do next?" works fine.
+- In **Cursor**: run **`/doctor`** (CTP). In **GCTP**: run **`./install.sh`** again — both are safe to re-run.
+- Or just **ask in plain English**: "what should I do next?" works fine in any chat.
 
 > 💡 **Want to watch a full run before you try?** Open the
 > [end-to-end demonstration](end-to-end-demo/README.md) — a non-technical person's
