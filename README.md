@@ -4,7 +4,7 @@
 ![Audits](https://img.shields.io/badge/audits-10%2F10%20green-brightgreen)
 ![Tickets](https://img.shields.io/badge/tickets-36%20DONE-blue)
 ![ADRs](https://img.shields.io/badge/ADRs-41%20landed-blue)
-![Plugin pin](https://img.shields.io/badge/plugin%20pin-bba77df-informational)
+![Plugin pin](https://img.shields.io/badge/plugin%20pin-4354903-informational)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%3E%3D2.0.0%2C%3C3.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -311,12 +311,12 @@ examples/
 
 ## Status (2026-06-07)
 
-All numbered tickets DONE through **TICKET-036**. **41 ADRs** landed (`docs/adr/0001-...md` through `0041-...md`; Nygard append-only with explicit SUPERSEDES chains). Plugin pin synced at `bba77df`; cross-repo paired with `claude-tdd-pro` ADR-0006. Full audit chain (10 audits + smoke-e2e + 18/18 substrate test suites) exits 0 at every commit.
+All numbered tickets DONE through **TICKET-036**. **41 ADRs** landed (`docs/adr/0001-...md` through `0041-...md`; Nygard append-only with explicit SUPERSEDES chains). Plugin pin synced at `4354903` (bumped from `bba77df` per ADR-0052 — adopts CTP's cloud-architect + EO + dog-walker-demo content; additive-only, 0 deletions); cross-repo paired with `claude-tdd-pro` ADR-0006. Full audit chain (10 audits + smoke-e2e + 18/18 substrate test suites) exits 0 at every commit.
 
 - **Substrate tests:** 18/18 suites passing (~194 assertions). One test per executable substrate script + every Claude Code hook + the swarm coordinator's collection contract.
 - **Audit chain (all exit 0):** `audit-doc-drift` (F-1..F-6 patterns), `audit-cross-references` (approval-baseline), `audit-hook-security` (S-1..S-6 CWE-mapped patterns), `audit-manifest` (sha256 + schema), `audit-plugin-surface` (55 plugin surfaces declared), `audit-standards-conformance` (rubric runner against the diff), `audit-metrics` (DORA Four Keys), `audit-claude-code-compat` (host-CLI semver range), `sync-plugin --check`, `smoke-e2e`.
 - **Plugin surface:** 55 top-level surfaces declared (11 CONSUMED + 44 DECLARED-NOT-CONSUMED + 0 UNKNOWN).
-- **Standards loaded:** 28 rules at session start from 9 namespaces — `google`, `owasp`, `slsa`, `react`, `node`, `typescript`, `w3c` (WCAG 2.2), `web-vitals`, `_community`.
+- **Standards loaded:** 28 rubric rules at session start from 8 rule-bearing namespaces — `google`, `owasp`, `slsa`, `react`, `node`, `typescript`, `w3c` (WCAG 2.2), `web-vitals` — plus `_community`. Since ADR-0052 the registry also *sees* CTP's cloud + governance guidance corpora (`aws`, `azure`, `gcp`, `hashicorp`, `linux-foundation`, `security-governance`, `us-government`), which feed CTP's `/architect` grounding engine rather than the rubric detectors (0 rubric rules — guidance only).
 - **PR-quality corpus:** 10 elite engineering-org sources (see "Engineering standards enforced" section below).
 - **Claude Code:** declared range `>=2.0.0,<3.0.0`; current tested version `2.1.x`.
 
@@ -332,7 +332,7 @@ What's explicitly deferred (with documented rationale in ADR Out-of-scope sectio
 
 The plugin maintains a versioned standards inventory (refreshed daily on the publisher side) that aggregates into a single rule registry at `.harness/rules/active.json` on every session start. The PostToolUse hook runs `rubric/runner.sh --diff --severity P0` after every Edit/Write on app-code files; **P0 violations block the write at keystroke-time**, not at commit-time.
 
-Sources currently enforced (28 rules across 9 namespaces, from plugin `bba77df`):
+Sources currently enforced (28 rubric rules across 8 rule-bearing namespaces + `_community`, from plugin `4354903`):
 
 | Namespace | Examples |
 |---|---|

@@ -29,10 +29,10 @@ open the folder in **Cursor** or **Claude Code** and drive the workflow:
 Full walk-through: [`QUICKSTART.md`](../QUICKSTART.md). See a complete worked example
 first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
 
-> **Why automatic?** GCTP consumes CTP *by reference* at a pinned version
-> (currently `bba77df`, CTP v0.4.0) so every machine gets identical behavior. The
-> pin is bumped only via an ADR (see [`docs/plugin-sync.md`](plugin-sync.md)). You
-> never hand-install CTP for this path.
+> **Why automatic?** GCTP consumes CTP *by reference* at a pinned commit
+> (currently `4354903`) so every machine gets identical behavior. The pin is bumped
+> only via an ADR (most recently ADR-0052; see [`docs/plugin-sync.md`](plugin-sync.md)).
+> You never hand-install CTP for this path.
 
 ---
 

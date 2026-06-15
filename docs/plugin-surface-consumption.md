@@ -41,6 +41,7 @@
 | `design-tokens` | DECLARED-NOT-CONSUMED | Frontend platform addition per plugin v1.11 §26 amendment (R-9 design-token registry). Not applicable to harness substrate (bash + markdown); will become relevant when harness is used to ship a Next.js / frontend application. ADR-0041. |
 | `docs` | DECLARED-NOT-CONSUMED | Plugin's internal docs (architecture-v1.9.md is referenced by hash via `docs/claude-tdd-pro.lock.yaml` contract surface). ADR-0037. |
 | `evals` | CONSUMED via response-gate hook (planned Batch 6) | v1 status: declared, wire-in-progress. |
+| `examples` | DECLARED-NOT-CONSUMED | Plugin's worked examples (e.g. `dog-walker-marketplace`), added upstream after the prior pin and introduced by the `bba77df`→`4354903` bump. The harness ships its own walkthrough at `docs/end-to-end-demo/`; it does not consume the plugin's examples. ADR-0052 (pin bump introduced this entry). |
 | `formatters` | CONSUMED via PostToolUse hook (per TICKET-033 / ADR-0038 Batch 7) | `formatters/cli.sh --file <REL_PATH> --apply` runs after the rubric check; auto-applies formatting to app-code extensions. |
 | `generated-code-quality-standards` | CONSUMED via `scripts/standards-sync.sh` (Batch 2) | `.harness/rules/active.json` aggregation source. |
 | `git` | DECLARED-NOT-CONSUMED | Plugin's git tooling; harness uses git directly. ADR-0037. |

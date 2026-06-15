@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   bba77dfacb5be0cb31c8bea712b98fadb8618ea0
-pinned_at:       2026-06-07T00:43:02+00:00
-pinned_message:  "docs(adr-0006): correct harness-side cross-reference from ADR-0039 to ADR-0040 (TICKET-036)"
+pinned_commit:   4354903d56cc7a4382ad47c920df4a7b806ee1b5
+pinned_at:       2026-06-15T17:53:45+00:00
+pinned_message:  "Merge origin/main: cloud-architect (v1.13-v1.16) + EO security-governance (v1.18) + generative-integration suite + dog-walker E2E demo"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -27,9 +27,9 @@ pinned_message:  "docs(adr-0006): correct harness-side cross-reference from ADR-
 # requires an ADR before bumping the pin.
 contract_surface_files:
   - path:   CLAUDE.md
-    sha256: 00e8b9c6d382941f9ef6e7ab4cb53615a08fe592ff96bae009c3c5f9ee24b649
+    sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: c01bb1425a6f317fce3d5c5906cd66ebdd05c672c82d89700d24a415aa87e202
+    sha256: 78eb164b05801215d88dc8a74ad666499c1974489028f73a78f2ad113e532b3e
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-06-07T00:43:02Z
-last_synced_session: "TICKET-018 pin bump per ADR-0025"
+last_synced_at:      2026-06-15T20:15:00Z
+last_synced_session: "TICKET-056 pin bump bba77df→4354903 per ADR-0052"

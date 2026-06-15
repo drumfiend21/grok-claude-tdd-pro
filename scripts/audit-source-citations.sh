@@ -68,7 +68,15 @@ done
 emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 
 RULES_FILE="${SRC_RULES_FILE:-.harness/rules/active.json}"
-ALLOW_EMPTY_NS="${SRC_ALLOW_EMPTY_NS:-_community}"
+# Namespaces that legitimately carry NO rubric/detector rules in active.json:
+#   _community  — operator-extensible namespace
+#   the architecture-GUIDANCE namespaces CTP ships at pin 4354903 (cloud +
+#   governance source corpora that feed the /architect S/L/C grounding engine,
+#   NOT the rubric detectors) — they appear in namespaces_seen but aggregate to
+#   zero rubric rules by design (per ADR-0052). A4's required-set guard still
+#   protects the rule-bearing namespaces (google/node/owasp/react/slsa/
+#   typescript/w3c/web-vitals), so allow-listing these does not mask a real drop.
+ALLOW_EMPTY_NS="${SRC_ALLOW_EMPTY_NS:-_community aws azure gcp hashicorp linux-foundation security-governance us-government}"
 REQUIRED_NS="${SRC_REQUIRED_NS:-google node owasp react slsa typescript w3c web-vitals}"
 SECURITY_NS="${SRC_SECURITY_NS:-owasp slsa}"
 ROOT="${SRC_ROOT:-.}"
