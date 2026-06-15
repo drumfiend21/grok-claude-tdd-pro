@@ -13,9 +13,11 @@ for arg in "$@"; do [ "$arg" = "--quiet" ] && QUIET=1; done
 passed_suites=0; failed_suites=0; total_assertions=0
 failed_suite_names=""
 
-for t in tests/test-*.sh; do
+for t in tests/test-*.sh tests/integration/test-*.sh; do
     # Don't recurse into self
     [ "$t" = "tests/test-all.sh" ] && continue
+    # Skip an unmatched glob (e.g. no integration suites present yet).
+    [ -e "$t" ] || continue
     [ -x "$t" ] || continue
 
     suite_name=$(basename "$t" .sh)

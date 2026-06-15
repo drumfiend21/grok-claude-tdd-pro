@@ -1,0 +1,21 @@
+{
+  "id": "neighborhood-event-board",
+  "domain": "fullstack",
+  "persona": "Priya, a community volunteer with no technical background",
+  "plain_request": "Our neighborhood needs a page where people can post local events and others can RSVP. It has to be reliable — I can't have it losing people's sign-ups.",
+  "title": "neighborhood event board with RSVPs",
+  "detected_stack": ["TypeScript", "React / Next.js", "Node.js"],
+  "expected_namespaces": ["google", "typescript", "react", "node", "w3c"],
+  "critical_namespace": "node",
+  "critical_rationale": "The user asks for 'reliable, can't lose sign-ups'; world-class delivery enforces Node backend correctness (transaction boundaries, typed errors, structured logging, fetch timeouts) from the node namespace — invisible plumbing the user cannot specify.",
+  "acceptance_criteria": [
+    "A resident can post an event with a title, date, and location",
+    "A resident can RSVP and the RSVP is never lost even if two people sign up at once",
+    "The page is keyboard- and screen-reader-accessible",
+    "Backend errors are logged and surfaced as a friendly message, never a crash"
+  ],
+  "file_scope": {
+    "may_edit": ["app/**", "server/**", "lib/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}

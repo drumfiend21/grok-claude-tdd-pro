@@ -1,0 +1,21 @@
+{
+  "id": "serverless-photo-resize-api",
+  "domain": "cloud",
+  "persona": "Tomas, a wedding photographer who cannot code",
+  "plain_request": "When I upload a photo, I want it automatically resized into web, thumbnail, and print sizes and stored in the cloud. I just want to drop a file and have it work — and obviously my clients' photos must stay private.",
+  "title": "serverless photo-resize API",
+  "detected_stack": ["Node.js (serverless functions)", "Infrastructure-as-Code", "Object storage"],
+  "expected_namespaces": ["node", "owasp", "slsa"],
+  "critical_namespace": "owasp",
+  "critical_rationale": "The user says 'photos must stay private' but cannot name a control; world-class delivery enforces OWASP ASVS (owasp namespace) — schema validation at the upload boundary, secrets via env, no hardcoded credentials.",
+  "acceptance_criteria": [
+    "Uploading an image triggers automatic resizing into web, thumbnail, and print variants",
+    "Every uploaded file is validated (type, size) at the boundary before any processing",
+    "Storage credentials come from the environment, never from source code",
+    "Only the owner can read their stored photos"
+  ],
+  "file_scope": {
+    "may_edit": ["functions/**", "infra/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}

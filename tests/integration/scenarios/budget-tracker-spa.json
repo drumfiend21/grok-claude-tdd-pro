@@ -1,0 +1,21 @@
+{
+  "id": "budget-tracker-spa",
+  "domain": "fullstack",
+  "persona": "Dev, a bakery owner who has never written code",
+  "plain_request": "I need a simple app to track my bakery's daily income and expenses and show me a chart of the month. Make it work nicely on my phone.",
+  "title": "small-business budget tracker SPA",
+  "detected_stack": ["TypeScript", "React", "Node.js"],
+  "expected_namespaces": ["google", "typescript", "react", "node", "web-vitals"],
+  "critical_namespace": "web-vitals",
+  "critical_rationale": "The user asks for 'nice on my phone'; world-class delivery enforces Core Web Vitals bundle budgets + image/font optimization (web-vitals namespace) which a layperson cannot name.",
+  "acceptance_criteria": [
+    "The owner can record an income or expense entry with an amount and category",
+    "The app shows a running monthly total and a chart of spending by category",
+    "Entered amounts are validated so a typo cannot corrupt the totals",
+    "First-load bundle stays within the route budget so the app opens fast on mobile"
+  ],
+  "file_scope": {
+    "may_edit": ["src/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}

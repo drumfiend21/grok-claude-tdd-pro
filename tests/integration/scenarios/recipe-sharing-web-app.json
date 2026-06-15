@@ -1,0 +1,21 @@
+{
+  "id": "recipe-sharing-web-app",
+  "domain": "fullstack",
+  "persona": "Maria, a home cook with zero coding experience",
+  "plain_request": "I want a website where my whole family can post our recipes, search them by ingredient, and leave comments. I don't know anything about computers — please just make it good.",
+  "title": "family recipe-sharing web app",
+  "detected_stack": ["TypeScript", "React / Next.js", "Node.js"],
+  "expected_namespaces": ["google", "typescript", "react", "node", "w3c", "web-vitals"],
+  "critical_namespace": "w3c",
+  "critical_rationale": "A non-technical user never asks for accessibility; a world-class delivery enforces WCAG 2.2 (w3c namespace) anyway — alt text, focus indicators, correct ARIA.",
+  "acceptance_criteria": [
+    "A visitor can post a recipe with a title, ingredient list, and steps",
+    "A visitor can search recipes by name or by ingredient",
+    "Every image has descriptive alt text and the whole site is usable with only a keyboard",
+    "Pages feel fast on a phone (Largest Contentful Paint under 2.5 seconds)"
+  ],
+  "file_scope": {
+    "may_edit": ["app/**", "components/**", "lib/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}

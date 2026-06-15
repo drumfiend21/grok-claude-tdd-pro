@@ -36,8 +36,11 @@ jobs:
       - name: Plugin pin freshness check (informational; never fails)
         run: ./scripts/sync-plugin.sh --check || true
 
-      - name: Substrate test suite (all suites; exit 0 on all-pass)
+      - name: Substrate + integration test suite (all suites; exit 0 on all-pass)
         run: ./tests/test-all.sh --quiet
+
+      - name: Generative integration suite (non-technical user → world-class delivery)
+        run: ./tests/integration/test-generative-integration.sh --quiet
 
       - name: audit-doc-drift (F-1..F-6 pattern audit)
         run: ./scripts/audit-doc-drift.sh

@@ -1,0 +1,21 @@
+{
+  "id": "multiregion-order-pipeline",
+  "domain": "cloud",
+  "persona": "Aisha, a craft-shop owner selling internationally, no engineering background",
+  "plain_request": "My online shop is growing and sometimes orders get dropped during busy sales. I need order processing that never loses an order and works for customers in different countries.",
+  "title": "event-driven multi-region order pipeline",
+  "detected_stack": ["TypeScript", "Node.js (event-driven services)", "Managed queue + Infrastructure-as-Code"],
+  "expected_namespaces": ["typescript", "node", "owasp", "slsa"],
+  "critical_namespace": "slsa",
+  "critical_rationale": "The user can't name supply-chain risk; a world-class cloud delivery enforces SLSA build provenance (slsa namespace) on every dependency so the pipeline she trusts with real orders is itself trustworthy.",
+  "acceptance_criteria": [
+    "Every placed order is durably enqueued and processed exactly once, even under a traffic spike",
+    "A failed processing step retries with backpressure rather than dropping the order",
+    "Each deployed dependency carries a verified build-provenance attestation",
+    "Order events are validated against a schema before they enter the pipeline"
+  ],
+  "file_scope": {
+    "may_edit": ["services/**", "infra/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}

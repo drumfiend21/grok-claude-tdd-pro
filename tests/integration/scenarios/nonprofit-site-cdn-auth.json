@@ -1,0 +1,21 @@
+{
+  "id": "nonprofit-site-cdn-auth",
+  "domain": "cloud",
+  "persona": "Grace, a nonprofit director with no technical skills",
+  "plain_request": "We need a fast public website for our charity plus a private members area where volunteers log in to see schedules. It must be cheap to run, fast everywhere, and safe for our members' details.",
+  "title": "static site + CDN + authenticated members area",
+  "detected_stack": ["TypeScript", "React / Next.js", "Node.js", "CDN + edge auth + Infrastructure-as-Code"],
+  "expected_namespaces": ["react", "node", "owasp", "slsa", "w3c", "web-vitals"],
+  "critical_namespace": "owasp",
+  "critical_rationale": "The user says 'safe for our members' details' without a vocabulary for it; world-class delivery enforces OWASP ASVS (owasp namespace) on the auth boundary — schema validation, secrets via env — plus accessibility and Web Vitals for the public site.",
+  "acceptance_criteria": [
+    "The public site is served from a CDN and loads fast for visitors anywhere",
+    "Volunteers can log into a private members area to view schedules",
+    "Member login input is schema-validated and credentials are never stored in source",
+    "The public site meets accessibility and Core Web Vitals targets"
+  ],
+  "file_scope": {
+    "may_edit": ["app/**", "edge/**", "infra/**", "tests/**"],
+    "may_read": ["**/*"]
+  }
+}
