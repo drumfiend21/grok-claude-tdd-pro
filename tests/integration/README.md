@@ -1,5 +1,10 @@
 # tests/integration/ — generative-function integration tests
 
+> 📖 **Prose companion:** for a narrated, stepwise walk-through of one of these flows
+> (the Shop-owner / multi-region order pipeline — elicitation → guided decisions →
+> architecture → handoff), see [`docs/end-to-end-demo/`](../../docs/end-to-end-demo/README.md).
+> This page is the *executable* version of that story.
+
 Per TICKET-052 / ADR-0050. This tier answers one question: **when a non-technical
 user describes software in plain English, does the harness deliver world-class
 software for their unique use case — across cloud architecture AND fullstack
