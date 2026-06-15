@@ -9,6 +9,8 @@
 **This is not autopilot.** It is "AI-assisted with discipline you can show an auditor." The value compounds: Day 1 friction is comparable to a normal Cursor session; Week 1+ shows measurable audit-trail completeness + R-G-R discipline.
 
 > 📖 **Want to see it before you set it up?** [`docs/end-to-end-demo/`](docs/end-to-end-demo/README.md) walks one complete flow — a non-technical user's plain-English request becoming a world-class architectural design — from requirements interview to final handoff.
+>
+> 🟢 **Brand new / non-technical?** [`docs/first-time-guide.md`](docs/first-time-guide.md) covers both install paths (the full harness via `./install.sh`, and the underlying **claude-tdd-pro** plugin standalone via its `curl … | bash` installer) and the first commands to type.
 
 **The specific problem this solves that a simpler approach cannot.** A `CONTRIBUTING.md` + a few scripts in your repo can document AI-assisted-development conventions, but they cannot enforce TDD discipline *structurally* across **multiple AI agents** (Cursor's chat / Claude Code / Grok Build / headless `claude -p`), **multiple sessions** (provenance trail survives session boundaries), and **multiple IDEs** (same `AGENTS.md` + slash commands + skills compose everywhere). The harness's value is the cross-tool / cross-session enforcement layer, with a drift-detectable audit trail that an auditor can verify without trusting any individual agent's self-report. If you need only single-IDE, single-session, single-author discipline, a `CONTRIBUTING.md` and three scripts probably suffice; the harness is the layer above that.
 

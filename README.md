@@ -10,6 +10,10 @@
 
 > **An AI software-development harness that ships PR-ready code at the engineering bar of JPMorgan Chase, Stripe, Capital One, FINOS, Kubernetes, and federal-government high-rigor shops (CFPB, 18F, VA, GSA).** Standards from OWASP ASVS + Top 10, Google's TS/JS/Python style guides, SLSA build provenance, WCAG 2.2, Web Vitals, React/Next.js, Node, and TypeScript are enforced **at write-time** — a P0 rule violation blocks the keystroke, not the merge. Every ticket leaves a drift-detectable audit trail (request + response contracts, decision trail, sha256 provenance manifest, AI Bill of Materials). Reproducible across every machine via versioned pins to both the engineering plugin and Claude Code itself. **18/18 substrate test suites + 10 audit lenses + smoke-e2e all green at every commit. 36 tickets DONE, 41 ADRs documented (Nygard append-only with supersession chains).**
 
+> ## 🟢 First time? [Start here →](docs/first-time-guide.md)
+>
+> Non-technical or just want the shortest path to a working setup: [**docs/first-time-guide.md**](docs/first-time-guide.md) covers both ways to install — the full harness in one command (`./install.sh`), and the underlying **claude-tdd-pro** plugin on its own (`curl … | bash`) — plus the first commands to type.
+
 > ## ▶ See it end-to-end
 >
 > **New to the project? The fastest way to understand what this harness does is to watch one flow from start to finish:** [**docs/end-to-end-demo/**](docs/end-to-end-demo/README.md) — a person with **no technical experience** describes the software they need in plain English, and the harness turns it into a **world-class architectural design** with every applicable standard enforced (including the ones they could never name). The [Shop-owner flow](docs/end-to-end-demo/shop-owner-order-pipeline/README.md) is written up across its four phases: [requirements elicitation](docs/end-to-end-demo/shop-owner-order-pipeline/1-requirements-elicitation.md) → [guided technical decisions](docs/end-to-end-demo/shop-owner-order-pipeline/2-guided-technical-decisions.md) → [architecture synthesis](docs/end-to-end-demo/shop-owner-order-pipeline/3-architecture-synthesis.md) → [handoff & standards](docs/end-to-end-demo/shop-owner-order-pipeline/4-handoff-and-standards.md). The executable version is [`tests/integration/`](tests/integration/README.md).
@@ -48,7 +52,8 @@
 
 ### Table of contents
 
-0. [▶ See it end-to-end](docs/end-to-end-demo/README.md) — plain-English request → world-class design (start here)
+0. [🟢 First time? Start here](docs/first-time-guide.md) — both install paths + first commands
+0. [▶ See it end-to-end](docs/end-to-end-demo/README.md) — plain-English request → world-class design
 1. [What it is](#what-it-is)
 2. [Why use it](#why-use-it)
 3. [How it works](#how-it-works)
@@ -247,7 +252,8 @@ CLAUDE.md                  Claude Code prime directive + authority hierarchy
 TICKETS.md                 Ticket ledger (one ticket per CL; all rows marked DONE)
 AUTOMATION_INTEL.md        Append-only enterprise-pitch + adoption-signal log
 docs/
-  end-to-end-demo/                     ▶ START HERE — plain-English request → world-class design (Shop-owner flow, 4 phases)
+  first-time-guide.md                  🟢 START HERE — both install paths (harness + CTP plugin) + first commands
+  end-to-end-demo/                     ▶ plain-English request → world-class design (Shop-owner flow, 4 phases)
   ai-engineering-corpus.md             TIER-0 supreme operating directive
   founder-directives.md                TIER-1 D-1..D-13 + §1 Sources 1-9 (immutable provenance)
   architecture-principles.md           R-1..R-20 architectural rulebook
