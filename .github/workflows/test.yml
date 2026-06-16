@@ -63,6 +63,9 @@ jobs:
       - name: audit-source-citations (every enforced rule traces to a cited authoritative source)
         run: ./scripts/audit-source-citations.sh --quiet
 
+      - name: audit-architecture-crosscheck (GCTP dual-enforcement on CTP's architecture output)
+        run: ./scripts/audit-architecture-crosscheck.sh --quiet
+
       - name: audit-manifest (sha256 + schema validator)
         run: ./scripts/audit-manifest.sh
 

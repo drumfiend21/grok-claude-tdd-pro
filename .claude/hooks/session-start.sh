@@ -80,4 +80,14 @@ if [ -x scripts/audit-source-citations.sh ]; then
     scripts/audit-source-citations.sh || true
 fi
 
+# Architecture cross-check gate (per TICKET-065 / ADR-0056). GCTP's dual-enforcement
+# on CTP's architecture output: for any present consult artifact
+# (.harness/handoffs/FEATURE-NNN.architecture.json), every decision's applicable_rules
+# must resolve in active.json and include the non-exemptible EO rules; cross-check
+# records must not carry an un-deviated fail. Vacuous until /consult runs. WARN at
+# session start; CI is the hard gate.
+if [ -x scripts/audit-architecture-crosscheck.sh ]; then
+    scripts/audit-architecture-crosscheck.sh || true
+fi
+
 exit 0

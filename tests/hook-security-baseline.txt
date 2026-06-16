@@ -13,6 +13,9 @@ S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:208:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/integration/test-generative-integration.sh:52:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:39:rm -f "$TMP/h"/*.json
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:82:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:109:rm -f "$TMP/handoffs/TICKET-901.req.json" "$TMP/handoffs/TICKET-901.res.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:115:rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json

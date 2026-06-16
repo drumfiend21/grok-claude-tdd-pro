@@ -301,7 +301,8 @@ scripts/
   emit-manifest.sh                     Per-ticket provenance manifest (+ --regenerate audit mode)
   audit-manifest.sh                    Manifest schema validator
   export-cursor-rules.sh               Regenerate .cursor/rules/ from sources
-  consult.sh                           Architecture-consult preflight + CTP engine locator (ruby≥3.0 hard prereq; ADR-0056)
+  consult.sh                           Architecture-consult preflight + CTP engine locator + --validate artifact gate (ruby≥3.0 hard prereq; ADR-0056)
+  audit-architecture-crosscheck.sh     GCTP dual-enforcement gate on CTP's architecture output (ADR-0056)
 examples/
   string-utils/                        Toy demo target with a deliberate Red baseline
 .harness/
