@@ -25,6 +25,7 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-metrics.sh:74:rm -rf 
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-metrics.sh:90:rm -rf "$TMPDIR"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-plugin-surface.sh:50:rm -f .harness/plugin-cache/claude-tdd-pro/__sneaky_new_dir__
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-plugin-surface.sh:51:rm -rf "$TMPDIR"
+S-3|rm -rf usage (verify path is bounded)|tests/test-consult.sh:43:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"

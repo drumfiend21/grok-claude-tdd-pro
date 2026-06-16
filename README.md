@@ -280,7 +280,7 @@ docs/
   settings.json                        Hooks config (SessionStart + PostToolUse)
   hooks/session-start.sh               Auto-run sync-plugin.sh --ensure
   hooks/post-tool-use-review-gate.sh   File-fence violation detector
-  commands/*.md                        7 Claude Code slash commands (sync/research/decompose/dispatch/inner-loop/smoke/audit) — mirror .cursor/commands/ (per ADR-0055)
+  commands/*.md                        8 Claude Code slash commands (sync/research/decompose/dispatch/inner-loop/smoke/audit + consult) — mirror .cursor/commands/ (per ADR-0055/0056)
   skills/orchestrating-swarms/         Worker-fanout coordinator (harness-native)
   skills/tdd-pro-*                     Symlinks into the pinned plugin cache
   README.md                            Skill consumption wiring notes
@@ -301,6 +301,7 @@ scripts/
   emit-manifest.sh                     Per-ticket provenance manifest (+ --regenerate audit mode)
   audit-manifest.sh                    Manifest schema validator
   export-cursor-rules.sh               Regenerate .cursor/rules/ from sources
+  consult.sh                           Architecture-consult preflight + CTP engine locator (ruby≥3.0 hard prereq; ADR-0056)
 examples/
   string-utils/                        Toy demo target with a deliberate Red baseline
 .harness/
