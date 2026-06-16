@@ -101,8 +101,48 @@ JSON
     # missing arg → 2
     "$SCRIPT" --validate >/dev/null 2>&1
     assert_eq "$?" "2" "--validate: missing arg → exit 2"
+
+    # --- --roadmap (Stage 7 renderer, CL-4) ---
+    # missing arg → 2
+    "$SCRIPT" --roadmap >/dev/null 2>&1
+    assert_eq "$?" "2" "--roadmap: missing arg → exit 2"
+    # missing file → 2
+    "$SCRIPT" --roadmap "$TMP/nope.json" >/dev/null 2>&1
+    assert_eq "$?" "2" "--roadmap: missing file → exit 2"
+    # refuses to render an invalid artifact → 1
+    "$SCRIPT" --roadmap "$TMP/ng.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--roadmap: invalid artifact → exit 1 (never render from invalid)"
+
+    # valid multi-decision artifact: B depends_on A (listed B-first to prove sequencing).
+    cat > "$TMP/rm.json" <<'JSON'
+{"schema_version":"1","feature_id":"FEATURE-007","user_request":"build a thing","ruby_ok":true,"needs_grounding":0,
+ "recommended_option":"opt-a","options":[{"id":"opt-a","grounded_in":["nist-800-53","owasp-asvs"]}],
+ "decisions":[
+   {"juncture":"B","user_choice":"do B","complexity":"large","applicable_rules":["r1"],"depends_on":["A"]},
+   {"juncture":"A","user_choice":"do A","complexity":"small","applicable_rules":["r1"]}
+ ]}
+JSON
+    out=$("$SCRIPT" --roadmap "$TMP/rm.json" 2>&1); ec=$?
+    assert_eq "$ec" "0" "--roadmap: contract-valid artifact → exit 0"
+    assert_match "$out" "§Roadmap JSON" "--roadmap: emits the §Roadmap JSON block"
+    assert_match "$out" "world_class_basis" "--roadmap: carries world_class_basis"
+    assert_match "$out" "1. [small] do A" "--roadmap: topo-sequences dependency A first"
+    assert_match "$out" "2. [large] do B" "--roadmap: dependent B second"
+    assert_match "$out" "nist-800-53" "--roadmap: grounding pulled from recommended option"
+
+    # dependency cycle (A↔B) → 1
+    cat > "$TMP/cyc.json" <<'JSON'
+{"schema_version":"1","feature_id":"FEATURE-008","ruby_ok":true,"needs_grounding":0,
+ "decisions":[
+   {"juncture":"A","complexity":"small","applicable_rules":["r"],"depends_on":["B"]},
+   {"juncture":"B","complexity":"small","applicable_rules":["r"],"depends_on":["A"]}
+ ]}
+JSON
+    out=$("$SCRIPT" --roadmap "$TMP/cyc.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--roadmap: dependency cycle → exit 1"
+    assert_match "$out" "cycle" "--roadmap: names the cycle as the reason"
 else
-    log "  (skipped --validate tests: node not on PATH)"
+    log "  (skipped --validate / --roadmap tests: node not on PATH)"
 fi
 
 total=$((passes + failures))

@@ -147,7 +147,7 @@ You need:
 
 You will probably want at least one of:
 
-- **Cursor IDE** — recommended primary editor; auto-loads `AGENTS.md` + `.cursor/rules/*.mdc` and exposes the 7 slash commands.
+- **Cursor IDE** — recommended primary editor; auto-loads `AGENTS.md` + `.cursor/rules/*.mdc` and exposes the 9 slash commands.
 - **Claude Code** (CLI or web/cloud) — auto-runs the SessionStart + PostToolUse hooks; reads CLAUDE.md.
 - **Grok Build CLI** (`x.ai/cli`) — picks up `AGENTS.md` + plugins + hooks + skills + MCP servers out of the box per Source 9.
 
@@ -280,7 +280,7 @@ docs/
   settings.json                        Hooks config (SessionStart + PostToolUse)
   hooks/session-start.sh               Auto-run sync-plugin.sh --ensure
   hooks/post-tool-use-review-gate.sh   File-fence violation detector
-  commands/*.md                        8 Claude Code slash commands (sync/research/decompose/dispatch/inner-loop/smoke/audit + consult) — mirror .cursor/commands/ (per ADR-0055/0056)
+  commands/*.md                        9 Claude Code slash commands (sync/research/decompose/dispatch/inner-loop/smoke/audit + consult + roadmap) — mirror .cursor/commands/ (per ADR-0055/0056)
   skills/orchestrating-swarms/         Worker-fanout coordinator (harness-native)
   skills/tdd-pro-*                     Symlinks into the pinned plugin cache
   README.md                            Skill consumption wiring notes
@@ -289,7 +289,7 @@ docs/
   rules/harness-overview.mdc           Two-tier loop summary
   rules/quality-gate.mdc               Sub-gate enforcement at diff review
   rules/d-rules.mdc                    D-1..D-13 catalog
-  commands/*.md                        7 slash commands (sync/smoke/audit/research/decompose/dispatch/inner-loop)
+  commands/*.md                        9 slash commands (sync/smoke/audit/research/decompose/dispatch/inner-loop + consult + roadmap)
 .grok/
   templates/research.md                Outer-loop research template
   templates/decomposition.md           Outer-loop decomposition template
@@ -301,7 +301,7 @@ scripts/
   emit-manifest.sh                     Per-ticket provenance manifest (+ --regenerate audit mode)
   audit-manifest.sh                    Manifest schema validator
   export-cursor-rules.sh               Regenerate .cursor/rules/ from sources
-  consult.sh                           Architecture-consult preflight + CTP engine locator + --validate artifact gate (ruby≥3.0 hard prereq; ADR-0056)
+  consult.sh                           Architecture-consult preflight + CTP engine locator + --validate gate + --roadmap Stage-7 renderer (ruby≥3.0 hard prereq; ADR-0056)
   audit-architecture-crosscheck.sh     GCTP dual-enforcement gate on CTP's architecture output (ADR-0056)
 examples/
   string-utils/                        Toy demo target with a deliberate Red baseline

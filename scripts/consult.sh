@@ -18,6 +18,15 @@
 #                          every decisions[] entry sized (complexity ∈ {small,medium,large})
 #                          with a non-empty applicable_rules. /decompose runs this before
 #                          consuming an artifact (A-4). Requires node (JSON parse).
+#   --roadmap <file>       Stage 7 of the loop: render a contract-valid consult artifact's
+#                          decisions[] as a roadmap (docs/handoff-contract.md §Roadmap) —
+#                          real chunks, sized, topologically sequenced over depends_on,
+#                          each annotated with applicable_rules + grounding. Emits a
+#                          human-readable roadmap AND the §Roadmap JSON block on stdout.
+#                          Re-validates first (refuses to render an invalid artifact) and
+#                          rejects dependency cycles. /decompose assigns final TICKET-NNN
+#                          ids; this presents the junctures as the prospective tickets.
+#                          Requires node.
 #
 # It does NOT invoke CTP's engine or mutate anything — it locates + gates, so the
 # agent (or a later CL) can drive the engine with confidence. Additive (ADR-0056):
@@ -30,11 +39,12 @@
 #   CONSULT_MIN_RUBY       default "3.0" — minimum major.minor
 #
 # Exit codes:
-#   0  ok (preflight prereqs hold / engine-path resolved / artifact contract-valid)
+#   0  ok (preflight prereqs hold / engine-path resolved / artifact valid / roadmap rendered)
 #   1  prerequisite missing (ruby absent/old, engine script not found) OR artifact invalid
+#      OR roadmap not renderable (invalid artifact / dependency cycle)
 #   2  usage error (bad invocation, missing file/arg)
 #
-# Portability: bash 3.2 + BSD coreutils. ruby probed; node used only for --validate.
+# Portability: bash 3.2 + BSD coreutils. ruby probed; node used for --validate/--roadmap.
 
 set -u
 
@@ -46,7 +56,7 @@ ENGINE_SCRIPTS="architect-session.sh business-intake.sh architect-recommend.sh w
 emit() { printf '%s\n' "$*"; }
 
 usage() {
-    sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//' >&2
+    sed -n '2,47p' "$0" | sed 's/^# \{0,1\}//' >&2
 }
 
 # ruby_ok: prints resolved version on stdout, returns 0 if >= MIN_RUBY, else 1.
@@ -130,6 +140,85 @@ else for (const d of a.decisions) {
 }
 if (errs.length) { console.error("[consult --validate] INVALID:\n  " + errs.join("\n  ")); process.exit(1); }
 console.log("[consult --validate] OK — contract-valid (needs_grounding=0; sized; rules present).");
+process.exit(0);
+'
+        exit $?
+        ;;
+    --roadmap)
+        [ $# -ge 2 ] || { usage; exit 2; }
+        [ -f "$2" ] || { printf 'consult.sh: artifact not found: %s\n' "$2" >&2; exit 2; }
+        command -v node >/dev/null 2>&1 || { printf 'consult.sh: node required for --roadmap\n' >&2; exit 2; }
+        # Render docs/handoff-contract.md §Roadmap from a §Architecture-Consult-Loop
+        # artifact. Re-validates (refuses invalid), topologically sequences decisions[]
+        # over depends_on (Kahn; cycle ⇒ exit 1), pulls grounded_in from the recommended
+        # option. node reads the path from env (env-var-first); process.exit (no top-level
+        # return — bash32/node portability).
+        CONSULT_ARTIFACT="$2" node -e '
+const fs = require("fs");
+let a;
+try { a = JSON.parse(fs.readFileSync(process.env.CONSULT_ARTIFACT, "utf8")); }
+catch (e) { console.error("[consult --roadmap] cannot render: not JSON (" + e.message + ")"); process.exit(1); }
+// Re-validate (same gate as --validate) — never render a roadmap from an invalid artifact.
+const verrs = [];
+if (a.schema_version !== "1") verrs.push("schema_version != \"1\"");
+if (a.needs_grounding !== 0) verrs.push("needs_grounding != 0");
+if (a.ruby_ok === false) verrs.push("ruby_ok=false (loop did not run)");
+const decisions = Array.isArray(a.decisions) ? a.decisions : [];
+if (decisions.length < 1) verrs.push("decisions[] empty");
+for (const d of decisions) {
+  const j = (d && d.juncture) ? d.juncture : "?";
+  if (!["small","medium","large"].includes(d && d.complexity)) verrs.push("decision [" + j + "] complexity invalid");
+  if (!Array.isArray(d && d.applicable_rules) || d.applicable_rules.length < 1) verrs.push("decision [" + j + "] applicable_rules empty");
+}
+if (verrs.length) { console.error("[consult --roadmap] cannot render — artifact invalid:\n  " + verrs.join("\n  ")); process.exit(1); }
+// grounded_in: prefer the recommended option, else union across options.
+const opts = Array.isArray(a.options) ? a.options : [];
+let grounded = [];
+const rec = opts.find(o => o && o.id === a.recommended_option);
+if (rec && Array.isArray(rec.grounded_in)) grounded = rec.grounded_in.slice();
+else { const s = new Set(); for (const o of opts) for (const g of (o && o.grounded_in || [])) s.add(g); grounded = [...s]; }
+// Tickets keyed by juncture (/decompose assigns final TICKET-NNN ids).
+const byJ = new Map();
+const tickets = decisions.map(d => {
+  const t = {
+    id: d.juncture, title: d.user_choice || d.juncture, complexity: d.complexity,
+    depends_on: Array.isArray(d.depends_on) ? d.depends_on.slice() : [],
+    applicable_rules: d.applicable_rules.slice(), grounded_in: grounded.slice()
+  };
+  byJ.set(d.juncture, t); return t;
+});
+// Kahn topological sort over depends_on (edges: dep -> ticket). Unknown deps ignored.
+const indeg = new Map(tickets.map(t => [t.id, 0]));
+for (const t of tickets) for (const dep of t.depends_on) if (byJ.has(dep)) indeg.set(t.id, indeg.get(t.id) + 1);
+const queue = tickets.filter(t => indeg.get(t.id) === 0).map(t => t.id);
+const sequence = [];
+while (queue.length) {
+  const id = queue.shift(); sequence.push(id);
+  for (const t of tickets) if (byJ.has(t.id) && t.depends_on.includes(id)) {
+    indeg.set(t.id, indeg.get(t.id) - 1);
+    if (indeg.get(t.id) === 0) queue.push(t.id);
+  }
+}
+if (sequence.length !== tickets.length) {
+  console.error("[consult --roadmap] cannot render — dependency cycle among junctures (depends_on not a DAG).");
+  process.exit(1);
+}
+const roadmap = { feature_id: a.feature_id, tickets, sequence,
+  world_class_basis: "CTP architected under standards + GCTP cross-check enforced" };
+// Human-readable roadmap (GCTP translates to plain language for the user).
+console.log("[consult --roadmap] " + a.feature_id + " — roadmap (sized, sequenced, planned):");
+console.log("  request: " + (a.user_request || "(unstated)"));
+sequence.forEach((id, i) => {
+  const t = byJ.get(id);
+  console.log("  " + (i + 1) + ". [" + t.complexity + "] " + t.title);
+  if (t.depends_on.length) console.log("       depends_on: " + t.depends_on.join(", "));
+  console.log("       applicable_rules: " + t.applicable_rules.join(", "));
+});
+console.log("  grounded_in: " + (grounded.length ? grounded.join(", ") : "(none cited)"));
+console.log("  basis: " + roadmap.world_class_basis);
+console.log("  note: /decompose assigns final TICKET-NNN ids; junctures shown as prospective tickets.");
+console.log("--- §Roadmap JSON ---");
+console.log(JSON.stringify(roadmap, null, 2));
 process.exit(0);
 '
         exit $?
