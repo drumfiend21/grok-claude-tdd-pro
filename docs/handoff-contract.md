@@ -268,3 +268,81 @@ Response when Grok asked Claude to edit a denied path:
 - Multi-ticket batched handoffs (out-of-contract; one ticket per file).
 - Streaming progress (deliberately disallowed — one-shot only).
 - Concrete quality-gate definitions (lives in TICKET-007).
+
+---
+
+## Architecture-Consult-Loop (FEATURE → consult artifact) — ACTIVE (per ADR-0056)
+
+> Additive successor to the SUPERSEDED `§Architecture-Consult` above. That section is left
+> intact as history; this one defines the **live, looped** GCTP↔CTP consult (the crossroads/
+> translator model). See `.grok/templates/architecture-consult-loop.md`.
+
+GCTP runs a per-juncture loop (intake → consult CTP → translate → prompt user → decide → size+ticket
+→ cross-check), accreting `.harness/handoffs/FEATURE-NNN.architecture.json`:
+
+```jsonc
+{
+  "schema_version": "1",
+  "feature_id": "FEATURE-NNN",
+  "user_request": "<the user's ask, in their own words>",
+  "ruby_ok": true,                      // D-D preflight; false ⇒ loop refused, stop-and-remediate
+  "needs_grounding": 0,                 // MUST be 0 — CTP cite-or-decline satisfied
+  "options": [ { "id": "opt-...", "grounded_in": ["nist-800-53","owasp-asvs","aws-waf","..."] } ],
+  "recommended_option": "opt-balanced",
+  "build_requirements": ["encryption_at_rest","audit_logging","..."],
+  "decisions": [
+    {
+      "juncture": "<plain-language decision point>",
+      "user_choice": "<the decision, business/creative language>",
+      "technical_mapping": "<how GCTP mapped it to CTP intake>",
+      "complexity": "small|medium|large",
+      "applicable_rules": ["<active.json rule ids that govern this chunk>"],
+      "depends_on": ["<prior juncture ids>"]
+    }
+  ]
+}
+```
+
+Field rules: `ruby_ok=false` ⇒ the loop is not run (ADR-0056 D-D). `needs_grounding` MUST be `0`
+(else the consult is `blocked`). Every `decisions[*].applicable_rules` entry MUST resolve in
+`active.json` and MUST include the non-exemptible EO-governance rules (ADR-0045/0055). `complexity`
+∈ {small,medium,large}. Additive field; readers that don't know it ignore it (R-11).
+
+## Architecture-Cross-Check (GCTP audits CTP's output) — ACTIVE (per ADR-0056)
+
+GCTP independently checks CTP's proposed architecture/design/development against **GCTP's own** rules
+— the shared `active.json` (consistency check) **plus** GCTP-native governance (R-rules, D-rules, EO
+spine, citation-integrity, TIER-0 corpus). Recorded alongside the consult artifact:
+
+```jsonc
+{
+  "feature_id": "FEATURE-NNN",
+  "checks": [
+    { "rule": "<rule id or R-/D-/EO-/citation ref>", "result": "pass|deviated|reconsulted" }
+  ],
+  "reconsults": [ { "rule": "<id>", "constraint_fed_back": "<text>", "attempts": 1 } ],
+  "deviations": [ { "rule": "<id>", "deviations_md_row": "<ref>" } ]
+}
+```
+
+Failure handling (ADR-0056 D-E): a violation is fed back to CTP as an added constraint (bounded
+re-consult); if still unsatisfiable after N attempts, it MUST appear in `deviations` with a
+`docs/deviations.md` row (operator-approved) — never silently accepted.
+
+## Roadmap (FEATURE → user-facing deliverable) — ACTIVE (per ADR-0056)
+
+The accreted output presented to the user: real tickets, sized, sequenced, planned. Derived from the
+consult artifact's `decisions[]` once the loop completes.
+
+```jsonc
+{
+  "feature_id": "FEATURE-NNN",
+  "tickets": [
+    { "id": "TICKET-NNN", "title": "<plain-language>", "complexity": "small|medium|large",
+      "depends_on": ["TICKET-..."], "applicable_rules": ["..."], "grounded_in": ["..."] }
+  ],
+  "sequence": ["TICKET-A","TICKET-B","..."],     // topological over depends_on
+  "world_class_basis": "CTP architected under standards + GCTP cross-check enforced"
+}
+```
+

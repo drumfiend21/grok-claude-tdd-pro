@@ -108,6 +108,32 @@ This file adds only what is specific to the hybrid harness.
 
 Violating either rule means the harness is not being used; it's just two tools running adjacent.
 
+### GCTP↔CTP architecture-consult loop — the crossroads/translator model (per ADR-0056)
+
+This composes on (does not replace) the two rules above. GCTP sits at the **crossroads** between
+CTP (technical architecture + development, standards-enforced) and the **user** (often non-technical,
+speaking business/creative language), and runs a **per-juncture loop**:
+
+1. **Intake (GCTP).** Elicit, in plain language, what the user wants to build.
+2. **Consult-and-translate loop (GCTP↔CTP), repeated at every juncture/decision:** GCTP consults
+   CTP's architecture engine for grounded technical direction (CTP enforces google/owasp/government/
+   EO/SLSA/… with cite-or-decline); GCTP **translates** that technical reality into non-technical,
+   business/creative terms as clarification + guidance; prompts the user; the user decides; GCTP
+   translates the decision back to CTP.
+3. **Incremental sizing/ticketing (GCTP).** As decisions are made, GCTP sizes + tickets each chunk
+   via a CTP consult on its technical reality.
+4. **Dual enforcement (GCTP).** GCTP independently cross-checks all of CTP's proposed architecture/
+   design/development against GCTP's own rules — the shared `active.json` registry **plus** the
+   GCTP-native governance (R-rules, D-rules, EO spine, citation-integrity, TIER-0 corpus). Cross-check
+   failure ⇒ bounded re-consult, else an operator-approved deviation (`docs/deviations.md`).
+5. **Roadmap (GCTP).** Present real tickets — sized, sequenced, planned — to the user.
+
+The whole loop is a **guided experience of world-class software engineering**: world-class because CTP
+architects under enforcement **and** GCTP checks/enforces on top. Ruby ≥ 3.0 is a hard prerequisite for
+the loop (CTP's engine is Ruby-backed; absent ⇒ stop-and-remediate, no silent fallback). Contract
+schemas: `docs/handoff-contract.md §Architecture-Consult-Loop / §Architecture-Cross-Check / §Roadmap`.
+Mechanism + sequencing: ADR-0056 (wired in later CLs; this entry is the standing model).
+
 ## Operator-declared standards (TIER 1 — non-negotiable, per TICKET-032 / ADR-0037)
 
 Both agents MUST consult `.harness/rules/active.json` at session start. This file is the aggregated rule registry from the plugin's `standards/` + `rubric/` + `generated-code-quality-standards/` pipeline — currently 28 rules across the namespaces `google`, `node`, `owasp`, `react`, `slsa`, `typescript`, `w3c`, `web-vitals`, `_community`. Operator-declared sources include Google's TS/JS/Python style guides, OWASP ASVS + Top 10, SLSA build provenance, WCAG 2.2, Web Vitals, React + Next.js best practices, Node.js best practices, TypeScript handbook.
