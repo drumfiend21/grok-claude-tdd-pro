@@ -51,8 +51,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `scripts/audit-source-citations.sh` | `tests/test-source-citations.sh` | 17 (per TICKET-051 / ADR-0049; authoritative-source citation-integrity gate — PART A registry provenance/namespace coverage incl. fullstack+cloud, PART B source-doc integrity incl. the TIER-0 corpus) |
 | `tests/integration/` generative pipeline (`simulate.mjs` + 6 scenarios) | `tests/integration/test-generative-integration.sh` | 17 (per TICKET-052 / ADR-0050; non-technical user → world-class delivery across cloud + fullstack; real EO + citation gates over emitted artifacts; 3 negative gate-rejection modes — see `tests/integration/README.md`) |
 | `install.sh` | `tests/test-install.sh` | 9 (per TICKET-054 / ADR-0051; one-command setup + self-check; exit-code contract 0/1/2; `--quick`; prerequisite/location guard) |
-| `scripts/consult.sh` | `tests/test-consult.sh` | 12 (per TICKET-063 / ADR-0056; architecture-consult preflight + engine locator; ruby≥3.0 hard-prereq, engine-presence, engine-path allowlist; exit 0/1/2) |
-| **Total** | **23/23 testable surfaces** | **~273 assertions** |
+| `scripts/consult.sh` | `tests/test-consult.sh` | 19 (per TICKET-063/064 / ADR-0056; architecture-consult preflight + engine locator + `--validate` artifact gate; ruby≥3.0 hard-prereq, engine allowlist, contract-validation of `FEATURE-NNN.architecture.json`; exit 0/1/2) |
+| **Total** | **23/23 testable surfaces** | **~280 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

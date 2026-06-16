@@ -14,7 +14,8 @@
 |---|---|---|
 | `research_output` | yes | A JSON document conforming to `research.md`'s output schema. |
 | `decomposition_brief` | yes | One paragraph: what feature is being decomposed and what "done" looks like at the feature level. |
-| `architecture_consult` | **DEPRECATED — optional, ignored as of ADR-0040** | Originally added by TICKET-034 / ADR-0039 as a REQUIRED input. Per TICKET-035 / ADR-0040 the per-feature consult is SUPERSEDED by static context injection at session start. The static context lives at `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` (copied from the pinned plugin by `scripts/sync-plugin.sh --ensure`); Grok reads it as session context, not as a per-feature handoff. If supplied, this variable is informational only and produces a WARN. |
+| `architecture_consult` | **DEPRECATED — optional, ignored as of ADR-0040** | The legacy per-feature *input variable* from TICKET-034 / ADR-0039. Still ignored (WARN if supplied). NOTE: this is the legacy *variable*, NOT the live consult *artifact* below — they are different things; this row is unchanged. |
+| `consult_artifact` | optional (default-on if present) — **per ADR-0056** | Path to a live consult artifact `.harness/handoffs/FEATURE-NNN.architecture.json` produced by `/consult` (the GCTP↔CTP looped consult). When present, it is the **preferred** source of per-ticket `complexity` (sizing) + `applicable_rules` + grounding — see "Consult-artifact consumption" below. Distinct from the deprecated `architecture_consult` variable; this is an additive ADR-0056 path, not a revival of the ADR-0040-superseded mechanism. |
 | `max_tickets` | optional, default 8 | Hard ceiling per G-9. If decomposition needs more, return `needs_supervisor: true` and decompose the decomposition itself. |
 
 ## Output shape (JSON Schema fragment)
@@ -59,6 +60,24 @@ Field semantics:
 >
 > Given a research bundle, a decomposition brief, and the static planner context, you emit between 1 and `max_tickets` atomic tickets. Each ticket MUST: (a) have non-empty `acceptance_criteria` (observable behaviors, not implementation steps); (b) declare `file_scope` with at least one `may_edit` glob; (c) be reachable in one CL by Claude TDD Pro; (d) carry only `research_refs` that appear in the input research bundle; (e) populate `applicable_rules` by filtering `.harness/rules/active.json` by detected language, supplemented by any rule IDs the static context surfaces as materially shaping the design, AND ALWAYS including every EO-governance rule (`source_namespace: eo` OR `security-governance`) regardless of language/file_scope — EO rules are non-exemptible (TICKET-050 / ADR-0045; `security-governance` is the live EO namespace at pin 6d2fe13+ per ADR-0055). If the decomposition would exceed `max_tickets`, return `needs_supervisor: true` and a smaller decomposition that points to the supervisor split. You do not edit files. You do not dispatch. You return JSON.
 
+## Consult-artifact consumption (per ADR-0056 — additive; static context remains the fallback)
+
+When a live consult artifact `.harness/handoffs/FEATURE-NNN.architecture.json` is present (produced
+by `/consult`, the GCTP↔CTP looped consult):
+
+1. **Validate it first:** `scripts/consult.sh --validate <artifact>` (must exit 0 — schema_version,
+   `needs_grounding == 0`, every decision sized + carrying `applicable_rules`). If validation fails,
+   do NOT consume it; fall back to the static-context path and surface the failure.
+2. **Derive, don't guess:** take per-ticket `complexity` (sizing), `applicable_rules`, and grounding
+   from the artifact's `decisions[]` — these came from CTP under standards enforcement, not a planner
+   estimate. Map each decision/chunk to a ticket.
+3. **Sequence** tickets from the decisions' `depends_on`.
+
+This is **additive**: when no artifact exists (or `--validate` fails, or Ruby is absent), decomposition
+uses the static-context path exactly as before (ADR-0040). The artifact, when valid, is preferred
+because it carries CTP's grounded technical reality. The consult remains *advisory* — Grok retains
+decomposition authority (ADR-0039 framing).
+
 ## Pre-emit checks
 
 - [ ] `tickets[*].acceptance_criteria` non-empty AND each entry reads as an observable behavior (not "implement X" / "refactor Y").
@@ -70,3 +89,4 @@ Field semantics:
 - [ ] Per ticket: dependencies in `depends_on` either exist in this output or are already-DONE tickets in `TICKETS.md`.
 - [ ] Per D-1 deletion pass: every ticket that's "polish" or "refactor for its own sake" is dropped with a reason recorded in `run_id`'s observability log (G-15).
 - [ ] Per ADR-0040: the static planner context at `.harness/context/PROJECT_CONTEXT_FOR_PLANNER.md` (if present) is consulted for test-shape patterns, refactor sequencing, mutation seams, ADR triggers, and Bash 3.2 portability gotchas. The legacy `architecture_consult` input variable is ignored even if supplied.
+- [ ] Per ADR-0056: if a consult artifact `.harness/handoffs/FEATURE-NNN.architecture.json` is present, it was validated with `scripts/consult.sh --validate` and its `decisions[]` drove per-ticket `complexity` + `applicable_rules` (preferred over a planner estimate). Absent/invalid ⇒ static-context fallback used (additive; no behavior lost).

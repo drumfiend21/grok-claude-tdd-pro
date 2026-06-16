@@ -11,6 +11,7 @@ Drive the outer-loop decomposition phase against `.grok/templates/decomposition.
 
 ## Steps
 
+0. **Consult-artifact consumption (per ADR-0056, additive):** if `.harness/handoffs/FEATURE-NNN.architecture.json` exists (from `/consult`), validate it with `./scripts/consult.sh --validate <artifact>` (must exit 0), then take per-ticket `complexity` (sizing) + `applicable_rules` + grounding from its `decisions[]` — preferred over a planner estimate. Absent/invalid ⇒ static-context fallback (nothing lost).
 1. Read `.grok/templates/decomposition.md` end-to-end. Note its output schema (per-ticket fields: id, title, scope, acceptance, dependencies, deferrals).
 2. Walk the research_refs and propose a decomposition that:
    - Honors D-9 (simple composable patterns) — one ticket = one CL.

@@ -58,6 +58,53 @@ assert_eq "$?" "1" "--engine-path disallowed name → exit 1"
 "$SCRIPT" --engine-path >/dev/null 2>&1
 assert_eq "$?" "2" "--engine-path missing arg → exit 2"
 
+# --- --validate (consult-artifact gate, A-4) ---
+if command -v node >/dev/null 2>&1; then
+    # Valid artifact → 0
+    cat > "$TMP/good.json" <<'JSON'
+{"schema_version":"1","feature_id":"FEATURE-001","ruby_ok":true,"needs_grounding":0,
+ "decisions":[{"juncture":"auth","user_choice":"hosted","complexity":"medium","applicable_rules":["g-security-governance-require-provenance"]}]}
+JSON
+    "$SCRIPT" --validate "$TMP/good.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate: contract-valid artifact → exit 0"
+
+    # needs_grounding != 0 → 1
+    cat > "$TMP/ng.json" <<'JSON'
+{"schema_version":"1","needs_grounding":2,"decisions":[{"juncture":"x","complexity":"small","applicable_rules":["r"]}]}
+JSON
+    "$SCRIPT" --validate "$TMP/ng.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate: needs_grounding != 0 → exit 1 (cite-or-decline)"
+
+    # decision missing complexity → 1
+    cat > "$TMP/nc.json" <<'JSON'
+{"schema_version":"1","needs_grounding":0,"decisions":[{"juncture":"x","applicable_rules":["r"]}]}
+JSON
+    "$SCRIPT" --validate "$TMP/nc.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate: decision missing complexity → exit 1"
+
+    # decision empty applicable_rules → 1
+    cat > "$TMP/nr.json" <<'JSON'
+{"schema_version":"1","needs_grounding":0,"decisions":[{"juncture":"x","complexity":"large","applicable_rules":[]}]}
+JSON
+    "$SCRIPT" --validate "$TMP/nr.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate: decision empty applicable_rules → exit 1"
+
+    # invalid JSON → 1
+    printf '{not json\n' > "$TMP/bad.json"
+    "$SCRIPT" --validate "$TMP/bad.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate: non-JSON → exit 1"
+
+    # missing file → 2
+    "$SCRIPT" --validate "$TMP/nope.json" >/dev/null 2>&1
+    assert_eq "$?" "2" "--validate: missing file → exit 2"
+
+    # missing arg → 2
+    "$SCRIPT" --validate >/dev/null 2>&1
+    assert_eq "$?" "2" "--validate: missing arg → exit 2"
+else
+    log "  (skipped --validate tests: node not on PATH)"
+fi
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-consult] OK — $passes/$total passed."; exit 0
 else log "[test-consult] FAIL — $failures/$total."; exit 1; fi
