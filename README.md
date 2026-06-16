@@ -4,7 +4,7 @@
 ![Audits](https://img.shields.io/badge/audits-10%2F10%20green-brightgreen)
 ![Tickets](https://img.shields.io/badge/tickets-36%20DONE-blue)
 ![ADRs](https://img.shields.io/badge/ADRs-41%20landed-blue)
-![Plugin pin](https://img.shields.io/badge/plugin%20pin-3432b52-informational)
+![Plugin pin](https://img.shields.io/badge/plugin%20pin-6d2fe13-informational)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%3E%3D2.0.0%2C%3C3.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -332,7 +332,7 @@ What's explicitly deferred (with documented rationale in ADR Out-of-scope sectio
 
 The plugin maintains a versioned standards inventory (refreshed daily on the publisher side) that aggregates into a single rule registry at `.harness/rules/active.json` on every session start. The PostToolUse hook runs `rubric/runner.sh --diff --severity P0` after every Edit/Write on app-code files; **P0 violations block the write at keystroke-time**, not at commit-time.
 
-Sources currently enforced (42 rubric rules across 15 rule-bearing namespaces + `_community`, from plugin `3432b52`):
+Sources currently enforced (42 rubric rules across 15 rule-bearing namespaces + `_community`, from plugin `6d2fe13`):
 
 | Namespace | Examples |
 |---|---|

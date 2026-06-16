@@ -12,7 +12,7 @@ until the corresponding CTP change lands and a pin bump (ADR-gated) adopts it.
 
 ## P-1 — `install.sh` bash 3.2 unbound-variable crash on a clean install (`conflicts[@]`)
 
-- **Status:** OPEN — proposed to CTP.
+- **Status:** ✅ ADOPTED — fixed in CTP CL-476 (§28.16); adopted at GCTP pin `6d2fe13` (ADR-0054). The installer now guards `${#conflicts[@]} -gt 0` before expanding the array.
 - **Found:** 2026-06-15, fresh-machine install test of CTP's `install.sh` (CTP v0.4.0+).
 - **Symptom:** first run in a clean directory prints
   `ctp-install.sh: line 233: conflicts[@]: unbound variable`.
@@ -26,7 +26,7 @@ until the corresponding CTP change lands and a pin bump (ADR-gated) adopts it.
 
 ## P-2 — Ruby preflight is a hard wall on common targets (`exit 3`, nothing installed)
 
-- **Status:** OPEN — proposed to CTP (UX, not necessarily a bug).
+- **Status:** ℹ️ NOT-A-DEFECT (by design) — CTP review confirmed `preflight_check` intentionally hard-stops (`exit 3`) on missing/old ruby. The harness keeps the loud ruby warning in `docs/first-time-guide.md` (Path B) so operators on no-ruby cloud / stock-macOS targets know before they run the one-liner. No CTP change.
 - **Found:** 2026-06-15, same test + a no-ruby simulation.
 - **Symptom:** missing or `< 3.0` ruby → preflight `exit 3` before anything installs.
   Two real-world bites: (a) **Claude Code's web/cloud sandbox has no ruby** → dead stop;
@@ -39,7 +39,7 @@ until the corresponding CTP change lands and a pin bump (ADR-gated) adopts it.
 
 ## P-3 — `architect` is not a Claude Code slash command (no `commands/architect.md`)
 
-- **Status:** OPEN — proposed to CTP (or a docs-only correction if intended).
+- **Status:** ✅ ADOPTED — fixed in CTP CL-476 (§28.16); adopted at GCTP pin `6d2fe13` (ADR-0054). CTP added `commands/architect.md` (loads the `architect` skill, mirroring `onboard.md`), so `/architect` is now a real slash command. `docs/first-time-guide.md` restored to list it (TICKET-059).
 - **Found:** 2026-06-15, cache inspection at pin `3432b52`.
 - **Symptom:** `architect` ships as `agents/architect.md`, `skills/architect/SKILL.md`, and
   `commands/architect.sh`, but there is **no `commands/architect.md`** — so `/architect`
@@ -54,7 +54,7 @@ until the corresponding CTP change lands and a pin bump (ADR-gated) adopts it.
 
 ## P-4 — Standalone installer is Cursor-targeted; doesn't register with Claude Code
 
-- **Status:** OPEN — proposed to CTP (or a docs scoping decision).
+- **Status:** ℹ️ CLARIFIED (not a CTP defect) — CTP review notes its `commands/*.md` are Claude-Code-format slash commands; the Cursor-orientation GCTP's test saw is downstream installer packaging, not a missing command surface. The harness docs keep the empirically-verified note that the *standalone installer* (Path B) is Cursor-oriented. No CTP change required; revisit only if a `--with-claude-code` registration path is desired.
 - **Found:** 2026-06-15, fresh-machine install test (Path B).
 - **Symptom:** CTP's `install.sh` writes `.cursorrules` + a hooks `.claude/settings.json`,
   installs commands under `~/.claude-tdd-pro/commands/`, and its success line says "open in

@@ -33,8 +33,8 @@ Full walk-through: [`QUICKSTART.md`](../QUICKSTART.md). See a complete worked ex
 first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
 
 > **Why automatic?** GCTP consumes CTP *by reference* at a pinned commit
-> (currently `3432b52`) so every machine gets identical behavior. The pin is bumped
-> only via an ADR (most recently ADR-0053; see [`docs/plugin-sync.md`](plugin-sync.md)).
+> (currently `6d2fe13`) so every machine gets identical behavior. The pin is bumped
+> only via an ADR (most recently ADR-0054; see [`docs/plugin-sync.md`](plugin-sync.md)).
 > You never hand-install CTP for this path.
 
 ---
@@ -94,6 +94,7 @@ If you're in **Cursor**, these slash commands are available:
 
 | Type this (in Cursor) | From | What it does |
 |---|---|---|
+| **`/architect`** then describe your idea | CTP | Interviews you in plain English, turns your idea into decisions, gives **grounded options with trade-offs**, and writes the design records (ADRs) — then hands off to build. *(Added in CTP CL-476; available at pin `6d2fe13`+.)* |
 | **`/analyze`** | CTP | Read-only audit of existing code → a plain-English report with cited findings + risky-file list. |
 | **`/onboard`** | CTP | Tours an existing codebase and proposes conventions. |
 | **`/feature` `<description>`** | CTP | Builds a feature test-first (Red → Green → Refactor). |
@@ -101,12 +102,12 @@ If you're in **Cursor**, these slash commands are available:
 | **`/doctor`** | CTP | Smoke-tests the toolchain; green/yellow/red matrix. |
 | **`/research` → `/decompose` → `/dispatch` → `/inner-loop` → `/audit`** | GCTP | The harness's outer→inner loop. |
 
-> **There is no `/architect` or `/help` slash command.** "Architect" is a *skill/agent*
-> the engine runs when you describe an architecture need — so for a new design you just
-> **describe your idea in plain English** (or use `/spec` / `/plan-first` in Cursor); it
-> then interviews you, gives grounded options with trade-offs, and writes the design records.
+> `/architect` became a real slash command in CTP CL-476 (adopted at GCTP pin
+> `6d2fe13`); before that it was only a skill/agent. There is still **no `/help`**
+> slash command — just ask in plain English. For a new design, `/architect` (or
+> `/spec` / `/plan-first`) is the entry point.
 
-> Every choice `/analyze`, `/feature`, and the architect skill make is **backed by a cited
+> Every choice `/architect`, `/analyze`, and `/feature` make is **backed by a cited
 > source** — OWASP, Google's style guides, SLSA, WCAG, and more — so the professional-grade
 > parts you'd never know to ask for are added (and justified) for you.
 
