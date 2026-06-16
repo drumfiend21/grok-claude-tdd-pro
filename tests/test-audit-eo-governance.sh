@@ -130,6 +130,23 @@ JSON
 EO_RULES_FILE="$TMP/active-eo.json" EO_HANDOFFS_DIR="$TMP/handoffs" "$SCRIPT" --quiet
 assert_eq "$?" "0" "green + deviated EO rule + attestation present → exit 0"
 
+# Test 13: the DEFAULT namespace set (no EO_NAMESPACES override) recognizes
+# `security-governance` — the live EO namespace at pin 6d2fe13+ (ADR-0055).
+# A registry with a security-governance rule + a req omitting it => violation,
+# proving the default treats security-governance as EO (non-exemptible).
+rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json
+cat > "$TMP/active-secgov.json" <<'JSON'
+{"version":1,"rules":[
+{"id":"g-node-007","source_namespace":"node"},
+{"id":"g-security-governance-no-known-exploited-ingress","provenance":[{"source":"cisa-kev"}],"source_namespace":"security-governance"}
+]}
+JSON
+cat > "$TMP/handoffs/TICKET-904.req.json" <<'JSON'
+{"schema_version":"1","ticket_id":"TICKET-904","applicable_rules":["g-node-007"]}
+JSON
+EO_RULES_FILE="$TMP/active-secgov.json" EO_HANDOFFS_DIR="$TMP/handoffs" "$SCRIPT" --quiet
+assert_eq "$?" "1" "default namespace set recognizes security-governance (req omits the EO rule → violation)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-audit-eo-governance] OK — $passes/$total passed."; exit 0
 else log "[test-audit-eo-governance] FAIL — $failures/$total."; exit 1; fi

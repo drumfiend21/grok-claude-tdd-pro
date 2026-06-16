@@ -173,7 +173,7 @@ The EO-2026 governance layer is **not** a fifth wire-format sub-gate field — i
 
 For a response to be `green`, in addition to the four sub-gates:
 
-- **Non-exemptibility (ADR-0045).** Every EO-namespace rule (canonical `source_namespace: eo`) present in `.harness/rules/active.json` MUST appear in the request's `applicable_rules` and resolve to `pass`/`deviated` in `rules_verified`. EO rules are always-on; no ticket may drop them.
+- **Non-exemptibility (ADR-0045; activated ADR-0055).** Every EO-governance rule (`source_namespace: eo` OR `security-governance` — the latter live at pin `6d2fe13`+) present in `.harness/rules/active.json` MUST appear in the request's `applicable_rules` and resolve to `pass`/`deviated` in `rules_verified`. EO rules are always-on; no ticket may drop them.
 - **Two-phase design attestation (ADR-0046).** A `green` response MUST carry a non-empty `eo_design_conformance` attesting that the EO shaped the **design produced before coding** (not only the code). A green that passes the rule checks but lacks the design-phase attestation is **not** green.
 - **Enforcement.** `scripts/audit-eo-governance.sh` verifies both invariants over the handoff artifacts (session-start WARN-only; CI hard gate). **Content-agnostic:** the EO rule *content* is owned by `claude-tdd-pro` (its in-flight EO work) and arrives in `active.json` via a pin bump; until then the EO set is empty and these checks are vacuous (the spine is armed, not yet biting). The harness owns the **enforcement spine**; the plugin owns the **rule content** — they meet at the contract surface (prime directive).
 

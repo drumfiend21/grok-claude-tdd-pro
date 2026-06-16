@@ -124,7 +124,14 @@ const req = {
             decision: "toy ships at 4 pass / 1 fail; the fail is the cycle the harness must close"
         }]
     },
-    quality_gate: { tests_must_pass: true, coverage_delta_min: 0, lint_clean: true }
+    quality_gate: { tests_must_pass: true, coverage_delta_min: 0, lint_clean: true },
+    // EO governance is non-exemptible (ADR-0045): every request carries the active
+    // EO-namespace rules. At pin 6d2fe13 the EO authorities ship under
+    // security-governance (ADR-0055). Verified by scripts/audit-eo-governance.sh.
+    applicable_rules: [
+        "g-security-governance-require-provenance",
+        "g-security-governance-no-known-exploited-ingress"
+    ]
 };
 fs.writeFileSync(process.env.REQ_PATH, JSON.stringify(req, null, 2) + "\n");
 ' || fail "failed to write request"
@@ -206,6 +213,21 @@ const res = {
     coverage_delta: 0.0,
     decision_trail_ref: env.TRAIL_PATH,
     skills_invoked: ["tdd-pro-cl-workflow"],
+    rules_verified: {
+        "g-security-governance-require-provenance": "pass",
+        "g-security-governance-no-known-exploited-ingress": "pass"
+    },
+    // Two-phase EO attestation (ADR-0046): a green response must attest design-phase
+    // EO conformance. Verified by scripts/audit-eo-governance.sh.
+    eo_design_conformance: {
+        design_phase_attested: true,
+        rules_considered: [
+            "g-security-governance-require-provenance",
+            "g-security-governance-no-known-exploited-ingress"
+        ],
+        patterns_applied: [],
+        notes: "Toy string-utils change has no provenance/ingress surface; the EO rules were considered at the design phase and found not-applicable (no IaC, no dependency, no network ingress) — attested, not skipped."
+    },
     notes: "STUB MODE: response synthesized by scripts/smoke-e2e.sh; deterministic .trim() patch stood in for live claude -p invocation.",
     error: null
 };

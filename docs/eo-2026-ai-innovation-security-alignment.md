@@ -224,7 +224,7 @@ Because every ticket the harness hands to the plugin carries the EO subset in `a
 
 ### Reframe: the layer vs. the instances
 
-- **The layer (primary):** the standing posture above — wired by **TICKET-050** (enforcement-spine wiring; rule-content activation pin-bump-gated on the plugin's EO work).
+- **The layer (primary):** the standing posture above — wired by **TICKET-050** (enforcement-spine wiring) and **ACTIVATED by TICKET-060 / ADR-0055** (the spine now keys on `eo` + `security-governance`; at pin `6d2fe13` the plugin's EO authorities are live as the `security-governance` detector rules — `require-provenance` P1 + `no-known-exploited-ingress` P0 — so the spine is non-exemptible + two-phase against real rules, no longer vacuous).
 - **The instances (secondary):** F-EO-1..F-EO-10 / TICKET-043..049 are individual capabilities that *populate* the layer (the vuln gate, the cyber report, signing/SBOM, readiness checklist, misuse profile, swarm, compliance mapping). They are not the governance; they are governed-by-and-contribute-to it.
 
 ### Two-phase enforcement: design-before-code AND code (per ADR-0046)

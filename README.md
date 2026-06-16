@@ -280,6 +280,7 @@ docs/
   settings.json                        Hooks config (SessionStart + PostToolUse)
   hooks/session-start.sh               Auto-run sync-plugin.sh --ensure
   hooks/post-tool-use-review-gate.sh   File-fence violation detector
+  commands/*.md                        7 Claude Code slash commands (sync/research/decompose/dispatch/inner-loop/smoke/audit) — mirror .cursor/commands/ (per ADR-0055)
   skills/orchestrating-swarms/         Worker-fanout coordinator (harness-native)
   skills/tdd-pro-*                     Symlinks into the pinned plugin cache
   README.md                            Skill consumption wiring notes

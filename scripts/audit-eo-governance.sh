@@ -29,10 +29,12 @@
 # Env overrides (testability):
 #   EO_RULES_FILE     default .harness/rules/active.json
 #   EO_HANDOFFS_DIR   default .harness/handoffs
-#   EO_NAMESPACES     default "eo" — space/comma-separated source_namespace values
-#                     that denote EO-governance rules. "eo" is the canonical EO
-#                     namespace the plugin's EO work should target; override only
-#                     for forward-compat if it lands a different name.
+#   EO_NAMESPACES     default "eo security-governance" — space/comma-separated
+#                     source_namespace values that denote EO-governance rules.
+#                     `eo` is the canonical name reserved by the spec; CTP ships its
+#                     EO authorities (CISA SSDF/KEV, NIST AI RMF, SLSA) under
+#                     `security-governance`, which is live at pin 6d2fe13+ (ADR-0055).
+#                     Override to add/replace namespaces as the plugin evolves.
 #
 # Exit codes:
 #   0  invariants hold (incl. vacuous: no EO rules active, or no handoffs)
@@ -56,7 +58,7 @@ emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 
 RULES_FILE="${EO_RULES_FILE:-.harness/rules/active.json}"
 HANDOFFS_DIR="${EO_HANDOFFS_DIR:-.harness/handoffs}"
-EO_NS=$(printf '%s' "${EO_NAMESPACES:-eo}" | tr ',' ' ')
+EO_NS=$(printf '%s' "${EO_NAMESPACES:-eo security-governance}" | tr ',' ' ')
 
 emit "[eo-governance] EO namespace set: $EO_NS"
 

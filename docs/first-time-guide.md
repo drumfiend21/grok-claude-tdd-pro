@@ -21,13 +21,13 @@ git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-clau
 `./install.sh` downloads the pinned CTP plugin, wires it in, and runs an end-to-end
 self-check (~20–30 seconds, mostly the one-time download). When you see `✅ Done`:
 
-- In **Cursor** (the smoother surface) drive the workflow with slash commands:
+- In **Cursor** *or* **Claude Code**, drive the workflow with GCTP's slash commands
+  (shipped for both: `.cursor/commands/` and `.claude/commands/`):
   ```
   /research <your idea> → /decompose → /dispatch TICKET-NNN → /inner-loop TICKET-NNN → /audit
   ```
-- In **Claude Code** those slash commands don't appear (the harness wires 3 skills + hooks,
-  not Claude Code commands) — just **describe what you want in plain English** and the skills
-  take over, or use headless `claude -p`.
+- The 3 `tdd-pro-*` skills also auto-trigger and the hooks enforce quality as you work —
+  so you can equally just **describe what you want in plain English**, or use headless `claude -p`.
 
 Full walk-through: [`QUICKSTART.md`](../QUICKSTART.md). See a complete worked example
 first: [`docs/end-to-end-demo/`](end-to-end-demo/README.md).
@@ -84,15 +84,17 @@ Canonical, always-current details live in CTP's own docs:
 
 ## Once it's installed — how you actually drive it
 
-**Important:** in this ecosystem the slash commands are a **Cursor** surface. In a plain
-**Claude Code** chat you don't get slash commands from either path — instead the 3
-`tdd-pro-*` skills auto-trigger and the hooks enforce quality as you work, so you just
-**describe what you want in plain English** (or use headless `claude -p`). For the full
-guided, slash-command flow, **Cursor is the smoother surface.**
+**Where commands show up:** GCTP ships its operator commands for **both Cursor and Claude
+Code** (`.cursor/commands/` + `.claude/commands/`), so `/research`, `/decompose`,
+`/dispatch`, `/inner-loop`, `/sync`, `/smoke`, `/audit` work in either. **CTP's** commands
+(`/architect`, `/analyze`, `/feature`, …) come from the plugin; with the **standalone**
+installer (Path B) they're Cursor-oriented (see the Path B note above). The 3 `tdd-pro-*`
+skills also auto-trigger in any chat — so you can equally just describe what you want in
+plain English.
 
-If you're in **Cursor**, these slash commands are available:
+These slash commands are available (Cursor and Claude Code unless noted):
 
-| Type this (in Cursor) | From | What it does |
+| Type this | From | What it does |
 |---|---|---|
 | **`/architect`** then describe your idea | CTP | Interviews you in plain English, turns your idea into decisions, gives **grounded options with trade-offs**, and writes the design records (ADRs) — then hands off to build. *(Added in CTP CL-476; available at pin `6d2fe13`+.)* |
 | **`/analyze`** | CTP | Read-only audit of existing code → a plain-English report with cited findings + risky-file list. |
