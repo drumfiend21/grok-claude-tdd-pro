@@ -53,7 +53,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `install.sh` | `tests/test-install.sh` | 9 (per TICKET-054 / ADR-0051; one-command setup + self-check; exit-code contract 0/1/2; `--quick`; prerequisite/location guard) |
 | `scripts/consult.sh` | `tests/test-consult.sh` | 30 (per TICKET-063/064/066 / ADR-0056; architecture-consult preflight + engine locator + `--validate` artifact gate + `--roadmap` Stage-7 renderer; ruby≥3.0 hard-prereq, engine allowlist, contract-validation of `FEATURE-NNN.architecture.json`, topological roadmap sequencing + cycle rejection; exit 0/1/2) |
 | `scripts/audit-architecture-crosscheck.sh` | `tests/test-audit-architecture-crosscheck.sh` | 10 (per TICKET-065 / ADR-0056; GCTP dual-enforcement on CTP's architecture output — applicable_rules resolve in active.json, non-exemptible EO rules present, cross-check `fail` needs a deviation; vacuous until `/consult` runs) |
-| **Total** | **24/24 testable surfaces** | **~300 assertions** |
+| `scripts/audit-rules-verified.sh` | `tests/test-audit-rules-verified.sh` | 13 (per TICKET-067 / ADR-0037; handoff `rules_verified` gate — Proposal B harness-side; green requires every applicable rule pass/deviated, deviations need a `docs/deviations.md` row, any fail/missing key forces red; non-green not gated; vacuous until a handoff carries applicable_rules) |
+| **Total** | **25/25 testable surfaces** | **~315 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

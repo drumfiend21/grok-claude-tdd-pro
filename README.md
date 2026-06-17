@@ -1,14 +1,14 @@
 # grok-claude-tdd-pro
 
 ![Tests](https://img.shields.io/badge/tests-18%2F18%20passing-brightgreen)
-![Audits](https://img.shields.io/badge/audits-10%2F10%20green-brightgreen)
+![Audits](https://img.shields.io/badge/audits-11%2F11%20green-brightgreen)
 ![Tickets](https://img.shields.io/badge/tickets-36%20DONE-blue)
 ![ADRs](https://img.shields.io/badge/ADRs-41%20landed-blue)
 ![Plugin pin](https://img.shields.io/badge/plugin%20pin-6d2fe13-informational)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%3E%3D2.0.0%2C%3C3.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **An AI software-development harness that ships PR-ready code at the engineering bar of JPMorgan Chase, Stripe, Capital One, FINOS, Kubernetes, and federal-government high-rigor shops (CFPB, 18F, VA, GSA).** Standards from OWASP ASVS + Top 10, Google's TS/JS/Python style guides, SLSA build provenance, WCAG 2.2, Web Vitals, React/Next.js, Node, and TypeScript are enforced **at write-time** — a P0 rule violation blocks the keystroke, not the merge. Every ticket leaves a drift-detectable audit trail (request + response contracts, decision trail, sha256 provenance manifest, AI Bill of Materials). Reproducible across every machine via versioned pins to both the engineering plugin and Claude Code itself. **18/18 substrate test suites + 10 audit lenses + smoke-e2e all green at every commit. 36 tickets DONE, 41 ADRs documented (Nygard append-only with supersession chains).**
+> **An AI software-development harness that ships PR-ready code at the engineering bar of JPMorgan Chase, Stripe, Capital One, FINOS, Kubernetes, and federal-government high-rigor shops (CFPB, 18F, VA, GSA).** Standards from OWASP ASVS + Top 10, Google's TS/JS/Python style guides, SLSA build provenance, WCAG 2.2, Web Vitals, React/Next.js, Node, and TypeScript are enforced **at write-time** — a P0 rule violation blocks the keystroke, not the merge. Every ticket leaves a drift-detectable audit trail (request + response contracts, decision trail, sha256 provenance manifest, AI Bill of Materials). Reproducible across every machine via versioned pins to both the engineering plugin and Claude Code itself. **18/18 substrate test suites + 11 audit lenses + smoke-e2e all green at every commit. 36 tickets DONE, 41 ADRs documented (Nygard append-only with supersession chains).**
 
 > ## 🟢 First time? [Start here →](docs/first-time-guide.md)
 >
@@ -303,6 +303,7 @@ scripts/
   export-cursor-rules.sh               Regenerate .cursor/rules/ from sources
   consult.sh                           Architecture-consult preflight + CTP engine locator + --validate gate + --roadmap Stage-7 renderer (ruby≥3.0 hard prereq; ADR-0056)
   audit-architecture-crosscheck.sh     GCTP dual-enforcement gate on CTP's architecture output (ADR-0056)
+  audit-rules-verified.sh              Handoff rules_verified gate — harness verifies the inner-loop quality gate (Proposal B; ADR-0037)
 examples/
   string-utils/                        Toy demo target with a deliberate Red baseline
 .harness/

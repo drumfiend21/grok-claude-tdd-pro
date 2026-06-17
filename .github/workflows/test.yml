@@ -66,6 +66,9 @@ jobs:
       - name: audit-architecture-crosscheck (GCTP dual-enforcement on CTP's architecture output)
         run: ./scripts/audit-architecture-crosscheck.sh --quiet
 
+      - name: audit-rules-verified (handoff rules_verified gate — Proposal B)
+        run: ./scripts/audit-rules-verified.sh --quiet
+
       - name: audit-manifest (sha256 + schema validator)
         run: ./scripts/audit-manifest.sh
 

@@ -90,4 +90,14 @@ if [ -x scripts/audit-architecture-crosscheck.sh ]; then
     scripts/audit-architecture-crosscheck.sh || true
 fi
 
+# rules_verified gate (Proposal B, harness-side; TICKET-067). The harness owns the
+# enforcement spine; the plugin owns rule content + detectors. For every handoff
+# request/response pair, a green response MUST verify every applicable rule as
+# pass/deviated (deviations need a docs/deviations.md row); any fail/missing key
+# forces red. Content-agnostic: vacuous until a handoff carries applicable_rules.
+# WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-rules-verified.sh ]; then
+    scripts/audit-rules-verified.sh || true
+fi
+
 exit 0
