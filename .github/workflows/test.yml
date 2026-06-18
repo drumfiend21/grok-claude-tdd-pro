@@ -51,6 +51,9 @@ jobs:
       - name: audit-hook-security (S-1..S-6 CWE-mapped shell patterns)
         run: ./scripts/audit-hook-security.sh --quiet
 
+      - name: audit-agent-compact (operating compact present + wired + accepted — fail-closed)
+        run: ./scripts/audit-agent-compact.sh --quiet
+
       - name: audit-plugin-surface (55 plugin top-level entries declared)
         run: ./scripts/audit-plugin-surface.sh --quiet
 

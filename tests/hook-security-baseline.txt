@@ -13,6 +13,9 @@ S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:208:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/integration/test-generative-integration.sh:52:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:28:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:59:rm -f "$COMPACT"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:75:rm -f "$ACK"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:39:rm -f "$TMP/h"/*.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:82:rm -f "$TMP/h/FEATURE-1.crosscheck.json"

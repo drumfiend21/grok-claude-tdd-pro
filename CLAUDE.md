@@ -134,6 +134,21 @@ the loop (CTP's engine is Ruby-backed; absent ⇒ stop-and-remediate, no silent 
 schemas: `docs/handoff-contract.md §Architecture-Consult-Loop / §Architecture-Cross-Check / §Roadmap`.
 Mechanism + sequencing: ADR-0056 (wired in later CLs; this entry is the standing model).
 
+## Agent operating compact (TIER 1 — non-negotiable behavioral binding, per TICKET-068 / ADR-0057)
+
+`docs/agent-operating-compact.md` is the **binding behavioral contract** on the agent (Claude Code first) that drives GCTP. It composes beneath the TIER-0 corpus and alongside the prime directive; it binds *how the agent behaves* when running the harness. Read it at session start. Its commitments, in brief:
+
+1. **Act only as the user of GCTP** — describe what to build in plain language; drive only the sanctioned commands `/consult → /roadmap → /decompose → /dispatch → /inner-loop → /audit`.
+2. **Do not architect anything yourself** — every architectural decision comes out of CTP's engine via the consult spine (`scripts/consult.sh` + `/consult`), never from the agent's own head or memory. Generation under enforcement, never authoring-then-validating.
+3. **No direct line to CTP** — no ad-hoc engine prompts, no reaching into plugin internals, no hand-written req/res/architecture artifacts. The only contact with CTP is through GCTP's spine (prime-directive contract surface).
+4. **Nothing enters the app repo that GCTP didn't generate** — no hand-authored ADRs/designs/code for the user's product; the gates are the backstop, not the source.
+
+**Honest caveat (in the compact, not papered over):** GCTP is not a separate brain — it is command-prompts + shell scripts that *the agent* executes. The agent's cognition is unavoidable (it performs the CTP→plain-language translation `/consult` instructs); what is enforced is that this cognition is **confined to executing GCTP's procedure and translating CTP's output — never to originating architecture.**
+
+**Scope boundary (so the compact does not eat itself):** the compact governs **application architecture built through GCTP for the user**. It does **NOT** govern **harness self-maintenance** (editing GCTP's own docs/scripts/governance) — that runs on the ADR + founder-directives + R/G/C-rule + per-CL TDD plane, under operator review. Conflating the two is itself a violation, in either direction.
+
+**Enforcement (fail-closed, per ADR-0057):** the operator MUST accept the compact (`scripts/accept-compact.sh`, recorded at `.harness/agent-compact-ack.json`, keyed to the compact's content hash), and the agent is enforced by that agreement. **Until a current acceptance exists, Claude Code MUST NOT drive the sanctioned GCTP workflow** (`/consult`..`/inner-loop`) for the user's product — it may only read docs and run `scripts/accept-compact.sh`. `.claude/hooks/session-start.sh` presents the compact + STOP banner when unaccepted/stale (a deliberate ADR-scoped exception to ADR-0001's warn-only policy); `scripts/audit-agent-compact.sh` is the pre-commit + CI machine gate (present + wired + currently accepted, else red). Any amendment to the compact invalidates acceptance until re-accepted. This obligation applies to every session type.
+
 ## Operator-declared standards (TIER 1 — non-negotiable, per TICKET-032 / ADR-0037)
 
 Both agents MUST consult `.harness/rules/active.json` at session start. This file is the aggregated rule registry from the plugin's `standards/` + `rubric/` + `generated-code-quality-standards/` pipeline — currently 28 rules across the namespaces `google`, `node`, `owasp`, `react`, `slsa`, `typescript`, `w3c`, `web-vitals`, `_community`. Operator-declared sources include Google's TS/JS/Python style guides, OWASP ASVS + Top 10, SLSA build provenance, WCAG 2.2, Web Vitals, React + Next.js best practices, Node.js best practices, TypeScript handbook.
