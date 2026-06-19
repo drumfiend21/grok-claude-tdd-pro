@@ -50,6 +50,11 @@
 .harness/standards-refresh.json
 .harness/standards-cache/
 
+# CTP's own S-22 operator cadence registry, written (cwd-relative) by GCTP's
+# standards-refresh --configure so CTP's fetch layer scrapes at the same interval
+# (ADR-0065). Operator-local runtime state; never committed.
+.claude-tdd-pro/
+
 # OS / editor noise
 .DS_Store
 *.swp

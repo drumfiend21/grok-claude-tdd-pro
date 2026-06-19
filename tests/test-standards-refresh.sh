@@ -23,21 +23,25 @@ trap 'rm -rf -- "$TMP"' EXIT INT TERM
 # Stub CTP entrypoints. refresh.sh appends to a log so we can count drives.
 printf '#!/usr/bin/env bash\necho ran >> "%s/refresh.log"\nexit 0\n' "$TMP" > "$TMP/refresh.sh"; chmod +x "$TMP/refresh.sh"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/sync.sh"; chmod +x "$TMP/sync.sh"
-# Stub set-refresh-frequency validator: accept <N>m|h|d|w|mo + calendar tokens, else exit 2.
+# Stub set-refresh-frequency validator: accept <N>m|h|d|w|mo + calendar tokens (writing
+# the --config registry, like the real one), else exit 2.
 cat > "$TMP/setfreq.sh" <<'SF'
 #!/usr/bin/env bash
-f=""; while [ $# -gt 0 ]; do case "$1" in --config) shift 2;; *) f="$1"; shift;; esac; done
+f=""; cfg=""; while [ $# -gt 0 ]; do case "$1" in --config) cfg="$2"; shift 2;; *) f="$1"; shift;; esac; done
+ok=0
 case "$f" in
-  daily|weekly|monthly|quarterly|on-demand) exit 0 ;;
+  daily|weekly|monthly|quarterly|on-demand) ok=1 ;;
   *mo) n="${f%mo}";; *m) n="${f%m}";; *h) n="${f%h}";; *d) n="${f%d}";; *w) n="${f%w}";; *) exit 2 ;;
 esac
-case "$n" in ''|*[!0-9]*) exit 2 ;; *) exit 0 ;; esac
+if [ "$ok" -ne 1 ]; then case "$n" in ''|*[!0-9]*) exit 2 ;; esac; fi
+[ -n "$cfg" ] && { mkdir -p "$(dirname "$cfg")"; printf 'default: %s\nchosen_at_install: "%s"\n' "$f" "$f" > "$cfg"; }
+exit 0
 SF
 chmod +x "$TMP/setfreq.sh"
 
-C="$TMP/cfg.json"
+C="$TMP/cfg.json"; CTPFF="$TMP/ctp/.claude-tdd-pro/FETCH-FREQUENCIES.yaml"
 refresh_count() { [ -f "$TMP/refresh.log" ] && wc -l < "$TMP/refresh.log" | tr -d ' ' || echo 0; }
-run() { SR_CONFIG="$C" SR_REFRESH_BIN="$TMP/refresh.sh" SR_SYNC_BIN="$TMP/sync.sh" SR_SETFREQ_BIN="$TMP/setfreq.sh" SR_STATE_DIR="$TMP/state" "$SCRIPT" "$@"; }
+run() { SR_CONFIG="$C" SR_REFRESH_BIN="$TMP/refresh.sh" SR_SYNC_BIN="$TMP/sync.sh" SR_SETFREQ_BIN="$TMP/setfreq.sh" SR_CTP_FREQ_FILE="$CTPFF" SR_STATE_DIR="$TMP/state" "$SCRIPT" "$@"; }
 
 # Test 1: --help → 0
 "$SCRIPT" --help >/dev/null 2>&1; assert_eq "$?" "0" "--help exits 0"
@@ -53,8 +57,14 @@ run --configure >/dev/null 2>&1; assert_eq "$?" "2" "--configure without freq �
 run --configure 30m >/dev/null 2>&1; assert_eq "$?" "0" "--configure 30m → 0"
 cfg=$(node -e 'const c=require(process.argv[1]);console.log(c.frequency+"|"+c.configured)' "$C" 2>/dev/null)
 assert_eq "$cfg" "30m|true" "config records frequency + configured=true"
-# Test 6: --configure invalid (bogus) → 2
-run --configure bogus >/dev/null 2>&1; assert_eq "$?" "2" "--configure bogus → 2"
+# Test 5b: --configure ALSO writes CTP's registry (two-layer alignment, ADR-0065)
+rm -f "$CTPFF"; run --configure 6h >/dev/null 2>&1
+( [ -f "$CTPFF" ] && grep -q '6h' "$CTPFF" ) && assert_eq "yes" "yes" "--configure writes CTP fetch registry too" || assert_eq "no" "yes" "--configure writes CTP fetch registry too"
+
+# Test 6: --configure invalid (bogus) → 2  (and does NOT write the CTP registry)
+rm -f "$CTPFF"; run --configure bogus >/dev/null 2>&1; rc=$?
+assert_eq "$rc" "2" "--configure bogus → 2"
+[ -f "$CTPFF" ] && assert_eq "wrote" "absent" "invalid freq must not write CTP registry" || assert_eq "absent" "absent" "invalid freq must not write CTP registry"
 # Test 7: grammar accepts m/h/d/w/mo
 ok=1; for f in 5m 6h 2d 1w 1mo daily; do run --configure "$f" >/dev/null 2>&1 || ok=0; done
 assert_eq "$ok" "1" "grammar accepts m/h/d/w/mo + calendar token"

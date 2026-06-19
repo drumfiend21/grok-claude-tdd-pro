@@ -68,6 +68,10 @@ SR_REFRESH_BIN="${SR_REFRESH_BIN:-$SR_PLUGIN_ROOT/standards/initial-refresh.sh}"
 SR_SETFREQ_BIN="${SR_SETFREQ_BIN:-$SR_PLUGIN_ROOT/commands/set-refresh-frequency.sh}"
 SR_SYNC_BIN="${SR_SYNC_BIN:-./scripts/standards-sync.sh}"
 SR_STATE_DIR="${SR_STATE_DIR:-.harness/standards-cache}"
+# CTP's own S-22 cadence registry (cwd-relative, the path CTP's fetch layer reads).
+# Writing the operator cadence here aligns CTP's per-source scraping with GCTP's drive
+# cadence — so BOTH layers re-scrape at the user-specified interval (ADR-0065).
+SR_CTP_FREQ_FILE="${SR_CTP_FREQ_FILE:-.claude-tdd-pro/FETCH-FREQUENCIES.yaml}"
 
 now_s() { [ -n "${SR_NOW:-}" ] && { printf '%s' "$SR_NOW"; return; }; date -u +%s; }
 now_iso() { date -u +%Y-%m-%dT%H:%M:%SZ; }
@@ -144,16 +148,30 @@ fi
 
 if [ "$MODE" = "configure" ]; then
     [ -n "$CFG_FREQ" ] || { printf 'standards-refresh.sh: --configure requires <freq> (e.g. 30m, 6h, 1d, 1w, 1mo)\n' >&2; exit 2; }
-    # Validate the cadence with CTP's grammar authority when available; else GCTP grammar.
+    # Validate + persist the cadence into CTP's OWN S-22 registry via its grammar authority,
+    # so CTP's fetch layer scrapes at this interval too (two-layer alignment, ADR-0065). The
+    # set-refresh-frequency.sh call BOTH validates (exit 2 on bad grammar) AND writes the
+    # registry at SR_CTP_FREQ_FILE. Falls back to GCTP-only grammar if the command is absent.
+    ctp_aligned=0
     if [ -f "$SR_SETFREQ_BIN" ]; then
-        bash "$SR_SETFREQ_BIN" "$CFG_FREQ" --config "$SR_STATE_DIR/FETCH-FREQUENCIES.yaml" >/dev/null 2>&1 \
-            || { printf 'standards-refresh.sh: invalid frequency: %s (expected <N>m|h|d|w|mo or daily|weekly|monthly|quarterly|on-demand)\n' "$CFG_FREQ" >&2; exit 2; }
+        mkdir -p "$(dirname "$SR_CTP_FREQ_FILE")"
+        if bash "$SR_SETFREQ_BIN" "$CFG_FREQ" --config "$SR_CTP_FREQ_FILE" >/dev/null 2>&1; then
+            ctp_aligned=1
+        else
+            printf 'standards-refresh.sh: invalid frequency: %s (expected <N>m|h|d|w|mo or daily|weekly|monthly|quarterly|on-demand)\n' "$CFG_FREQ" >&2; exit 2
+        fi
     else
         freq_to_ms "$CFG_FREQ" >/dev/null 2>&1 || { printf 'standards-refresh.sh: invalid frequency: %s\n' "$CFG_FREQ" >&2; exit 2; }
     fi
     parts=$(read_config); old_ms=$(printf '%s' "$parts" | cut -d'|' -f3)
     write_config "$CFG_FREQ" 1 "$old_ms" ""
-    emit "[standards-refresh] cadence set to '$CFG_FREQ' → $SR_CONFIG"
+    emit "[standards-refresh] cadence set to '$CFG_FREQ':"
+    emit "  • GCTP drive cadence  → $SR_CONFIG (how often GCTP triggers a re-scrape)"
+    if [ "$ctp_aligned" -eq 1 ]; then
+        emit "  • CTP fetch registry  → $SR_CTP_FREQ_FILE (CTP's own per-source scraping honors the same interval)"
+    else
+        emit "  • CTP fetch registry  → not written (set-refresh-frequency.sh unavailable; run scripts/sync-plugin.sh --ensure)"
+    fi
     exit 0
 fi
 

@@ -28,6 +28,15 @@ Configured per operator, stored in `.harness/standards-refresh.json` (operator-l
 - **Default:** `1d` — **every active day**. Until the operator chooses, the harness uses the default and prompts (once per session) to configure one.
 - **`on-demand` / `quarterly` etc.** are honored; `on-demand` means refresh only on `--force`.
 
+### Two-layer alignment — both GCTP *and* CTP scrape at your interval (ADR-0065)
+
+There are two cadence layers, and `--configure` sets **both** to your chosen interval:
+
+1. **GCTP drive cadence** (`.harness/standards-refresh.json`) — how often GCTP *triggers* a re-scrape at session start.
+2. **CTP fetch registry** (`.claude-tdd-pro/FETCH-FREQUENCIES.yaml`, the S-22 registry CTP's own fetch layer reads) — CTP's per-source freshness/poll cadence. `--configure` writes this via CTP's `set-refresh-frequency.sh`, so when GCTP drives the scrape, CTP fetches on the *same* interval rather than self-gating at its own default.
+
+Both files are operator-local (gitignored). When unconfigured, both default to daily, so they are already aligned; `--configure <freq>` keeps them aligned at any interval. Note CTP uses **conditional GET** (`If-None-Match`/`If-Modified-Since`): a scheduled re-scrape that returns `304 Not Modified` is the correct, cheap path — the source was checked on schedule and hadn't changed — not a missed refresh.
+
 ## When it runs (honest scope)
 
 `scripts/standards-refresh.sh --check` runs at **session start** (`.claude/hooks/session-start.sh`). A session-start hook fires once per session, not as a daemon, so the cadence is enforced **at session boundaries**: a refresh runs if the configured interval has elapsed since the last one (or on first run). Sub-day cadences (e.g. `30m`) therefore refresh on the first session that opens after the interval lapses — not on a wall-clock timer between sessions. The refresh itself is **non-fatal and offline-tolerant**: when the environment has no network egress it degrades to cached standards and retries next session; it never blocks or fails the session.
