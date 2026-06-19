@@ -18,7 +18,7 @@ Drive the outer-loop decomposition phase against `.grok/templates/decomposition.
    - Honors D-4 (each ticket strictly harder than the previous) — sequence the decomposition.
    - Honors D-8 (deletion pass) — explicit Out-of-scope per ticket where ambiguity exists.
    - Honors R-3 (single source of truth) — no ticket duplicates an existing primitive's responsibility.
-3. Produce the decomposition in the chat window. Do NOT write to disk; the operator reviews and pipes individual tickets into `/dispatch`.
+3. Produce the decomposition in the chat window. Do NOT write to disk; the operator reviews and pipes individual tickets into `/dispatch`. Each ticket's `applicable_rules` is the **union** of language-filtered `active.json` rules + **every `g-universal-*` rule** (apply-by-default, Fix A / ADR-0060) + every EO rule (non-exemptible); prefer **typed globs** so the language floor is enforceable; over-scoping is safe (`enforce.sh` → `not_applicable`). Enforced by `scripts/audit-applicable-rules.sh`.
 4. For each ticket, name the existing primitives it composes on (per D-11). For any new substrate, run the D-8 deletion-pass question explicitly.
 
 ## Success criteria

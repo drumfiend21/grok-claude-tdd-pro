@@ -104,8 +104,11 @@ Field rules:
 `rules_verified` field rules (added per TICKET-032 / ADR-0037):
 
 - Keys are rule IDs from `applicable_rules` in the matching request.
-- Values are `"pass"`, `"fail"`, or `"deviated"` (= violation justified by a row in `docs/deviations.md`).
-- A `green` status requires every applicable rule to be `pass` OR `deviated`. Any `fail` forces `status: "red"` with `error.code: "gate_failed"`.
+- Values are `"pass"`, `"fail"`, `"deviated"` (= violation justified by a row in `docs/deviations.md`), `"not_applicable"`, or `"not_enforced"` (extended additively per ADR-0062, "Fix B"; `schema_version` stays `"1"` — a tolerant reader treats an unknown verdict as non-green). The last two come straight from the detector run (`enforce.sh`, ADR-0058) via `scripts/enforce-standards.sh`:
+  - `"not_applicable"` — the rule's detector matched **no files** in the app tree (e.g. an EO/cloud rule on a pure-TypeScript ticket). NEUTRAL, distinct from `pass`: the rule legitimately does not pertain, and "nothing to check" is never counted as a vacuous pass.
+  - `"not_enforced"` — files existed but the detector **could not verify** them (tool/model absent). The rule was claimed applicable but went unverified → RED. Never read as a pass.
+- A `green` status requires every applicable rule to be `pass`, `deviated`, **or** `not_applicable`. Any `fail` **or** `not_enforced` (or `unknown_rule`) forces `status: "red"` with `error.code: "gate_failed"`.
+- `rules_verified` SHOULD be produced by a real detector run, not asserted: the inner loop runs `scripts/enforce-standards.sh --ticket <id>` against the `app_root` and writes `rules_verified` from its output (ADR-0062). The forthcoming dynamic gate (`audit-standards-enforced.sh`, Fix C / ADR-0063) re-runs the detectors and rejects a green response whose claims do not match the live verdicts, or whose `pass` rules evaluated zero files.
 - Missing keys (request named a rule but response omits it) force `status: "red"` with `error.code: "gate_failed"`.
 
 `eo_design_conformance` field rules (added per TICKET-050 / ADR-0046/0048):
@@ -345,4 +348,26 @@ consult artifact's `decisions[]` once the loop completes.
   "world_class_basis": "CTP architected under standards + GCTP cross-check enforced"
 }
 ```
+
+## App-Root (external application working tree) — ACTIVE (per ADR-0059, "Fix D")
+
+The harness builds the user's product in a **separate working tree** ("app_root"), distinct from
+`.harness/*` (which holds handoffs/trails/manifests). The app_root is the tree CTP standards are
+**enforced on** (via `enforce.sh`, Fix B/C). It is named in an operator-local config:
+
+```jsonc
+// .harness/app.json  (gitignored; .harness/app.json.example is the tracked template)
+{ "schema_version": "1", "app_root": "<path>", "description": "..." }
+```
+
+- `app_root` may be **relative** (resolved against the repo root) or **absolute**; the app tree need
+  **not** be a git repo (enforcement is git-agnostic).
+- The single resolver is **`scripts/app-root.sh`** — exit `0` (resolved + exists + non-empty, abs path
+  on stdout) / `1` (unconfigured) / `2` (configured but missing or **empty** → refused).
+- **Hard guard (anti-vacuous-green):** an app_root that is missing or has zero regular files is exit `2`,
+  never a silent pass. "Nothing to enforce" is a configuration error, not a green. This is the consumer
+  half of `enforce.sh`'s `not_applicable`-vs-pass distinction: GCTP refuses to *call* enforcement on an
+  empty tree just as `enforce.sh` refuses to count an unevaluated rule as passed.
+- **Consumers:** `/consult` `/decompose` `/inner-loop` `/audit` resolve the app_root through this script;
+  the forthcoming Fix-B `enforce-standards.sh` and the Fix-C dynamic gate target it as `enforce.sh --root`.
 

@@ -1,0 +1,5 @@
+{
+  "schema_version": "1",
+  "app_root": "../softarchcert-win25",
+  "description": "The external application working tree GCTP builds for the user and enforces CTP standards on. Copy this file to .harness/app.json (operator-local; gitignored) and set app_root to your product's path (relative to the repo root, or absolute). Consumed by /consult /decompose /inner-loop /audit and the Fix-B/C enforcement scripts via scripts/app-root.sh. Per TICKET-070 / ADR-0059 (Fix D)."
+}

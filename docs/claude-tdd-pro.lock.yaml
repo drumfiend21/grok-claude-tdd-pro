@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   6d2fe13d5902e9f8631e3499c32cdd99af316568
-pinned_at:       2026-06-15T23:57:24+00:00
-pinned_message:  "fix: CL-476 (§28.16) -- CTP-side install fixes from GCTP install testing (4253->4258)"
+pinned_commit:   7a7f74d1d46d3121ad3d891a496382a9b4968f82
+pinned_at:       2026-06-19T02:18:37+00:00
+pinned_message:  "CL-482..483 (§28.22-28.23) -- refresh-driven universal coverage + begin-refreshing-on-install (4288->4302)"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -29,7 +29,7 @@ contract_surface_files:
   - path:   CLAUDE.md
     sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: d2da1b8cc2efaa15194ac73df612f546e9c4f96422d691ea0124153319d40e7c
+    sha256: af6b6d52f17f005cedbff6a3938509e23934f0daf1f0846526eb057452f3c189
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-06-16T00:55:00Z
-last_synced_session: "TICKET-059 pin bump 3432b52→6d2fe13 (CL-476 install fixes) per ADR-0054"
+last_synced_at:      2026-06-19T02:30:00Z
+last_synced_session: "TICKET-072 pin bump eb7b2af→7a7f74d (CL-482..483 refresh-driven universal coverage) per ADR-0061"

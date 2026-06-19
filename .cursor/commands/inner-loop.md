@@ -24,7 +24,9 @@ The alternative path (headless `claude -p`) remains available in Cursor's termin
 
 4. **Apply the quality gate.** Run the `quality_gate` sub-gates per `docs/quality-gate.md`: `tests_must_pass` (REQUIRED), `coverage_delta_min` (REQUIRED, default 0), `lint_clean` (REQUIRED), `provenance_complete` (RECOMMENDED at v1). For any per-CL override, document rationale.
 
-5. **Write the response handoff.** Compose `.harness/handoffs/<TICKET-NNN>.res.json` per `docs/handoff-contract.md §Claude→Grok` with required fields: `schema_version: "1"`, `ticket_id`, `status` (green / red / blocked), `changed_files`, `test_results`, `decision_trail_ref`, `gate_results`.
+4a. **Enforce standards, don't assert them (Fix B, ADR-0062).** Run `./scripts/enforce-standards.sh --ticket <TICKET-NNN> --json`. It resolves the `app_root` (`scripts/app-root.sh`, Fix D) and runs CTP's detectors (`enforce.sh`) for this ticket's `applicable_rules`, returning real per-rule verdicts (`pass | fail | not_applicable | not_enforced`) + `files_evaluated`. **Step 5 writes `rules_verified` STRAIGHT from this output — never hand-assert it.** Any `fail` or `not_enforced` ⇒ `status: red`: fix the code (or land a `docs/deviations.md` row), re-run, do not write green.
+
+5. **Write the response handoff.** Compose `.harness/handoffs/<TICKET-NNN>.res.json` per `docs/handoff-contract.md §Claude→Grok` with required fields: `schema_version: "1"`, `ticket_id`, `status` (green / red / blocked), `changed_files`, `test_results`, `decision_trail_ref`, `gate_results`, and `rules_verified` from step 4a.
 
 6. **Write the decision trail.** Compose `.harness/trails/<TICKET-NNN>.md` naming the three R-G-R steps (or skip rationale). Cite the SKILL.md sections walked.
 

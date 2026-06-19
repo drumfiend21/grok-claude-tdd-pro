@@ -13,8 +13,10 @@
 #   matching request:
 #     (1) every applicable_rules id has a key in the response's rules_verified;
 #         a missing key forces red (contract: missing key ⇒ gate_failed).
-#     (2) every rules_verified value is one of pass | fail | deviated.
-#     (3) a green response carries NO "fail" — any fail forces red.
+#     (2) every rules_verified value is one of pass | fail | deviated |
+#         not_applicable | not_enforced (enum extended per ADR-0062, Fix B).
+#     (3) a green response carries NO "fail" and NO "not_enforced" — either forces
+#         red (not_applicable is NEUTRAL/green-eligible; the rule does not pertain).
 #     (4) every "deviated" rule has a matching row in docs/deviations.md
 #         (a deviation is a violation justified by an operator-landed row).
 #
@@ -88,8 +90,11 @@ try { res = rd(process.env.RV_RES); } catch (e) { console.log("ERR|"+process.env
 const applicable = Array.isArray(req.applicable_rules) ? req.applicable_rules : null;
 if (applicable === null) { console.log("NOTE|no applicable_rules (fail-closed default; not gated here)"); process.exit(0); }
 const rv = (res && typeof res.rules_verified === "object" && res.rules_verified) ? res.rules_verified : {};
-const valid = ["pass","fail","deviated"];
-// Enum check across all reported values.
+// Verdict vocabulary extended additively per ADR-0062 (Fix B): the detector-run
+// verdicts not_applicable (NEUTRAL) + not_enforced (RED) join pass/fail/deviated.
+const valid = ["pass","fail","deviated","not_applicable","not_enforced"];
+// green-eligible = pass | deviated | not_applicable. fail + not_enforced force red
+// (checked per-rule below). Enum check across all reported values:
 for (const k of Object.keys(rv)) if (!valid.includes(rv[k])) errs.push("rules_verified["+k+"] invalid value: "+rv[k]);
 // The gate binds only "green".
 if (res.status === "green") {
@@ -98,6 +103,7 @@ if (res.status === "green") {
   for (const rid of applicable) {
     if (!(rid in rv)) { errs.push("green but rules_verified omits applicable rule: "+rid+" (missing key ⇒ must be red)"); continue; }
     if (rv[rid] === "fail") errs.push("green but applicable rule failed: "+rid+" (any fail ⇒ must be red)");
+    if (rv[rid] === "not_enforced") errs.push("green but applicable rule not_enforced: "+rid+" (un-verified ⇒ must be red)");
     if (rv[rid] === "deviated" && dev.indexOf(rid) === -1) errs.push("rule "+rid+" marked deviated but no row in docs/deviations.md");
   }
 }

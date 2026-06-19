@@ -27,6 +27,7 @@ jobs:
         run: |
           bash --version | head -1
           node --version
+          ruby --version || echo "(no ruby — enforce.sh / Fix C dynamic gate need Ruby >= 3.0)"
           git --version
           which sha256sum || which shasum
 
@@ -51,6 +52,9 @@ jobs:
       - name: audit-hook-security (S-1..S-6 CWE-mapped shell patterns)
         run: ./scripts/audit-hook-security.sh --quiet
 
+      - name: audit-agent-compact (operating compact present + wired + accepted — fail-closed)
+        run: ./scripts/audit-agent-compact.sh --quiet
+
       - name: audit-plugin-surface (55 plugin top-level entries declared)
         run: ./scripts/audit-plugin-surface.sh --quiet
 
@@ -59,6 +63,12 @@ jobs:
 
       - name: audit-eo-governance (EO-2026 non-exemptibility + two-phase attestation)
         run: ./scripts/audit-eo-governance.sh --quiet
+
+      - name: audit-applicable-rules (Fix A — apply-by-default universal + language floor)
+        run: ./scripts/audit-applicable-rules.sh --quiet
+
+      - name: audit-standards-enforced (Fix C — dynamic re-run; claims must match live verdicts)
+        run: ./scripts/audit-standards-enforced.sh --quiet
 
       - name: audit-source-citations (every enforced rule traces to a cited authoritative source)
         run: ./scripts/audit-source-citations.sh --quiet

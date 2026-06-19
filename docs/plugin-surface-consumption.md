@@ -33,7 +33,7 @@
 | `package.json` | DECLARED-NOT-CONSUMED | Plugin's npm manifest; harness has no npm runtime dependency on the plugin (consumes via shell + symlinks per R-2). ADR-0041. |
 | `agents` | DECLARED-NOT-CONSUMED | Plugin-internal agent definitions; harness uses Claude Code directly. ADR-0037. |
 | `ci` | DECLARED-NOT-CONSUMED | Plugin's CI workflows; harness CI deferred per ADR-0028. ADR-0037. |
-| `commands` | DECLARED-NOT-CONSUMED | Plugin's slash commands; harness has its own `.cursor/commands/`. ADR-0037. |
+| `commands` | CONSUMED via `scripts/standards-refresh.sh` (TICKET-075 / ADR-0064) | `commands/set-refresh-frequency.sh` is driven as the cadence-grammar authority (validates `<N>m\|h\|d\|w\|mo`). The plugin's other slash commands remain unconsumed (harness has its own `.cursor/commands/`). |
 | `community` | DECLARED-NOT-CONSUMED | Plugin-internal community docs. ADR-0037. |
 | `compatibility` | DECLARED-NOT-CONSUMED | Plugin-internal compatibility matrix (different concern from the harness's `docs/claude-code-compat.yaml` per ADR-0036). Trigger to revisit: operator decides to align the plugin's compatibility schema with the harness's Claude Code compat schema. ADR-0041. |
 | `compliance` | CONSUMED via `scripts/smoke-e2e.sh` AIBOM emit (per TICKET-033 / ADR-0038 Batch 8) | `compliance/aibom-emit.sh` runs after green response; output at `.harness/audit/TICKET-NNN.aibom.json`. |

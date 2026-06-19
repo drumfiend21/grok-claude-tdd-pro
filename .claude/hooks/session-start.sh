@@ -45,12 +45,45 @@ if [ -x scripts/audit-claude-code-compat.sh ]; then
     scripts/audit-claude-code-compat.sh || true
 fi
 
+# Agent operating compact gate (per TICKET-068 / ADR-0057). Fail-closed binding:
+# the operator MUST accept docs/agent-operating-compact.md before GCTP may build
+# the user's product, and the agent is enforced by that agreement. This is the
+# deliberate ADR-scoped exception to ADR-0001's warn-only session-start policy.
+# When acceptance is absent/stale, present a STOP banner + the accept command;
+# when current, the audit prints one OK line. The hook still exits 0 (you cannot
+# accept in a dead session, and a SessionStart hook cannot hard-halt) — the real
+# teeth are the CLAUDE.md/AGENTS.md binding + the CI/pre-commit machine gate.
+if [ -x scripts/audit-agent-compact.sh ]; then
+    if ! scripts/audit-agent-compact.sh; then
+        echo ""
+        echo "  ====  STOP — GCTP OPERATING COMPACT NOT ACCEPTED  ===="
+        echo "  GCTP is NOT authorized to build the user's product until the operating"
+        echo "  compact is accepted by the operator. The agent MUST NOT drive"
+        echo "  /consult /roadmap /decompose /dispatch /inner-loop until then —"
+        echo "  only read docs and run the accept command below."
+        echo "    review : docs/agent-operating-compact.md"
+        echo "    accept : ./scripts/accept-compact.sh"
+        echo ""
+    fi
+fi
+
 # Standards rule registry sync (per TICKET-032 / ADR-0037).
 # Aggregates the plugin's standards/rubric pipeline into .harness/rules/active.json
 # so both Grok and Claude consume operator-declared rules (OWASP, Google, SLSA, etc.)
 # at session start. WARN-not-FAIL: a sync failure surfaces but does not block.
 if [ -x scripts/standards-sync.sh ]; then
     scripts/standards-sync.sh || true
+fi
+
+# Standards source-refresh on the operator's cadence (per TICKET-075 / ADR-0064).
+# GCTP consumes CTP as a pinned snapshot, so CTP's own begin-refreshing-on-install
+# (§28.23) never fires here. This drives CTP's standards/initial-refresh.sh on the
+# configured cadence (default: every active day), re-scraping the cited sources
+# (OWASP/Google/NIST/SLSA/AWS WA/EO/…) so enforcement tracks upstream, then
+# re-aggregates active.json. It also surfaces WHY freshness matters and, until the
+# operator chooses a cadence, prompts for one. Non-fatal + offline-tolerant.
+if [ -x scripts/standards-refresh.sh ]; then
+    scripts/standards-refresh.sh --check || true
 fi
 
 # Plugin surface declaration audit (per TICKET-032 / ADR-0037).
@@ -98,6 +131,26 @@ fi
 # WARN-not-FAIL at session start; CI is the hard gate.
 if [ -x scripts/audit-rules-verified.sh ]; then
     scripts/audit-rules-verified.sh || true
+fi
+
+# applicable_rules under-scoping gate (Fix A, TICKET-071 / ADR-0060). For every
+# handoff request, every ticket MUST carry all g-universal-* rules (apply-by-default)
+# + the language floor for each typed file_scope glob — the kata's under-scoping
+# (TS scoped to two rules, full ruleset never run) becomes a static RED. Content-
+# agnostic: vacuous until a request carries applicable_rules + active.json is present.
+# WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-applicable-rules.sh ]; then
+    scripts/audit-applicable-rules.sh || true
+fi
+
+# Dynamic standards re-run gate (Fix C, TICKET-074 / ADR-0063). For every green
+# handoff response, re-runs the detectors against the app_root (via enforce-standards.sh)
+# and asserts the response's rules_verified claims MATCH the live verdicts + that every
+# live pass evaluated ≥1 file — converting "claims complete" to "claims true". VACUOUS
+# until an operator configures .harness/app.json (no external app ⇒ nothing to re-verify).
+# WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-standards-enforced.sh ]; then
+    scripts/audit-standards-enforced.sh || true
 fi
 
 exit 0
