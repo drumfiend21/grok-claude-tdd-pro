@@ -69,8 +69,51 @@ until the corresponding CTP change lands and a pin bump (ADR-gated) adopts it.
 
 ---
 
+## P-5 — Fix E: external-tree enforcement entrypoint (`rubric/enforce.sh`)
+
+- **Status:** ✅ ADOPTED — shipped in CTP CL-477/478 (§28.17–28.18); adopted at GCTP pin `eb7b2af` (ADR-0058).
+- **Found:** 2026-06-18/19, GCTP O'Reilly kata build (`softarchcert-win25`): only IaC was actually
+  enforced by CTP detectors; TS code was scoped to two rules and never re-run (asserted, not enforced).
+  Root cause was CTP-side: no single entrypoint dispatches a rule set against an external app tree.
+- **GCTP corrections incorporated (invisible from inside CTP):** (1) dispatch by the
+  `generated-code-quality-standards/` catalog, NOT `RUBRIC.yaml` — the bare ids collide (`g-ts-001` =
+  `no-any` in the catalog vs `naming-style` in RUBRIC.yaml); (2) **4-state** per rule
+  (`pass | fail | not_applicable | not_enforced`) + a `files_evaluated` count, so a rule that ran but
+  matched no files is `not_applicable` (neutral) not a vacuous `pass`, and an un-run detector is
+  `not_enforced` (red) not a pass; (3) generalize the proven `cloud-guidance-rule.sh --rule/--root`
+  contract up to a dispatcher over all detectors.
+- **Adopted contract:** `enforce.sh --root <app> --rule <id>… | --rules <csv> [--paths <glob>] [--json]`;
+  exit `0` all-pass-or-NA / `1` any fail / `2` usage·unknown / `3` ≥1 not_enforced. This is the surface
+  the GCTP-side Fix B (a forthcoming `enforce-standards.sh`) + Fix C (dynamic re-run gate) build against.
+
+## P-6 — Fix F: prose enforcement (ADR-structural + citation detectors)
+
+- **Status:** ✅ ADOPTED — shipped in CTP CL-480 (§28.20, option 1); adopted at GCTP pin `eb7b2af` (ADR-0058).
+- **Found:** same kata: CTP enforced code + IaC but **prose** (ADRs/design docs — the bulk of an
+  architecture submission) had no detectors; it could only be cited, never content-enforced.
+- **Adopted:** a `documentation` namespace with `g-doc-001` (ADR structural conformance) + `g-doc-002`
+  (doc-citation-presence), emitted **through `generated-code-quality-standards/`** so they sync into
+  `active.json` and GCTP can scope them; `enforce.sh` maps `g-doc-*` → `*.md`. (GCTP Correction 4: doc
+  detectors must flow through the catalog to reach the contract — honored.)
+
+## P-7 — Fix G: `no-any` comment/string false positive
+
+- **Status:** ✅ ADOPTED — shipped in CTP CL-479 (§28.19); adopted at GCTP pin `eb7b2af` (ADR-0058).
+- **Found:** same kata: the reported TS "fails `no-any`" was a single finding on a *comment*
+  (`// Fail-closed: any policy error…`); the grep matched `: any` inside the comment text (0 real `any`
+  annotations; corroborated by GCTP's independent detector run).
+- **Adopted:** the detector strips `//` line comments (line-number-preserving) before the `: any` greps;
+  the `// allow-any:` affordance and real `x: any` flagging are unchanged.
+
+---
+
 ## Routing
 
 These are tracked here for the harness record. The actual fixes land in `claude-tdd-pro`
-as v1.11 amendments; once they ship, a pin bump (ADR per `docs/architecture-principles.md`
+as amendments; once they ship, a pin bump (ADR per `docs/architecture-principles.md`
 §15) adopts them and the relevant `Status` above flips to ADOPTED with the pin SHA.
+
+The GCTP-side counterparts of the kata-feedback loop — **Fix A** (decompose-union), **Fix B**
+(`enforce-standards.sh` driving `enforce.sh`), **Fix C** (dynamic re-run gate), **Fix D** (`app_root`
+external-working-tree model) — are NOT upstream items; they land in this repo per
+`proposals/PROPOSAL-002-app-enforcement-spine.md`.
