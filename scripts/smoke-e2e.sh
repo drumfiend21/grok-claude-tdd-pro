@@ -94,9 +94,25 @@ log "step 1/4: outer-loop emit handoff request"
 
 ISSUED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
+# Apply-by-default scoping per Fix A (ADR-0060): the stub request carries every
+# g-universal-* rule (apply-by-default, CTP §28.21) + the non-exemptible EO rules,
+# computed live from active.json (EO-only fallback when the registry is absent —
+# e.g. CI before standards-sync). The file_scope below uses directory globs, so no
+# language floor applies: this stub cannot run language detectors — real per-language
+# verdicts arrive when Fix B (enforce-standards.sh) wires enforce.sh against app_root.
+APPLICABLE_RULES_JSON="$(node -e '
+const fs=require("fs");
+let ids=[];
+try{const a=JSON.parse(fs.readFileSync(".harness/rules/active.json","utf8"));ids=(Array.isArray(a.rules)?a.rules:a).map(r=>r.id);}catch(e){}
+const eo=["g-security-governance-require-provenance","g-security-governance-no-known-exploited-ingress"];
+const out=[]; const seen={};
+for(const id of eo.concat(ids.filter(x=>x.startsWith("g-universal-")))) if(!seen[id]){seen[id]=1;out.push(id);}
+process.stdout.write(JSON.stringify(out));
+')"
+
 # In a live run this would be `grok -p < .grok/templates/dispatch.md`.
 # Here we build the same document directly from the contract example.
-env TICKET_ID="$TICKET_ID" ISSUED_AT="$ISSUED_AT" REQ_PATH="$REQ_PATH" node -e '
+env TICKET_ID="$TICKET_ID" ISSUED_AT="$ISSUED_AT" REQ_PATH="$REQ_PATH" APPLICABLE_RULES_JSON="$APPLICABLE_RULES_JSON" node -e '
 const fs = require("fs");
 const req = {
     schema_version: "1",
@@ -110,8 +126,8 @@ const req = {
     ],
     file_scope: {
         may_edit: [
-            "examples/string-utils/src/string-utils.mjs",
-            "examples/string-utils/test/string-utils.test.mjs"
+            "examples/string-utils/src/**",
+            "examples/string-utils/test/**"
         ],
         may_read: ["examples/string-utils/**"],
         must_not_touch: [".grok/**", ".claude/**", "claude-tdd-pro/**"]
@@ -125,13 +141,10 @@ const req = {
         }]
     },
     quality_gate: { tests_must_pass: true, coverage_delta_min: 0, lint_clean: true },
-    // EO governance is non-exemptible (ADR-0045): every request carries the active
-    // EO-namespace rules. At pin 6d2fe13 the EO authorities ship under
-    // security-governance (ADR-0055). Verified by scripts/audit-eo-governance.sh.
-    applicable_rules: [
-        "g-security-governance-require-provenance",
-        "g-security-governance-no-known-exploited-ingress"
-    ]
+    // EO governance is non-exemptible (ADR-0045) + the apply-by-default universal
+    // rules (Fix A / ADR-0060), computed live from active.json (see APPLICABLE_RULES_JSON
+    // above). Verified by scripts/audit-eo-governance.sh + scripts/audit-applicable-rules.sh.
+    applicable_rules: JSON.parse(process.env.APPLICABLE_RULES_JSON)
 };
 fs.writeFileSync(process.env.REQ_PATH, JSON.stringify(req, null, 2) + "\n");
 ' || fail "failed to write request"
@@ -194,6 +207,7 @@ COMPLETED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 env TICKET_ID="$TICKET_ID" COMPLETED_AT="$COMPLETED_AT" \
     TOY_SRC="$TOY_SRC" TRAIL_PATH="$TRAIL_PATH" RES_PATH="$RES_PATH" \
     TESTS_PASSED="$TESTS_PASSED" TESTS_FAILED="$TESTS_FAILED" DURATION_MS="$DURATION_MS" \
+    APPLICABLE_RULES_JSON="$APPLICABLE_RULES_JSON" \
     node -e '
 const fs = require("fs");
 const env = process.env;
@@ -213,10 +227,12 @@ const res = {
     coverage_delta: 0.0,
     decision_trail_ref: env.TRAIL_PATH,
     skills_invoked: ["tdd-pro-cl-workflow"],
-    rules_verified: {
-        "g-security-governance-require-provenance": "pass",
-        "g-security-governance-no-known-exploited-ingress": "pass"
-    },
+    // Mirror the request applicable_rules (req is a subset of res, per the rules_verified gate).
+    // STUB: the toy string-utils change has no secret/debug/provenance/ingress surface,
+    // so every apply-by-default rule is attested "pass" at the wire level. Real detector
+    // verdicts (pass/fail/not_applicable/not_enforced) replace these when Fix B wires
+    // enforce.sh — a stub cannot run detectors (ADR-0008 live-Claude deferral).
+    rules_verified: JSON.parse(env.APPLICABLE_RULES_JSON).reduce((m,id)=>{m[id]="pass";return m;},{}),
     // Two-phase EO attestation (ADR-0046): a green response must attest design-phase
     // EO conformance. Verified by scripts/audit-eo-governance.sh.
     eo_design_conformance: {

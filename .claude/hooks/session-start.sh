@@ -122,4 +122,14 @@ if [ -x scripts/audit-rules-verified.sh ]; then
     scripts/audit-rules-verified.sh || true
 fi
 
+# applicable_rules under-scoping gate (Fix A, TICKET-071 / ADR-0060). For every
+# handoff request, every ticket MUST carry all g-universal-* rules (apply-by-default)
+# + the language floor for each typed file_scope glob — the kata's under-scoping
+# (TS scoped to two rules, full ruleset never run) becomes a static RED. Content-
+# agnostic: vacuous until a request carries applicable_rules + active.json is present.
+# WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-applicable-rules.sh ]; then
+    scripts/audit-applicable-rules.sh || true
+fi
+
 exit 0

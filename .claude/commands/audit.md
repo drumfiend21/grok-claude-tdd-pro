@@ -12,6 +12,7 @@ Run the pre-commit audit chain (Claude Code mirror of `.cursor/commands/audit.md
 ./scripts/audit-plugin-surface.sh --quiet
 ./scripts/audit-standards-conformance.sh --quiet
 ./scripts/audit-eo-governance.sh --quiet
+./scripts/audit-applicable-rules.sh --quiet
 ./scripts/audit-source-citations.sh --quiet
 ./scripts/audit-manifest.sh
 ./scripts/audit-metrics.sh --quiet

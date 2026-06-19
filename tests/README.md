@@ -56,7 +56,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `scripts/audit-rules-verified.sh` | `tests/test-audit-rules-verified.sh` | 13 (per TICKET-067 / ADR-0037; handoff `rules_verified` gate — Proposal B harness-side; green requires every applicable rule pass/deviated, deviations need a `docs/deviations.md` row, any fail/missing key forces red; non-green not gated; vacuous until a handoff carries applicable_rules) |
 | `scripts/audit-agent-compact.sh` + `scripts/accept-compact.sh` | `tests/test-audit-agent-compact.sh` | 17 (per TICKET-068 / ADR-0057; fail-closed agent operating-compact gate — compact present + wired into CLAUDE.md/AGENTS.md + currently accepted, else red; accept round-trip; amendment-invalidates-acceptance; exit 0/1/2) |
 | `scripts/app-root.sh` | `tests/test-app-root.sh` | 14 (per TICKET-070 / ADR-0059, "Fix D"; external app-tree resolver + vacuous-green hard guard — resolve relative/absolute, refuse missing/empty/`.git`-only trees, unconfigured vs no-key, invalid JSON, `--validate`; exit 0/1/2) |
-| **Total** | **27/27 testable surfaces** | **~346 assertions** |
+| `scripts/audit-applicable-rules.sh` | `tests/test-audit-applicable-rules.sh` | 14 (per TICKET-071 / ADR-0060, "Fix A"; handoff under-scoping gate — every ticket carries all `g-universal-*` (apply-by-default) + the language floor for each typed `file_scope` glob; the kata `.ts`-under-scoping regression; vacuous on no-reqs / missing active.json; exit 0/1/2) |
+| **Total** | **28/28 testable surfaces** | **~360 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 

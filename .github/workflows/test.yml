@@ -63,6 +63,9 @@ jobs:
       - name: audit-eo-governance (EO-2026 non-exemptibility + two-phase attestation)
         run: ./scripts/audit-eo-governance.sh --quiet
 
+      - name: audit-applicable-rules (Fix A — apply-by-default universal + language floor)
+        run: ./scripts/audit-applicable-rules.sh --quiet
+
       - name: audit-source-citations (every enforced rule traces to a cited authoritative source)
         run: ./scripts/audit-source-citations.sh --quiet
 
