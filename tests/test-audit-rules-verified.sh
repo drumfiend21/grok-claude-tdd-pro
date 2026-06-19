@@ -99,6 +99,26 @@ mkreq T1 '{"applicable_rules":["r1"]}'
 printf '{not json\n' > "$TMP/h/T1.res.json"
 run; assert_eq "$?" "1" "non-JSON response → violation (1)"
 
+# --- ADR-0062 (Fix B) extended verdicts: not_applicable (neutral) + not_enforced (red) ---
+
+# Test 14: green + not_applicable on an applicable rule → accepted (0)
+clear_h
+mkreq T1 '{"applicable_rules":["r1","r2"]}'
+mkres T1 '{"status":"green","rules_verified":{"r1":"pass","r2":"not_applicable"}}'
+run; assert_eq "$?" "0" "green + not_applicable → accepted (0)"
+
+# Test 15: green + not_enforced on an applicable rule → violation (1)
+clear_h
+mkreq T1 '{"applicable_rules":["r1","r2"]}'
+mkres T1 '{"status":"green","rules_verified":{"r1":"pass","r2":"not_enforced"}}'
+run; assert_eq "$?" "1" "green + not_enforced → violation (1)"
+
+# Test 16: red response carrying not_enforced → not gated (0)
+clear_h
+mkreq T1 '{"applicable_rules":["r1"]}'
+mkres T1 '{"status":"red","rules_verified":{"r1":"not_enforced"}}'
+run; assert_eq "$?" "0" "red + not_enforced → not gated (0)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-rules-verified] OK — $passes/$total passed."; exit 0
 else log "[test-rules-verified] FAIL — $failures/$total."; exit 1; fi

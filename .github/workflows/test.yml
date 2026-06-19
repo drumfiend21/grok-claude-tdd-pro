@@ -27,6 +27,7 @@ jobs:
         run: |
           bash --version | head -1
           node --version
+          ruby --version || echo "(no ruby — enforce.sh / Fix C dynamic gate need Ruby >= 3.0)"
           git --version
           which sha256sum || which shasum
 

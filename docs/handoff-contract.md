@@ -104,8 +104,11 @@ Field rules:
 `rules_verified` field rules (added per TICKET-032 / ADR-0037):
 
 - Keys are rule IDs from `applicable_rules` in the matching request.
-- Values are `"pass"`, `"fail"`, or `"deviated"` (= violation justified by a row in `docs/deviations.md`).
-- A `green` status requires every applicable rule to be `pass` OR `deviated`. Any `fail` forces `status: "red"` with `error.code: "gate_failed"`.
+- Values are `"pass"`, `"fail"`, `"deviated"` (= violation justified by a row in `docs/deviations.md`), `"not_applicable"`, or `"not_enforced"` (extended additively per ADR-0062, "Fix B"; `schema_version` stays `"1"` — a tolerant reader treats an unknown verdict as non-green). The last two come straight from the detector run (`enforce.sh`, ADR-0058) via `scripts/enforce-standards.sh`:
+  - `"not_applicable"` — the rule's detector matched **no files** in the app tree (e.g. an EO/cloud rule on a pure-TypeScript ticket). NEUTRAL, distinct from `pass`: the rule legitimately does not pertain, and "nothing to check" is never counted as a vacuous pass.
+  - `"not_enforced"` — files existed but the detector **could not verify** them (tool/model absent). The rule was claimed applicable but went unverified → RED. Never read as a pass.
+- A `green` status requires every applicable rule to be `pass`, `deviated`, **or** `not_applicable`. Any `fail` **or** `not_enforced` (or `unknown_rule`) forces `status: "red"` with `error.code: "gate_failed"`.
+- `rules_verified` SHOULD be produced by a real detector run, not asserted: the inner loop runs `scripts/enforce-standards.sh --ticket <id>` against the `app_root` and writes `rules_verified` from its output (ADR-0062). The forthcoming dynamic gate (`audit-standards-enforced.sh`, Fix C / ADR-0063) re-runs the detectors and rejects a green response whose claims do not match the live verdicts, or whose `pass` rules evaluated zero files.
 - Missing keys (request named a rule but response omits it) force `status: "red"` with `error.code: "gate_failed"`.
 
 `eo_design_conformance` field rules (added per TICKET-050 / ADR-0046/0048):
