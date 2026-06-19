@@ -39,6 +39,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-plugin-surface.sh:50:
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-plugin-surface.sh:51:rm -rf "$TMPDIR"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-rules-verified.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-rules-verified.sh:33:clear_h() { rm -f "$TMP/h"/*.json; }
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-standards-enforced.sh:22:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-standards-enforced.sh:44:clear_h() { rm -f "$TMP/h"/*.json; }
 S-3|rm -rf usage (verify path is bounded)|tests/test-consult.sh:43:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json

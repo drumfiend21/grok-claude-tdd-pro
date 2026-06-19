@@ -132,4 +132,14 @@ if [ -x scripts/audit-applicable-rules.sh ]; then
     scripts/audit-applicable-rules.sh || true
 fi
 
+# Dynamic standards re-run gate (Fix C, TICKET-074 / ADR-0063). For every green
+# handoff response, re-runs the detectors against the app_root (via enforce-standards.sh)
+# and asserts the response's rules_verified claims MATCH the live verdicts + that every
+# live pass evaluated ≥1 file — converting "claims complete" to "claims true". VACUOUS
+# until an operator configures .harness/app.json (no external app ⇒ nothing to re-verify).
+# WARN-not-FAIL at session start; CI is the hard gate.
+if [ -x scripts/audit-standards-enforced.sh ]; then
+    scripts/audit-standards-enforced.sh || true
+fi
+
 exit 0

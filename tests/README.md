@@ -58,7 +58,8 @@ Every harness substrate script + Claude Code hook has a `tests/test-<base>.sh` u
 | `scripts/app-root.sh` | `tests/test-app-root.sh` | 14 (per TICKET-070 / ADR-0059, "Fix D"; external app-tree resolver + vacuous-green hard guard — resolve relative/absolute, refuse missing/empty/`.git`-only trees, unconfigured vs no-key, invalid JSON, `--validate`; exit 0/1/2) |
 | `scripts/audit-applicable-rules.sh` | `tests/test-audit-applicable-rules.sh` | 14 (per TICKET-071 / ADR-0060, "Fix A"; handoff under-scoping gate — every ticket carries all `g-universal-*` (apply-by-default) + the language floor for each typed `file_scope` glob; the kata `.ts`-under-scoping regression; vacuous on no-reqs / missing active.json; exit 0/1/2) |
 | `scripts/enforce-standards.sh` | `tests/test-enforce-standards.sh` | 13 (per TICKET-073 / ADR-0062, "Fix B"; produce `rules_verified` from real `enforce.sh` runs — 4-state verdict→status→exit mapping via a hermetic stub; not_applicable neutral / not_enforced→incomplete / fail→red; empty-app_root refusal; `--json` + `files_evaluated`; exit 0/1/3/2) |
-| **Total** | **29/29 testable surfaces** | **~373 assertions** |
+| `scripts/audit-standards-enforced.sh` | `tests/test-audit-standards-enforced.sh` | 10 (per TICKET-074 / ADR-0063, "Fix C"; dynamic re-run gate — green `rules_verified` claims must equal a live detector re-run + every live pass evaluated ≥1 file; flags claim-pass-on-live-fail + vacuous-pass; vacuous on no app_root / no green response; exit 0/1/2) |
+| **Total** | **30/30 testable surfaces** | **~383 assertions** |
 
 **100% surface coverage** = every executable substrate file has at least one test suite asserting its documented exit-code contract. Each test suite covers the script's:
 
