@@ -346,3 +346,25 @@ consult artifact's `decisions[]` once the loop completes.
 }
 ```
 
+## App-Root (external application working tree) — ACTIVE (per ADR-0059, "Fix D")
+
+The harness builds the user's product in a **separate working tree** ("app_root"), distinct from
+`.harness/*` (which holds handoffs/trails/manifests). The app_root is the tree CTP standards are
+**enforced on** (via `enforce.sh`, Fix B/C). It is named in an operator-local config:
+
+```jsonc
+// .harness/app.json  (gitignored; .harness/app.json.example is the tracked template)
+{ "schema_version": "1", "app_root": "<path>", "description": "..." }
+```
+
+- `app_root` may be **relative** (resolved against the repo root) or **absolute**; the app tree need
+  **not** be a git repo (enforcement is git-agnostic).
+- The single resolver is **`scripts/app-root.sh`** — exit `0` (resolved + exists + non-empty, abs path
+  on stdout) / `1` (unconfigured) / `2` (configured but missing or **empty** → refused).
+- **Hard guard (anti-vacuous-green):** an app_root that is missing or has zero regular files is exit `2`,
+  never a silent pass. "Nothing to enforce" is a configuration error, not a green. This is the consumer
+  half of `enforce.sh`'s `not_applicable`-vs-pass distinction: GCTP refuses to *call* enforcement on an
+  empty tree just as `enforce.sh` refuses to count an unevaluated rule as passed.
+- **Consumers:** `/consult` `/decompose` `/inner-loop` `/audit` resolve the app_root through this script;
+  the forthcoming Fix-B `enforce-standards.sh` and the Fix-C dynamic gate target it as `enforce.sh --root`.
+
