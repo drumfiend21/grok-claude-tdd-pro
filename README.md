@@ -4,7 +4,7 @@
 ![Audits](https://img.shields.io/badge/audits-11%2F11%20green-brightgreen)
 ![Tickets](https://img.shields.io/badge/tickets-36%20DONE-blue)
 ![ADRs](https://img.shields.io/badge/ADRs-41%20landed-blue)
-![Plugin pin](https://img.shields.io/badge/plugin%20pin-eb7b2af-informational)
+![Plugin pin](https://img.shields.io/badge/plugin%20pin-7a7f74d-informational)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%3E%3D2.0.0%2C%3C3.0.0-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
