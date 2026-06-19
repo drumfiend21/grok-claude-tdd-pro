@@ -95,6 +95,56 @@ mkreq OK '{"applicable_rules":['"$UNIV"'],"file_scope":{"may_edit":["x/**"]}}'
 mkreq BAD '{"applicable_rules":["g-universal-no-debug-output"],"file_scope":{"may_edit":["y/**"]}}'
 run; assert_eq "$?" "1" "one good + one under-scoped → 1"
 
+# ---------- ADR-0066 D-B additions: g-md-* floor + applies_to_prose projection ----------
+# A second fixture carrying:
+#   - g-md-001 (so .md globs additionally demand g-md-* alongside the existing g-doc-*)
+#   - g-aws-no-unrestricted-ingress with applies_to_prose:true (so .md globs project it)
+#   - g-aws-tag-resources WITHOUT the prose flag (must NOT be projected onto .md)
+cat > "$TMP/active-prose.json" <<'JSON'
+{ "rules": [
+  { "id": "g-universal-no-hardcoded-secrets", "source_namespace": "_universal" },
+  { "id": "g-universal-no-debug-output", "source_namespace": "_universal" },
+  { "id": "g-md-001", "source_namespace": "md" },
+  { "id": "g-md-fenced-code-language-declared", "source_namespace": "md" },
+  { "id": "g-doc-001", "source_namespace": "documentation" },
+  { "id": "g-aws-no-unrestricted-ingress", "source_namespace": "aws", "applies_to_prose": true },
+  { "id": "g-aws-tag-resources", "source_namespace": "aws" }
+] }
+JSON
+run_prose() { AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active-prose.json" "$SCRIPT" --quiet >/dev/null 2>&1; }
+
+# Test 15: test_md_underscope_red — .md glob, applicable_rules omits g-md-* → 1
+clear_h
+mkreq T15 '{"applicable_rules":['"$UNIV"',"g-doc-001","g-aws-no-unrestricted-ingress"],"file_scope":{"may_edit":["docs/adr/**/*.md"]}}'
+run_prose; assert_eq "$?" "1" "test_md_underscope_red — .md glob without g-md-* → 1"
+
+# Test 16: test_md_full_union_green — full union (g-md-* + g-doc-* + applies_to_prose rule) → 0
+clear_h
+mkreq T16 '{"applicable_rules":['"$UNIV"',"g-md-001","g-md-fenced-code-language-declared","g-doc-001","g-aws-no-unrestricted-ingress"],"file_scope":{"may_edit":["docs/adr/**/*.md"]}}'
+run_prose; assert_eq "$?" "0" "test_md_full_union_green — full union → 0"
+
+# Test 17: test_applies_to_prose_floor_red — omits the prose-flagged rule under .md scope → 1
+clear_h
+mkreq T17 '{"applicable_rules":['"$UNIV"',"g-md-001","g-md-fenced-code-language-declared","g-doc-001"],"file_scope":{"may_edit":["docs/adr/**/*.md"]}}'
+run_prose; assert_eq "$?" "1" "test_applies_to_prose_floor_red — omits prose-flagged rule → 1"
+
+# Test 18: test_applies_to_prose_floor_vacuous — original fixture has NO prose-flagged rules → 0
+clear_h
+mkreq T18 '{"applicable_rules":['"$UNIV"',"g-doc-001"],"file_scope":{"may_edit":["docs/adr/**/*.md"]}}'
+run; assert_eq "$?" "0" "test_applies_to_prose_floor_vacuous — no prose-flagged rules in registry → 0"
+
+# Test 19: test_md_extensionless_glob_not_gated — docs/architecture/** (no .md ext) → 0
+clear_h
+mkreq T19 '{"applicable_rules":['"$UNIV"'],"file_scope":{"may_edit":["docs/architecture/**"]}}'
+run_prose; assert_eq "$?" "0" "test_md_extensionless_glob_not_gated — no .md extension → 0"
+
+# Test 20: test_applies_to_prose_not_triggered_without_md_glob — .ts glob does NOT project prose floor
+clear_h
+mkreq T20 '{"applicable_rules":['"$UNIV"',"g-ts-001","g-ts-006","g-node-002"],"file_scope":{"may_edit":["src/**/*.ts"]}}'
+# Uses active-prose.json which has a prose-flagged rule + g-md-*. Neither should be required for .ts.
+# But active-prose.json doesn't include g-ts-* in the registry, so the .ts floor itself is vacuous.
+run_prose; assert_eq "$?" "0" "test_applies_to_prose_not_triggered_without_md_glob — .ts scope → 0"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-applicable-rules] OK — $passes/$total passed."; exit 0
 else log "[test-applicable-rules] FAIL — $failures/$total."; exit 1; fi

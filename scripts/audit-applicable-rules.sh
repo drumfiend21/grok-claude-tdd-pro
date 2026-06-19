@@ -19,7 +19,7 @@
 #       extension, the rule-id prefixes that language implies MUST be fully present:
 #         .ts/.tsx/.mts/.cts → g-ts-* + g-node-*      (.tsx/.jsx also → g-react-*)
 #         .js/.jsx/.mjs/.cjs → g-node-*
-#         .md                → g-doc-*
+#         .md                → g-doc-* + g-md-*       (g-md-* added per ADR-0066 D-B)
 #         .tf/.tfvars        → g-hashicorp-* (provider-agnostic terraform; the
 #                              provider namespace stays prose/consult-driven)
 #         .yaml/.yml         → g-linux-foundation-*
@@ -27,6 +27,12 @@
 #       gated here (use typed globs to get the language floor — see the decompose
 #       template). Over-scoping is SAFE: enforce.sh returns `not_applicable` for a
 #       rule that matches no files, so a generous union never produces a false fail.
+#   (3) PROSE PROJECTION (applies_to_prose) — when any `file_scope.may_edit` glob
+#       has a `.md` extension, every rule in active.json carrying
+#       `"applies_to_prose": true` MUST be in applicable_rules. This is the Layer-2
+#       semantic projection from ADR-0066 D-B: code rules promoted by CTP to prose
+#       enforcement bind on architectural MD by construction. Vacuous when no rule
+#       carries the flag (i.e. before PROPOSAL-003 lands).
 #
 # EO non-exemptibility is enforced separately by `scripts/audit-eo-governance.sh`;
 # this gate is the universal + language dimension of the same union.
@@ -96,11 +102,17 @@ const errs=[];
 // (1) universal apply-by-default floor
 for(const u of ids.filter(x=>x.startsWith("g-universal-"))) if(!have.has(u)) errs.push("omits apply-by-default universal rule: "+u);
 // (2) language floor from typed globs
-const EXT={ts:["g-ts-","g-node-"],tsx:["g-ts-","g-node-","g-react-"],mts:["g-ts-","g-node-"],cts:["g-ts-","g-node-"],js:["g-node-"],jsx:["g-node-","g-react-"],mjs:["g-node-"],cjs:["g-node-"],md:["g-doc-"],tf:["g-hashicorp-"],tfvars:["g-hashicorp-"],yaml:["g-linux-foundation-"],yml:["g-linux-foundation-"]};
+const EXT={ts:["g-ts-","g-node-"],tsx:["g-ts-","g-node-","g-react-"],mts:["g-ts-","g-node-"],cts:["g-ts-","g-node-"],js:["g-node-"],jsx:["g-node-","g-react-"],mjs:["g-node-"],cjs:["g-node-"],md:["g-doc-","g-md-"],tf:["g-hashicorp-"],tfvars:["g-hashicorp-"],yaml:["g-linux-foundation-"],yml:["g-linux-foundation-"]};
 const may=(req.file_scope&&Array.isArray(req.file_scope.may_edit))?req.file_scope.may_edit:[];
 const prefixes=new Set();
-for(const g of may){ const m=String(g).match(/\.([A-Za-z0-9]+)$/); if(m){ const e=m[1].toLowerCase(); if(EXT[e]) EXT[e].forEach(p=>prefixes.add(p)); } }
+const extsSeen=new Set();
+for(const g of may){ const m=String(g).match(/\.([A-Za-z0-9]+)$/); if(m){ const e=m[1].toLowerCase(); extsSeen.add(e); if(EXT[e]) EXT[e].forEach(p=>prefixes.add(p)); } }
 for(const p of prefixes){ for(const id of ids.filter(x=>x.startsWith(p))) if(!have.has(id)) errs.push("file_scope implies "+p+"* but applicable_rules omits: "+id); }
+// (3) prose projection — fires when any .md glob is in file_scope.may_edit
+if(extsSeen.has("md")){
+  const rules=Array.isArray(active.rules)?active.rules:active;
+  for(const r of rules){ if(r && r.applies_to_prose===true && r.id && !have.has(r.id)) errs.push("file_scope .md glob projects applies_to_prose rule: "+r.id); }
+}
 for(const e of errs) console.log("VIOL|"+e);
 process.exit(0);
 ' 2>&1)
