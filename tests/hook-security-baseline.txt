@@ -49,3 +49,7 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f 
 S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
 S-3|rm -rf usage (verify path is bounded)|tests/test-source-citations.sh:31:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:66:rm -f "$C" "$TMP/refresh.log"
+S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:86:rm -f "$C" "$TMP/refresh.log"; run --configure on-demand >/dev/null 2>&1
+S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:94:rm -f "$C"; run --configure 1d >/dev/null 2>&1

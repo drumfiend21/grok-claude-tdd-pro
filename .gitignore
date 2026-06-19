@@ -42,6 +42,14 @@
 # shape; scripts/app-root.sh resolves + hard-guards it.
 .harness/app.json
 
+# Operator-local standards-refresh cadence + CTP freshness baseline (TICKET-075 /
+# ADR-0064). standards-refresh.json holds the chosen cadence + last-refresh timestamps
+# (environment-specific); standards-cache/ is where CTP's initial-refresh.sh seeds its
+# per-source freshness state. Both operator-local; .harness/standards-refresh.json.example
+# documents the shape.
+.harness/standards-refresh.json
+.harness/standards-cache/
+
 # OS / editor noise
 .DS_Store
 *.swp

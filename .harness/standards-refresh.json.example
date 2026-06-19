@@ -1,0 +1,8 @@
+{
+  "_comment": "Operator-local cadence for GCTP driving CTP's standards source-refresh. Copy to .harness/standards-refresh.json (gitignored). Set frequency to <N>m|h|d|w|mo (minutes/hours/days/weeks/months) or a calendar token (daily|weekly|monthly|quarterly|on-demand). Default 1d = every active day. Configure via: ./scripts/standards-refresh.sh --configure <freq>. Per TICKET-075 / ADR-0064; see docs/standards-refresh.md.",
+  "schema_version": "1",
+  "frequency": "1d",
+  "configured": false,
+  "last_refresh_ms": null,
+  "last_refresh_at": null
+}

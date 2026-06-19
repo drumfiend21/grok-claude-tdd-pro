@@ -75,6 +75,17 @@ if [ -x scripts/standards-sync.sh ]; then
     scripts/standards-sync.sh || true
 fi
 
+# Standards source-refresh on the operator's cadence (per TICKET-075 / ADR-0064).
+# GCTP consumes CTP as a pinned snapshot, so CTP's own begin-refreshing-on-install
+# (§28.23) never fires here. This drives CTP's standards/initial-refresh.sh on the
+# configured cadence (default: every active day), re-scraping the cited sources
+# (OWASP/Google/NIST/SLSA/AWS WA/EO/…) so enforcement tracks upstream, then
+# re-aggregates active.json. It also surfaces WHY freshness matters and, until the
+# operator chooses a cadence, prompts for one. Non-fatal + offline-tolerant.
+if [ -x scripts/standards-refresh.sh ]; then
+    scripts/standards-refresh.sh --check || true
+fi
+
 # Plugin surface declaration audit (per TICKET-032 / ADR-0037).
 # Catches the regression class where a plugin pin bump introduces a new
 # top-level directory and the consumption registry doesn't acknowledge it.
