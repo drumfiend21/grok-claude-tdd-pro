@@ -115,6 +115,19 @@ These slash commands are available (Cursor and Claude Code unless noted):
 
 ---
 
+## When dispatch is blocked by design-phase MD scoring
+
+After PROPOSAL-003 lands in CTP (the upstream rule-content amendment introducing the YAML/JSON/MD corpora + `prose-judge.sh`), the harness's design-phase MD gate (ADR-0066 D-D) activates. If you run `/dispatch` for a ticket that touches architectural Markdown (anything under `docs/architecture/**`, `docs/adr/**`, `docs/decisions/**`, or any `.md` with frontmatter `kind: architecture | adr | decision`), the gate scores the prose against every rule in `active.json` carrying `applies_to_prose: true` **before** the request is emitted.
+
+If the gate blocks dispatch, you have two paths:
+
+1. **Rewrite the prose.** The gate flagged a concrete claim — e.g. an ADR proposing `0.0.0.0/0` ingress on the dev cluster against the `g-aws-no-unrestricted-ingress` rule. Edit the section so the proposed design no longer violates the rule, then re-run `/dispatch`.
+2. **File a deviation.** If the rule legitimately cannot apply in this context (cross-provider, isolated subsystem, etc.), add a `## Deviation — <RULE-ID> on <TICKET-ID>` row to `<app_root>/docs/deviations.md`. Use [`docs/deviations-template.md`](deviations-template.md) as the template. The gate matches the heading and treats the rule as `deviated`-as-green; dispatch then proceeds with the deviation visible in the audit trail.
+
+This is **never silent exclusion** — deviations are recorded, reviewable, and revisited on the re-eval condition you write into the row. Full operator workflow + worked example: [`docs/kata-runbook.md` PATH C](kata-runbook.md#path-c--fix-architectural-prose-under-enforcement-after-proposal-003-lands).
+
+The gate is vacuous-pass today (no `applies_to_prose: true` rules exist in `active.json` until PROPOSAL-003 lands). When it activates, you'll see it.
+
 ## If you get stuck
 
 - In **Cursor**: run **`/doctor`** (CTP). In **GCTP**: run **`./install.sh`** again — both are safe to re-run.

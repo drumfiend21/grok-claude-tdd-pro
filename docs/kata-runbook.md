@@ -92,3 +92,43 @@ The app code lands in `app_root`, enforced green for real — no asserted passes
 ---
 
 **Recommendation:** run PATH A first (ground-truth audit, ~seconds, proves the loop on the existing work), then fix the real reds in place — the architecture itself stood up; only code-rule + ADR-structure conformance was missing. Reserve PATH B (full rewrite) for the pristine generation-under-enforcement provenance trail.
+
+---
+
+## PATH C — fix architectural prose under enforcement (after PROPOSAL-003 lands)
+
+Once the upstream PROPOSAL-003 lands in CTP and a pin bump adopts the new namespaces + `prose-judge.sh`, the harness's design-phase MD gate (ADR-0066 D-D, `scripts/audit-design-phase-md.sh`) activates. Then every `.md` under `docs/architecture/**`, `docs/adr/**`, or `docs/decisions/**` (and any `.md` with frontmatter `kind: architecture | adr | decision`) is scored against every rule in `active.json` carrying `applies_to_prose: true` **before** `/dispatch` will emit the request. PATH C is the operator workflow for that gate.
+
+### Trigger
+
+The gate fires when, in any handoff request whose `file_scope.may_edit` includes an architectural `.md` glob, an applicable `applies_to_prose: true` rule (e.g. `g-aws-no-unrestricted-ingress`) reports a violation in the design prose without a matching deviation row.
+
+### Two operator paths when the gate blocks
+
+**Path 1 — rewrite the prose.** The cheap path. The judge flagged a concrete claim (e.g. an ADR proposing `0.0.0.0/0` ingress on the dev cluster). Edit the section so the proposed design no longer violates the rule, then re-run `/dispatch`. The judge re-tokenizes, the section hash changes, cache miss, judge replies NO. Verdict: GREEN. Dispatch proceeds.
+
+**Path 2 — file a deviation.** The right path when the rule legitimately cannot apply in this context (e.g., a cross-provider rule on a single-cloud project, or a rule whose premise doesn't hold for an isolated subsystem). Add a row to `<app_root>/docs/deviations.md`:
+
+```bash
+cp docs/deviations-template.md "$APP_ROOT/docs/deviations.md"     # first time only
+# then append a Deviation section per the template:
+#   ## Deviation — <RULE-ID> on <TICKET-ID>
+#   - **Rule:** ...
+#   - **Why-cannot-apply:** ... (cite the ADR that locks the scope)
+#   - **Operator acceptance:** <email> on YYYY-MM-DD
+#   - **Re-eval condition:** ...
+```
+
+Then re-run `/dispatch`. The gate matches the heading, treats the rule as `deviated`-as-green, and dispatch proceeds with the deviation visible in the audit trail.
+
+### What the gate does NOT do
+
+- It does not silently exclude any rule. Every rule that fires either passes, is deviated, or is red — never dropped.
+- It does not run on plain `.md` files (README, CHANGELOG, notes) — only on architectural docs by path heuristic or frontmatter `kind`.
+- It does not run when `active.json` has no `applies_to_prose: true` rules (which is today's state, before PROPOSAL-003 lands).
+
+### Reference
+
+- Spec: `docs/adr/0066-yaml-json-md-corpora-and-prose-as-code-enforcement.md` (especially the "Worked example" §).
+- Script: `scripts/audit-design-phase-md.sh` (run standalone for diagnosis).
+- Deviation template: `docs/deviations-template.md` (copy to `<app_root>/docs/deviations.md`).
