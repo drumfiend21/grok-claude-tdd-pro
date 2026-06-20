@@ -48,6 +48,27 @@ assert_eq "$?" "2" "MultiEdit to .cursor/rules/*.mdc exits 2"
 echo '' | "$HOOK" >/dev/null 2>&1
 assert_eq "$?" "0" "empty stdin exits 0 (defensive no-op)"
 
+# ---------- ADR-0066 / TICKET-081: extended extension list for write-time enforcement ----------
+# .md, .yaml/.yml, .tf/.tfvars, .json now go through the rubric runner branch. Vacuous-pass
+# today (no detectors for these in active.json yet); activates on PROPOSAL-003 pin bump.
+echo '{"tool_name":"Edit","tool_input":{"file_path":"docs/architecture/adr/0001.md"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".md write enters rubric branch + vacuous-pass → 0"
+
+echo '{"tool_name":"Write","tool_input":{"file_path":"infra/k8s/grading-worker.yaml"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".yaml write enters rubric branch + vacuous-pass → 0"
+
+echo '{"tool_name":"Edit","tool_input":{"file_path":".github/workflows/test.yml"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".yml write enters rubric branch + vacuous-pass → 0"
+
+echo '{"tool_name":"Write","tool_input":{"file_path":"infra/main.tf"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".tf write enters rubric branch + vacuous-pass → 0"
+
+echo '{"tool_name":"Edit","tool_input":{"file_path":"infra/variables.tfvars"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".tfvars write enters rubric branch + vacuous-pass → 0"
+
+echo '{"tool_name":"Write","tool_input":{"file_path":"package.json"}}' | "$HOOK" >/dev/null 2>&1
+assert_eq "$?" "0" ".json write enters rubric branch + vacuous-pass → 0"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-post-tool-use-review-gate] OK — $passes/$total passed."; exit 0
 else log "[test-post-tool-use-review-gate] FAIL — $failures/$total."; exit 1; fi

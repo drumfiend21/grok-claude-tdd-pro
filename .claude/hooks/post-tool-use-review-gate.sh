@@ -99,7 +99,13 @@ fi
 # the ticket). DEFERRED findings come from rubric rules that require agent
 # review (e.g., design-belongs-here, yagni, no-bundled-refactor-and-feature).
 case "$REL_PATH" in
-    *.js|*.jsx|*.ts|*.tsx|*.py|*.go|*.rs|*.java|*.kt|*.swift)
+    *.js|*.jsx|*.ts|*.tsx|*.py|*.go|*.rs|*.java|*.kt|*.swift|*.md|*.yaml|*.yml|*.tf|*.tfvars|*.json)
+        # Extended per ADR-0066 (TICKET-081) to cover .md (g-md-* + applies_to_prose:true
+        # projection), .yaml/.yml (g-yaml-* + g-k8s-* + g-helm-* + g-gha-* + g-glci-* + …),
+        # .tf/.tfvars (g-hashicorp-* + g-aws-* + g-azure-* + g-gcp-*), and .json (g-json-* +
+        # g-iam-* + g-jwt-* + g-sbom-* + g-sarif-*). Vacuous-pass today (runner has no
+        # detectors for these extensions); activates automatically on the CTP pin bump that
+        # adopts PROPOSAL-003 — write-time enforcement on every file the harness writes.
         PLUGIN_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}/.harness/plugin-cache/claude-tdd-pro"
         RUNNER="$PLUGIN_ROOT/rubric/runner.sh"
         if [ -x "$RUNNER" ]; then

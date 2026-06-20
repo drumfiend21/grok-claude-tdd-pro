@@ -143,6 +143,18 @@ if [ -x scripts/audit-applicable-rules.sh ]; then
     scripts/audit-applicable-rules.sh || true
 fi
 
+# Design-phase MD gate (ADR-0066 D-D, TICKET-079 / CL-C). For every handoff request
+# whose file_scope.may_edit touches architectural Markdown (docs/architecture/**,
+# docs/adr/**, docs/decisions/**, or any .md with frontmatter kind: architecture|adr|
+# decision), checks that every rule with applies_to_prose:true is either green per the
+# prose judge OR carries a matching deviation row in <app_root>/docs/deviations.md.
+# Content-agnostic: vacuous until active.json carries applies_to_prose:true rules AND
+# an app_root is configured AND a request touches architectural MD. WARN-not-FAIL at
+# session start; the hard gate is /dispatch (pre-emit, per .claude/commands/dispatch.md).
+if [ -x scripts/audit-design-phase-md.sh ]; then
+    scripts/audit-design-phase-md.sh || true
+fi
+
 # Dynamic standards re-run gate (Fix C, TICKET-074 / ADR-0063). For every green
 # handoff response, re-runs the detectors against the app_root (via enforce-standards.sh)
 # and asserts the response's rules_verified claims MATCH the live verdicts + that every
