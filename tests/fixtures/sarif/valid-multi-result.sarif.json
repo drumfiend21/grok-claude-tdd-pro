@@ -1,0 +1,30 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "prose-judge",
+          "version": "0.1.0",
+          "rules": [{"id": "g-aws-no-unrestricted-ingress", "name": "no-unrestricted-ingress"}]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "g-aws-no-unrestricted-ingress",
+          "level": "error",
+          "message": {"text": "ADR Decision section proposes 0.0.0.0/0 ingress on dev cluster"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "docs/architecture/adr/0015-dev-cluster-network.md"}, "region": {"startLine": 9}}}],
+          "properties": {"judge_model": "claude-opus-4-7", "judge_confidence": 0.92}
+        },
+        {
+          "ruleId": "g-iam-no-action-star",
+          "level": "warning",
+          "message": {"text": "ADR mentions wildcard IAM action without justification"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "docs/architecture/adr/0015-dev-cluster-network.md"}, "region": {"startLine": 18}}}]
+        }
+      ]
+    }
+  ]
+}

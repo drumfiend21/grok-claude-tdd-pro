@@ -48,6 +48,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-enforce-standards.sh:23:tra
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
 S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
+S-3|rm -rf usage (verify path is bounded)|tests/test-sarif-aggregate.sh:115:rm -rf ".harness/audit/sarif/raw/$DEFAULT_TICKET" ".harness/audit/sarif/$DEFAULT_TICKET.sarif.json" ".harness/audit/sarif/$DEFAULT_TICKET.summary.json"
+S-3|rm -rf usage (verify path is bounded)|tests/test-sarif-aggregate.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-source-citations.sh:31:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:104:rm -f "$C"; run --configure 1d >/dev/null 2>&1
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM

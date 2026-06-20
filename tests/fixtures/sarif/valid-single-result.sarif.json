@@ -1,0 +1,23 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "markdownlint",
+          "version": "0.34.0",
+          "rules": [{"id": "MD040", "name": "fenced-code-language"}]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "g-md-fenced-code-language-declared",
+          "level": "error",
+          "message": {"text": "fenced code block missing language identifier"},
+          "locations": [{"physicalLocation": {"artifactLocation": {"uri": "docs/architecture/adr/0001.md"}, "region": {"startLine": 12}}}]
+        }
+      ]
+    }
+  ]
+}

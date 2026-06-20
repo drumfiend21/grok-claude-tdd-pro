@@ -1,0 +1,8 @@
+{
+  "runs": [
+    {
+      "tool": {"driver": {"name": "broken-detector"}},
+      "results": [{"ruleId": "g-fake", "level": "error", "message": {"text": "no version field"}}]
+    }
+  ]
+}
