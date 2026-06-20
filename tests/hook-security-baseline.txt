@@ -26,6 +26,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crossche
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:39:rm -f "$TMP/h"/*.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:82:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-design-phase-md.sh:107:clear_h() { rm -f "$TMP/h"/*.json; }
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-design-phase-md.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:109:rm -f "$TMP/handoffs/TICKET-901.req.json" "$TMP/handoffs/TICKET-901.res.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:115:rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-eo-governance.sh:137:rm -f "$TMP/handoffs"/TICKET-*.req.json "$TMP/handoffs"/TICKET-*.res.json
