@@ -46,11 +46,26 @@ The gate fires as designed — the operator's TICKET-014 (a kata-era handoff) to
 
 | Result | Count | Notes |
 |---|---:|---|
-| Documents evaluated | 32 | All `.md` under `docs/architecture/**` + `SUBMISSION.md` + `README.md` + 4 supplementary kata docs |
-| `status=ok` (green) | 0 | The deterministic tier abstains on every applies_to_prose rule it cannot keyword-decide; clean docs return `incomplete` rather than `ok` |
-| `status=incomplete` (not_enforced; would need `LLM_JUDGE=1`) | 28 | Honest non-verdict — no silent green; matches ADR-0066 D-C contract |
-| `status=red` (blocking fail) | 1 | `docs/architecture/adr/0010-data-residency-region-extensible-iac.md` — three keyword-tier hits on `0.0.0.0/0` |
+| Documents evaluated | 33 | All `.md` under `docs/architecture/**` (incl. ctp-engine subdir) + `SUBMISSION.md` + `README.md` × 2 (root + reference-impl) + 4 supplementary kata docs |
+| `status=green` (verdict-clean) | 3 | The 3 mermaid-only diagram MDs (`c4-03-component-grading.md`, `seq-01-test1-aptitude-grading.md`, `seq-02-test2-casestudy-grading.md`) — no prose for the keyword tier to bite, no architectural-section sentinels for tier-3 fallback |
+| `status=incomplete` (not_enforced) | 29 | Honest non-verdict per ADR-0066 D-C contract — no silent green |
+| `status=red` (blocking fail) | 1 | `docs/architecture/adr/0010-data-residency-region-extensible-iac.md` — three keyword-tier hits on `0.0.0.0/0` in DENY context |
 | `status=fail` from other surfaces | 0 | No other architectural doc has a blocking finding |
+
+### Pass 3 re-run with `LLM_JUDGE=1` + `claude` CLI on PATH (operator follow-up 2026-06-20)
+
+| Run | green | incomplete | red |
+|---|---:|---:|---:|
+| Pass 3 deterministic (LLM_JUDGE=0) | 3 | 29 | 1 |
+| Pass 3 + LLM_JUDGE=1 + `claude` CLI on PATH | **3** | **29** | **1** |
+
+**Zero verdict change.** The LLM-judge tier did not fire on any of the 29 `not_enforced` verdicts.
+
+**Root cause: upstream CTP contract mismatch.** `rubric/detectors/prose-judge.sh` tier-2 invokes `LLM_JUDGE=1 bash llm-judge.sh --rule <id> --text <prose>` (line ~102), but `rubric/detectors/llm-judge.sh` only accepts `--target <file>` — the `--text` flag falls through to the unknown-arg path (`exit 2`). With stderr suppressed via `2>/dev/null`, the prose-judge case-statement regex matches nothing and falls through to `verdict="not_enforced"`. The semantic tier is dead-coded on the current pin.
+
+Filed upstream as `docs/upstream-ctp-proposals.md` **P-8**, with a 5-line proposed fix (`llm-judge.sh` accepts `--text` as an alternative to `--target`, skipping the file-read step). Until the fix lands and a pin bump adopts it, the 29 `not_enforced` verdicts cannot be cleared to semantic green; the gate stays honest (no silent green) per ADR-0066 D-C.
+
+This does NOT change the architectural verdict above (Pass 1 GREEN; no architectural decision challenged by any rule). It changes only the operator-facing UX: the 29 verdicts will remain `not_enforced` until either (a) P-8 lands and is bumped in, or (b) the operator adds allow-affordance comments / deviation rows per ADR-0066 D-F on a case-by-case basis.
 
 ### Pass 4 — The single architectural-prose blocking finding (analysis)
 
@@ -96,7 +111,7 @@ The architectural decision in ADR-0010 (FedRAMP control set, no unrestricted ing
   - TICKET-086 — k8s `securityContext` hardening on `infra/k8s/grading-worker.yaml`
   - TICKET-087 — MD040 code-fence-language declarations on the 8 affected `.md` files
 - **Resolve the ADR-0010 false positive** as part of TICKET-085 — add the allow-affordance comment above each `0.0.0.0/0` deny-context citation, or rephrase to remove the literal token.
-- **(Optional)** Re-run this attestation with `LLM_JUDGE=1 claude …` available on `PATH` to convert the 28 `incomplete` verdicts into explicit semantic verdicts. The result is expected to be uniformly `green` for every architectural doc (per the design-substance analysis above).
+- **(Attempted 2026-06-20; blocked upstream)** Re-ran this attestation with `LLM_JUDGE=1` and `claude` CLI on `PATH`. Result: **zero verdict change** (3 green / 29 incomplete / 1 red — identical to LLM_JUDGE=0). Root cause is an upstream CTP contract mismatch between `prose-judge.sh` (invokes `llm-judge.sh --text <prose>`) and `llm-judge.sh` (only accepts `--target <file>`). Filed as `docs/upstream-ctp-proposals.md` P-8 with a 5-line proposed fix. Until adopted at a pin bump, the 29 `not_enforced` verdicts can only be cleared via allow-affordance comments / deviation rows per ADR-0066 D-F.
 
 ---
 

@@ -117,3 +117,23 @@ The GCTP-side counterparts of the kata-feedback loop — **Fix A** (decompose-un
 (`enforce-standards.sh` driving `enforce.sh`), **Fix C** (dynamic re-run gate), **Fix D** (`app_root`
 external-working-tree model) — are NOT upstream items; they land in this repo per
 `proposals/PROPOSAL-002-app-enforcement-spine.md`.
+
+---
+
+## P-8 — `prose-judge.sh` tier-2 invocation contract-mismatch with `llm-judge.sh` (semantic tier non-functional)
+
+- **Status:** 🟥 OPEN — surfaced 2026-06-20 during GCTP architecture re-validation under the post-pin-bump 118-rule surface (ADR-0067 / CTP-ADR-0007). LLM_JUDGE=1 across 33 architectural docs yielded zero verdict changes; root cause is a flag-name mismatch in the CTP substrate, not an LLM problem.
+- **Found:** 2026-06-20, attempting to convert 28 `not_enforced` verdicts on the kata's architectural `.md` files into explicit semantic verdicts via `LLM_JUDGE=1 rubric/enforce-file.sh --file <doc>`.
+- **Symptom:** Every `not_enforced` verdict stayed `not_enforced` regardless of `LLM_JUDGE=1` + `claude` CLI on PATH + `--no-stream -p` working in isolation. Per-file runtime was ~1s (consistent with tier-2 skip, not a model call). Final tally with LLM_JUDGE=1: **3 green / 1 red / 29 incomplete** — identical to LLM_JUDGE=0.
+- **Cause:** `rubric/detectors/prose-judge.sh` tier-2 invokes the LLM judge with `--text <prose>` (line ~102):
+  ```ruby
+  out = `LLM_JUDGE=1 bash #{File.join(plugin,"rubric","detectors","llm-judge.sh")} --rule #{rule} --text #{prose.inspect} 2>/dev/null`
+  ```
+  But `rubric/detectors/llm-judge.sh` only accepts `--target <file>` + `--rule <rule-id>` + `--model <name>` + `--dry-run` + `--explain`. The `--text` flag falls through to the unknown-arg path → `exit 2`. With stderr suppressed, the prose-judge case statement's regex `/\bYES\b|\bNO\b|\bABSTAIN\b/i` matches nothing → falls through to `verdict="not_enforced"`. The semantic tier is dead-coded.
+- **Evidence:** `prose-judge.sh:102` (the `--text` invocation) vs `llm-judge.sh` argument parser (`case "$1" in --target | --rule | --model | --dry-run | --explain | * (echo "llm-judge: unknown arg")`). Direct repro on a clean install of the pin `39903da`.
+- **Proposed fix (CTP-side, smallest possible):** add `--text <prose>` to `llm-judge.sh`'s argument parser as an alternative to `--target <file>` — when `--text` is given, skip the file-read step and use the inline prose verbatim. The rest of the dispatch (model selection, response parsing) is reusable. Roughly 5 lines of bash. Alternative: change prose-judge.sh tier-2 to write the prose to a tempfile and call `--target <tempfile>` (preserves llm-judge.sh's existing contract; ~3 lines of Ruby).
+- **Workarounds operator-side (until fix):**
+  1. **Allow-affordance comments** per ADR-0066 D-F for the 1 keyword-tier false-positive (ADR-0010 `0.0.0.0/0` deny-context citations).
+  2. **Deviation rows** for any rule the operator decides genuinely cannot apply to a given ticket.
+  3. **Accept `not_enforced`-as-RED** per ADR-0066 D-C until tier-2 ships fixed — the gate is honest (no silent green), just over-broad.
+- **Impact on GCTP work:** ADR-0066 wiring (CL-A through CL-E) and ADR-0067 (pin bump) are unaffected — the gates correctly surface `not_enforced` per the no-silent-green invariant. The operator's expectation that LLM_JUDGE=1 would clear the 28 incompletes (recorded in `docs/kata-architecture-revalidation-2026-06-20.md`) cannot be satisfied until this fix lands upstream.
