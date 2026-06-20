@@ -2,7 +2,7 @@
   "accepted": true,
   "compact_path": "docs/agent-operating-compact.md",
   "compact_sha256": "3bec00ae54a3e41c5ab0b6d77d66d533bab9ad4540d44a193f79e9cf192900ff",
-  "accepted_by": "drumfiend21 (operator; 2026-06-18 directive + ADR-0057)",
-  "accepted_at": "2026-06-18T02:55:58Z",
+  "accepted_by": "drumfiend21@gmail.com",
+  "accepted_at": "2026-06-19T17:45:02Z",
   "adr": "ADR-0057"
 }

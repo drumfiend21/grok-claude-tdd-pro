@@ -58,3 +58,11 @@
 # OS / editor noise
 .DS_Store
 *.swp
+
+# App product (own git history; orchestrated, not part of the harness)
+softarchcert-win25/
+
+# Operator-local consult workspace (per-session CTP architecture-engine outputs;
+# reproducible from the consult artifacts; same pattern as the other .harness/
+# subdirs above — operator-local, not shared).
+.harness/consult-work/
