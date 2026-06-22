@@ -3560,4 +3560,1660 @@ These are documented here so future CTP development understands what's intention
 
 ---
 
+---
+
+## Appendix AV — CTP ADR numbering + template convention
+
+### AV.1 Numbering
+
+CTP's ADRs live in `claude-tdd-pro/docs/adr/` with the file-naming convention `NNNN-kebab-title.md` where `NNNN` is a zero-padded 4-digit integer, monotonic, no gaps.
+
+At handoff time:
+- Read the last existing ADR number from `claude-tdd-pro/docs/adr/`
+- Assign this ADR (composite engine) as `<last+1>`
+- Assign the paired ADR (auto-classification) as `<last+2>`
+- Commit both ADRs in the same PR so the numbering is atomic
+
+Example: if the last existing ADR is `0034-rule-schema-v1.md`, then:
+- CTP-ADR-NNNN → `0035-composite-engine-4-axis-vocabulary.md`
+- CTP-ADR-NNNN+1 → `0036-auto-classification-and-rule-drafting-pipeline.md`
+
+### AV.2 Template
+
+CTP uses **MADR 4.0** (`madr.github.io/`) for its own ADRs going forward. Rationale: MADR is the most-adopted modern ADR template, supports both lightweight and full ADRs, has tooling (log4brains, adr-manager) ecosystem support, and pairs cleanly with the architectural-content bundle's enforcement.
+
+Required frontmatter (validated by `composite/schemas/adr-frontmatter.schema.json` per Appendix B):
+
+```yaml
+---
+# Standard MADR 4.0 frontmatter
+status: proposed
+date: 2026-06-22
+deciders: [drumfiend21, ctp-maintainer]
+consulted: [...]
+informed: [...]
+# MADR 4.0 supersession fields
+supersedes: ~                # null OR ADR number
+superseded_by: ~             # null OR ADR number
+# CTP-specific extensions
+kind: adr
+ctp_version_introduced: 1.13.0   # which CTP version this ADR's decision took effect in
+gctp_paired_adr: 0068            # null OR the paired GCTP ADR number
+---
+```
+
+### AV.3 Conversion from these drafts
+
+The CTP author:
+1. Removes the "Audience / Source design / Authority / Date proposed" YAML-like header block (these are GCTP-specific framing)
+2. Replaces with MADR 4.0 frontmatter as above
+3. Renames "CTP-ADR-NNNN" / "CTP-ADR-NNNN+1" throughout to the assigned numbers
+4. Updates `gctp_paired_adr` frontmatter to the actual GCTP ADR numbers (0068 + 0069 per the cover doc)
+5. Updates cross-references between the two ADRs to use the new numbers
+6. Commits both ADRs in one PR with title `ADR-NNNN + ADR-NNNN+1: Composite engine + auto-classification pipeline`
+
+---
+
+## Appendix AW — End-user migration + CHANGELOG content
+
+### AW.1 CHANGELOG entry (sample for CTP v1.13.0)
+
+```markdown
+## [1.13.0] - 2026-07-15
+
+### Added — composite engine + auto-classification pipeline (ADR-NNNN, ADR-NNNN+1)
+
+* Composite engine replacing hand-rolled detectors with ~115 FOSS tools (Semgrep, ESLint, Checkov, Kubescape, Trivy, Spectral, hadolint, zizmor, markdownlint, Vale, lychee, and more — see ADR-NNNN Appendix A)
+* 4-axis canonical vocabulary (GitHub Linguist + IaC-scanner consensus + PURL + Kubernetes GVK) as the rule-to-tool join key
+* Architectural-content enforcement bundle: full prose tool stack fires on every ADR, design doc, RFC, architecture note at write- and audit-time
+* Auto-classification pipeline: operators ingest standards URLs (Google, Microsoft, OWASP, federal, internal) into enforceable rules at LLM speed
+* New CLI: `scripts/classify-from-url.sh`, `scripts/review-queue.sh`, `scripts/install-composite.sh`, `scripts/test-composite.sh`
+* SARIF 2.1.0 as the universal output bus
+
+### Changed
+
+* `active.json` rule schema bumped to v2 (additive: `applies_to.*` + `applies_to_prose` + provenance block)
+* `llm-judge.sh` accepts `--text <content>` in addition to existing `--target <path>` (P-8 fix)
+* `prose-judge.sh` semantic-tier now functional (depends on llm-judge.sh `--text` mode)
+
+### Deprecated
+
+* Hand-rolled detectors under `rubric/detectors/` — kept for one minor version (will be removed in v1.14)
+* Rule schema v1 (`language: <string>` field) — kept readable for one minor version via dual-read shim
+
+### Migration
+
+See `docs/migration-guide-v1.12-to-v1.13.md` for the upgrade walkthrough. Quick summary:
+- Existing operators: pin-bump to v1.13.0 via `gctp sync-plugin --bump-to <pin>`; run `composite/dispatch.sh --self-test`; address warnings
+- New operators: see `docs/composite-engine.md` quickstart
+
+Breaking changes: none in this release. Schema v1 → v2 is additive.
+
+### Performance
+
+* First-time install: ~5 minutes (downloading ~40 tools) — see `docs/install.md` for hermetic-container alternative
+* Per-file dispatch: P50 <2s for code; P50 <8s for architectural .md (full bundle, parallel)
+* Per-rule LLM cost: P50 ~$0.09 (drafting); P50 ~$0.004 (prose-judge per-file)
+```
+
+### AW.2 Migration guide structure (`docs/migration-guide-v1.12-to-v1.13.md`)
+
+```markdown
+# Migration guide: CTP v1.12.x → v1.13.0
+
+## What's new
+
+Brief 3-bullet summary pointing to ADR-NNNN.
+
+## Before you upgrade
+
+* Check operator's `composite-pin.yaml` is current
+* Back up `.harness/rules/active.json` (auto-backed-up by sync-plugin anyway)
+* Read `docs/composite-engine.md` overview
+* Estimate LLM cost: ~$0.02/rule for prose-judge re-verification on first audit
+
+## Upgrade steps
+
+1. `gctp sync-plugin --bump-to <new-pin>` — fetches the new CTP
+2. `composite/dispatch.sh --self-test` — validates engine + tools
+3. Address warnings (likely: missing tools — see `scripts/install-composite.sh`)
+4. Run `gctp audit` once — populates caches; first run is slow
+5. Confirm `rules_verified` block matches expectations (compare with pre-upgrade snapshot)
+
+## Expected first-run warnings
+
+* `tool-missing: slither` — only relevant for Solidity projects; install or blacklist
+* `applies_to_prose: true rules auto-attached bundle to 32 rules` — informational
+* Migration dual-read: 118 rules synthesized `applies_to.*` from legacy `language:` field
+
+## Rollback if anything goes wrong
+
+`gctp sync-plugin --bump-to <previous-pin>` — full rollback. Engine version negotiation
+will downgrade gracefully (see ADR-NNNN Appendix AS).
+
+## Known issues
+
+* Linguist mirror first-fetch takes 10-30 seconds — patience
+* On macOS, sandbox-exec requires Full Disk Access for some tools — see TROUBLESHOOTING.md
+
+## Getting help
+
+* See `docs/composite-engine.md`
+* GitHub issues: https://github.com/anthropics/claude-tdd-pro/issues
+```
+
+### AW.3 Release-notes deliverable
+
+CTP ships this CHANGELOG entry + migration guide in the same PR as the ADR landing. The ADR cites the CHANGELOG section number.
+
+---
+
+## Appendix AX — SARIF profile / subset CTP requires
+
+### AX.1 The challenge
+
+SARIF 2.1.0 is a ~150-property OASIS standard. Different tools emit different subsets. Engine needs a normalized contract.
+
+### AX.2 CTP-required SARIF profile (`composite/schemas/ctp-sarif-profile.json`)
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://claude-tdd-pro.dev/schemas/ctp-sarif-profile.json",
+  "title": "CTP SARIF profile (subset of SARIF 2.1.0 with required fields)",
+  "type": "object",
+  "required": ["version", "$schema", "runs"],
+  "properties": {
+    "version": {"const": "2.1.0"},
+    "$schema": {"type": "string"},
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["tool", "invocations", "results"],
+        "properties": {
+          "tool": {
+            "type": "object",
+            "required": ["driver"],
+            "properties": {
+              "driver": {
+                "type": "object",
+                "required": ["name", "version"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "version": {"type": "string"},
+                  "informationUri": {"type": "string"},
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["id"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "invocations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["executionSuccessful"],
+              "properties": {
+                "executionSuccessful": {"type": "boolean"},
+                "exitCode": {"type": "integer"},
+                "startTimeUtc": {"type": "string", "format": "date-time"},
+                "endTimeUtc": {"type": "string", "format": "date-time"}
+              }
+            }
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["level", "message"],
+              "properties": {
+                "ruleId": {"type": "string"},
+                "level": {"enum": ["none", "note", "warning", "error"]},
+                "message": {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": {
+                    "text": {"type": "string"}
+                  }
+                },
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "physicalLocation": {
+                        "type": "object",
+                        "properties": {
+                          "artifactLocation": {
+                            "type": "object",
+                            "properties": {
+                              "uri": {"type": "string"}
+                            }
+                          },
+                          "region": {
+                            "type": "object",
+                            "properties": {
+                              "startLine": {"type": "integer"},
+                              "endLine": {"type": "integer"},
+                              "startColumn": {"type": "integer"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "properties": {
+                  "type": "object",
+                  "properties": {
+                    "gctp_rule_id": {"type": "string"},
+                    "gctp_severity": {"enum": ["P0", "P1", "P2", "P3"]},
+                    "gctp_cache_hit": {"type": "boolean"},
+                    "gctp_duration_ms": {"type": "integer"},
+                    "gctp_tool_version": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### AX.3 Required-vs-optional matrix
+
+| Field path | Required by CTP | Notes |
+|---|---|---|
+| `version` | yes | must be exactly `"2.1.0"` |
+| `runs[].tool.driver.name` | yes | engine matches against runner inventory |
+| `runs[].tool.driver.version` | yes | engine cross-checks against COMPAT pin |
+| `runs[].invocations[].executionSuccessful` | yes | drives engine green/red logic |
+| `runs[].results[].level` | yes | drives severity mapping |
+| `runs[].results[].message.text` | yes | operator-visible |
+| `runs[].results[].locations` | recommended | enables IDE integration |
+| `runs[].results[].properties.gctp_rule_id` | engine adds if missing | the join key |
+| `runs[].results[].ruleId` | recommended | tool's native rule ID |
+
+### AX.4 Engine validation
+
+`composite/validate-sarif.sh <sarif-file>` validates against the profile. Returns:
+- `pass` — SARIF is profile-conformant
+- `partial` — missing optional fields; engine warns
+- `fail` — missing required fields; engine treats as `not_enforced`
+
+### AX.5 Wrapper-emit responsibilities
+
+Each runner's wrapper (Appendix C) MUST:
+1. Add `runs[].tool.driver.name` matching the wrapper's directory name
+2. Add `runs[].tool.driver.version` from `<tool> --version`
+3. Add `runs[].invocations[].executionSuccessful: true` if exit code is 0 or 1
+4. Add `runs[].results[].properties.gctp_rule_id` for every result the wrapper knows the rule ID of
+
+The engine post-processes the SARIF to add missing `gctp_*` fields where it can infer them.
+
+---
+
+## Appendix AY — Pin-bump procedure (operator-facing)
+
+### AY.1 Command
+
+```bash
+gctp sync-plugin --bump-to <target-pin>
+```
+
+Where `<target-pin>` is a CTP commit SHA or git tag (e.g. `v1.13.0`).
+
+### AY.2 Pre-bump checks
+
+Before fetching:
+1. Fetch the target CTP at the pin (read-only)
+2. Parse target `composite/COMPAT.yaml`
+3. Compare with current `.harness/composite-pin.yaml`
+4. Validate compatibility (rule schema version, breaking changes flag)
+5. Emit compatibility report:
+
+```
+Pin-bump compatibility check:
+  Current: composite-engine 0.3.5, rule-schema v1, CTP 1.12.3
+  Target:  composite-engine 0.4.0, rule-schema v2, CTP 1.13.0
+  Breaking changes: none
+  Migrations required: rule-schema v1 → v2 (dual-read shim active for 1 minor)
+  Operator action items:
+    - Run composite/dispatch.sh --self-test after bump
+    - Address 2 missing tools (slither, buf-lint) per .harness/composite-pin.yaml
+  Estimated bump duration: ~5 minutes
+  Proceed? [y/n]:
+```
+
+### AY.3 Bump steps
+
+After operator confirms:
+1. Back up `.harness/` to `.harness.backup-YYYYMMDD-HHMM/`
+2. Back up `~/.cache/ctp/composite/` to `~/.cache/ctp/composite.backup-YYYYMMDD-HHMM/`
+3. Fetch new CTP via `scripts/sync-plugin.sh --ensure --pin <target>`
+4. Update `.harness/composite-pin.yaml` with new pin
+5. Run `composite/cache-migrate.sh` if schema version changed
+6. Run `composite/dispatch.sh --self-test`
+7. Emit post-bump report
+
+### AY.4 Post-bump smoke test
+
+```
+Pin-bump complete: composite-engine 0.4.0 active.
+Self-test: 17/17 steps passed (2 warnings: missing tools).
+
+Smoke test recommendation:
+  gctp audit --scope docs/architecture/    # quick whole-tree audit
+  Expected duration: 30-60 seconds
+  Expected verdict: same as pre-bump (no regression)
+```
+
+### AY.5 Rollback path
+
+If smoke test fails:
+```bash
+gctp sync-plugin --bump-to <previous-pin> --reason "smoke-test-failed"
+```
+
+Engine restores from backup; logs panic event; recommends filing CTP bug.
+
+### AY.6 Documentation
+
+This procedure is documented in `docs/operator-runbook.md` §"Pin-bump procedure" — section to be added when CTP-ADR-NNNN+1 lands.
+
+---
+
+## Appendix AZ — Backwards-compat fixture corpus
+
+### AZ.1 Per-release deliverable
+
+Every CTP release that ships a breaking change includes:
+
+```
+composite/fixtures/backcompat/v<from>-to-v<to>/
+  pre-upgrade/         # files + fixtures + active.json subset from previous version
+  post-upgrade/        # same set after migration ran
+  expected-diffs.md    # documented verdict changes (e.g. "rule g-foo: not_enforced → pass after rename")
+  migration-test.sh    # smoke test
+```
+
+### AZ.2 Sample format
+
+`composite/fixtures/backcompat/v1-to-v2/migration-test.sh`:
+
+```bash
+#!/usr/bin/env bash
+# v1 → v2 migration smoke test
+
+set -e
+
+# 1. Stage pre-upgrade state
+cp -r composite/fixtures/backcompat/v1-to-v2/pre-upgrade/.harness /tmp/test-harness
+
+# 2. Run audit pre-migration; snapshot
+CTP_HARNESS=/tmp/test-harness composite/dispatch.sh --audit > /tmp/pre.sarif
+
+# 3. Run migration
+CTP_HARNESS=/tmp/test-harness composite/migrate.sh --schema-v1-to-v2
+
+# 4. Run audit post-migration; snapshot
+CTP_HARNESS=/tmp/test-harness composite/dispatch.sh --audit > /tmp/post.sarif
+
+# 5. Diff verdicts
+diff <(jq -S '.runs[].results' /tmp/pre.sarif) <(jq -S '.runs[].results' /tmp/post.sarif) > /tmp/diff.txt
+
+# 6. Compare against expected
+if diff /tmp/diff.txt composite/fixtures/backcompat/v1-to-v2/expected-diffs.md; then
+  echo "PASS: migration verdict diff matches expectation"
+  exit 0
+else
+  echo "FAIL: migration verdict diff diverged from expectation"
+  exit 1
+fi
+```
+
+### AZ.3 CI gate
+
+`.github/workflows/composite-test.yaml` includes:
+
+```yaml
+- name: Backwards-compat fixtures
+  run: |
+    for dir in composite/fixtures/backcompat/*/; do
+      bash "$dir/migration-test.sh"
+    done
+```
+
+A failing backcompat fixture blocks the release.
+
+### AZ.4 Operator opt-in run
+
+Operators can run the corpus against their own `.harness/` before bumping:
+
+```bash
+gctp sync-plugin --dry-run --bump-to <pin>
+# Runs the bundled backcompat fixtures + applies them to operator's active.json
+# Outputs predicted verdict-diff
+```
+
+### AZ.5 Coverage commitment
+
+Every breaking change MUST ship with at least one backcompat fixture set. CI refuses to merge a breaking change without it.
+
+---
+
+## Appendix BA — Pipeline pre-prod / dry-run mode
+
+### BA.1 The need
+
+Operator wants to validate a freshly-drafted rule against their codebase BEFORE it lands in `active.json`. Three sub-needs:
+
+1. Preview Stages 1-5 output without committing to `active.json`
+2. Test the drafted rule against the actual app tree
+3. A/B compare verdicts under the rule vs without
+
+### BA.2 Dry-run command
+
+```bash
+scripts/classify-from-url.sh \
+  --source-id google-ts-style \
+  --url https://google.github.io/styleguide/tsguide.html \
+  --dry-run
+```
+
+Pipeline executes Stages 1-5 normally but:
+- Stage 6 (review-queue) populates a draft directory under `.harness/staging/<source-id>-<timestamp>/`
+- `active.json` is NOT modified
+- Engine logs every dry-run event
+
+### BA.3 Staging directory layout
+
+```
+.harness/staging/google-ts-style-20260622-152304/
+├── active.json.delta       # what WOULD be appended to active.json
+├── custom-rules/
+│   ├── eslint/google-ts-style/*.js
+│   └── semgrep/google-ts-style/*.yml
+├── coverage-reports/
+├── fixtures/
+└── staging-manifest.yaml   # operator-readable summary
+```
+
+### BA.4 A/B comparison
+
+```bash
+gctp standards staging-audit --staging-id google-ts-style-20260622-152304 --scope src/
+# Runs audit with the staged rules added; produces diff against current state
+```
+
+Output:
+
+```
+A/B audit: 47 staged rules vs current active.json on src/
+  Currently passing: 247 files
+  With staged rules: 232 passing, 15 newly failing
+  Newly-flagged rules + files:
+    g-google-ts-style-no-any × 12 files
+    g-google-ts-style-prefer-const × 3 files
+  Coverage delta: +47 rules, +15 violations, +0.6% coverage on src/
+```
+
+### BA.5 Promotion
+
+```bash
+gctp standards promote --staging-id google-ts-style-20260622-152304
+# Applies the staging delta to active.json + custom-rules/
+# Cleans up the staging directory
+```
+
+### BA.6 Discard
+
+```bash
+gctp standards discard --staging-id google-ts-style-20260622-152304
+# Removes staging directory; logs discard event
+```
+
+### BA.7 Multi-staging
+
+Multiple staging directories can coexist. Operator can A/B compare combinations:
+
+```bash
+gctp standards staging-audit \
+  --staging-id google-ts-style-20260622-152304 \
+  --staging-id walmart-microservices-20260622-160000 \
+  --scope .
+```
+
+Engine combines stagings during audit.
+
+---
+
+## Appendix BB — First-time adoption playbook (since no real case study exists yet)
+
+### BB.1 Recommended sequence for new operators
+
+```
+Day 1 (15-30 minutes):
+  1. scripts/install-composite.sh                      # install tools
+  2. composite/dispatch.sh --self-test                 # verify
+  3. gctp audit --scope docs/architecture/             # quick sanity check
+  4. Read CHANGELOG + migration guide
+
+Day 1-3 (1-2 hours):
+  5. Onboard first standards source — recommend Google TS guide or OWASP ASVS
+     (well-known, well-structured docs that exercise extractors + classifier)
+  6. Review the resulting rules via review-queue
+  7. Accept high-confidence rules; manually review medium
+
+Day 3-7 (ongoing):
+  8. Run audits against the codebase; document deviations
+  9. Onboard 2-3 more sources (Microsoft TS guide, NIST 800-53)
+ 10. Expand the rule catalog incrementally
+
+Week 2-4:
+ 11. Onboard internal/proprietary standards (slowest path; manual review heavier)
+ 12. Train team on the review-queue workflow + deviation policy
+
+Week 4+:
+ 13. Steady state: operator runs ~1-2 standards onboarding per month
+ 14. CI integrated with audit
+ 15. Pin-bump cadence: monthly review of upstream CTP releases
+```
+
+### BB.2 Common pitfalls + remediations
+
+| Pitfall | Remediation |
+|---|---|
+| First run is slow (cold cache) | Expected; 30-60s first audit, <10s subsequent |
+| Missing tools cause many `not_enforced` | Run `scripts/install-composite.sh` to install full inventory |
+| LLM cost spike on bulk-onboard | Use `--budget-usd <N>` to cap per-source ingest |
+| Review-queue overwhelming | Use `--batch-accept --confidence high` for the trivial cases |
+| Tool false positives surfacing | Operator can add deviation rows OR override severity per Appendix N |
+| ADR audit fails on existing ADRs | Expected on first run; operator either fixes ADRs or lands deviation rows |
+| Operator's standards URL not parseable | Pick a different extractor shape (`--shape html-section` etc.) or write custom extractor |
+
+### BB.3 Sizing guidance
+
+| Operator profile | Recommended approach |
+|---|---|
+| Solo developer / small team (<5) | Start with 1-2 sources, ~50-100 rules total. LLM cost <$10/month |
+| Mid-size team (5-50) | 5-10 sources, ~500-1000 rules. LLM cost <$50/month |
+| Large org (>50) | Multiple namespaces per team; ~1000-5000 rules across catalog. Cost varies; budget $200-500/month |
+| Regulated enterprise (HIPAA / FedRAMP / PCI) | Add operator's on-prem LLM provider per Appendix AF.5; cost moves to compute |
+
+### BB.4 First-success criteria
+
+After Day 1-3:
+- `composite/dispatch.sh --self-test` exits 0
+- At least one operator standards URL successfully ingested
+- `gctp audit` returns a verdict for the operator's codebase
+- Operator has reviewed at least 5 rules in the review-queue
+
+If all four hit, the adoption is on track.
+
+### BB.5 Real-world case-study placeholder
+
+This appendix will be supplemented with real case studies once early-adopter operators have completed onboarding. CTP commits to publishing 3 case studies before declaring v1.13 GA (general availability).
+
+---
+
+## Appendix BC — Multi-bundle composition rules with overlap
+
+### BC.1 Future bundles + overlap scenarios
+
+The current ADR ships one bundle (`architectural-content`). Future bundles likely include `secret-scanning`, `supply-chain`, `accessibility`. Multiple bundles bound to a single rule's `enforced_by[]` will overlap on tools.
+
+### BC.2 Conflict-resolution rules
+
+When two bundles include the same tool with different rulesets:
+
+```yaml
+# Rule binding
+enforced_by:
+  - bundle: architectural-content    # includes vale + style:Google
+  - bundle: corporate-style          # includes vale + style:Acme-internal
+```
+
+Engine behavior:
+
+| Scenario | Resolution |
+|---|---|
+| Same tool, identical config | Dedupe; one invocation |
+| Same tool, different rulesets | Run tool TWICE, once per ruleset; both verdicts in SARIF |
+| Same tool, different severity | Strictest wins for gate purposes |
+| Same tool, conflicting config keys | Engine refuses to load; bundle author must clarify |
+
+### BC.3 Bundle composition syntax
+
+A bundle MAY include another bundle:
+
+```yaml
+# composite/bundles/architectural-content-strict.yaml
+name: architectural-content-strict
+kind: Bundle
+composition:
+  includes:
+    - bundle: architectural-content
+  adds:
+    - tool: extra-prose-checker
+      severity: P1
+  overrides:
+    - tool: vale
+      config_merge:
+        StylesPath: composite/rulesets/vale/styles-strict
+```
+
+Engine resolves recursively with cycle detection.
+
+### BC.4 Operator-bundle precedence
+
+When a rule is bound to:
+- Bundle A (CTP-shipped)
+- Bundle B (operator-shipped)
+
+Both bundles' tools run. Operator bundle's tool config OVERRIDES CTP bundle's config for collisions, per Appendix N.5 operator-add semantics.
+
+### BC.5 Reserved bundle names (extends Appendix AN)
+
+CTP-shipped bundle names that are reserved for current + planned future use:
+
+- `architectural-content` (this ADR)
+- `secret-scanning` (planned)
+- `supply-chain` (planned)
+- `accessibility` (planned)
+- `web-vitals` (planned)
+- `iac-baseline` (planned)
+- `dockerfile-baseline` (planned)
+
+Operator-shipped bundle names MUST NOT collide. Engine emits fatal error on conflict.
+
+---
+
+## Appendix BD — Tool deprecation / supersession protocol
+
+### BD.1 The problem
+
+Upstream tools change. Examples:
+- `tfsec` was sunset (upstream moved to Trivy)
+- `oxlint` and `Biome` overlap (operator may switch)
+- A tool may become abandoned (no commits for 18+ months)
+
+CTP needs a protocol.
+
+### BD.2 Lifecycle states for a tool in the inventory
+
+```
+active → soft-deprecated → hard-deprecated → removed
+```
+
+| State | Engine behavior | Operator-facing |
+|---|---|---|
+| **active** | Tool fires; rules bind normally | No warning |
+| **soft-deprecated** | Tool fires; engine logs `tool-soft-deprecated` warning | Operator notified via `gctp standards status`; recommends successor |
+| **hard-deprecated** | Tool refuses to fire unless `CTP_ALLOW_DEPRECATED=1`; engine logs `tool-hard-deprecated` error | Operator must migrate to successor OR opt-in via env var |
+| **removed** | Tool not in inventory; runner deleted | Rules referencing the tool: `not_enforced` |
+
+### BD.3 Per-tool metadata
+
+`composite/tool-lifecycle.yaml`:
+
+```yaml
+tools:
+  tfsec:
+    state: hard-deprecated
+    since_ctp_version: 1.13.0
+    successor: trivy
+    grace_until_ctp_version: 1.14.0
+    rationale: "tfsec maintainers moved to Trivy; tfsec no longer receives security updates"
+  oxlint:
+    state: active
+    notes: "Complementary to ESLint, not a successor"
+```
+
+### BD.4 Successor binding
+
+When a tool is deprecated AND has a `successor` declared, the routing table emits a deprecation warning AND auto-suggests the binding:
+
+```
+Warning: rule g-foo-rule binds tfsec which is hard-deprecated since CTP 1.13.0.
+Recommended action: update rule binding to trivy (auto-suggested by routing table).
+Set CTP_ALLOW_DEPRECATED=1 to suppress this warning (not recommended).
+```
+
+The auto-classification pipeline (CTP-ADR-NNNN+1) MUST emit successor bindings, not deprecated ones, when re-drafting after a tool deprecation.
+
+### BD.5 Removal threshold
+
+A tool stays in `hard-deprecated` for at least 1 full CTP minor version (≥6 months) before being moved to `removed`. Removal is a major-version breaking change.
+
+### BD.6 Operator override
+
+Operator's `.harness/operator-standards/tool-lifecycle-overrides.yaml`:
+
+```yaml
+overrides:
+  - tool: tfsec
+    state: active                # opt-in keep-using
+    rationale: "We have downstream dependency on tfsec's specific output format"
+```
+
+Engine honors operator overrides BUT still emits warnings (so operator stays aware).
+
+---
+
+## Appendix BE — Engine signal handling
+
+### BE.1 SIGTERM (graceful shutdown)
+
+When the engine receives SIGTERM:
+1. Stop accepting new dispatch requests
+2. Wait up to `CTP_SHUTDOWN_TIMEOUT` seconds (default 30) for in-flight dispatches to complete
+3. For dispatches not done within timeout, send SIGTERM to their runner processes
+4. Flush SQLite cache + SARIF aggregator state
+5. Write final state to `.harness/state/engine.json` with `status: stopped`
+6. Exit 0
+
+### BE.2 SIGINT (Ctrl-C)
+
+Same as SIGTERM but with shorter timeout (default 5 seconds). Engine emits `received-sigint` event before stopping.
+
+### BE.3 SIGHUP (hot-reload, if enabled)
+
+If `hot_reload.enabled: true` in operator engine.yaml:
+1. Mark engine state as `reloading`
+2. Drain in-flight dispatches
+3. Re-read `active.json` + operator overrides + canonical vocabulary mirrors
+4. Rebuild rule index
+5. Resume dispatch
+
+Engine logs the reload sequence. If reload fails (e.g. operator broke `active.json`), engine refuses to resume and stays in `reloading` state until SIGTERM.
+
+### BE.4 SIGKILL
+
+Cannot be handled. SIGKILL is the operator's escape hatch — engine state may be left inconsistent. Operator may need to:
+- Re-run cache integrity check (`composite/dispatch.sh --self-test`)
+- Restore from backup if state file is corrupt
+
+### BE.5 Per-runner signal forwarding
+
+When engine receives SIGTERM, it forwards SIGTERM to active runner subprocesses (via `kill -TERM <child-pid>`). Runners are expected to clean up within their `--timeout` budget.
+
+For runners with native signal-handling (Semgrep, ESLint, Trivy), CTP wrappers pass signals through. For runners that don't handle signals (some older tools), CTP wraps with `timeout` command which sends SIGKILL after escalation.
+
+### BE.6 Documentation
+
+Signal-handling behavior documented in `docs/operating-guide.md` §"Signal handling".
+
+---
+
+## Appendix BF — Per-environment severity overrides
+
+### BF.1 The need
+
+Operator wants different severity thresholds in different environments:
+- Dev hooks: `P1` rules warn but don't block (developer iteration speed)
+- Staging CI: `P1` rules block; `P2` warn
+- Prod CI: `P0` and `P1` both block
+
+### BF.2 Schema
+
+`.harness/operator-standards/severity-by-environment.yaml`:
+
+```yaml
+default:
+  severity_blocks_at: P1     # default: P0 and P1 block; P2/P3 warn
+
+environments:
+  dev:
+    severity_blocks_at: P0   # only P0 blocks; P1 warns
+  staging:
+    severity_blocks_at: P1   # default
+  prod:
+    severity_blocks_at: P1   # default
+  ci-pr:
+    severity_blocks_at: P0   # PR-time: only P0 blocks (developer-friendly)
+  ci-main:
+    severity_blocks_at: P1   # main-branch: P0 + P1 block
+
+per_rule_overrides:
+  - rule_id: g-eo-non-exemptible
+    severity_blocks_at: P0   # always block, regardless of environment
+    rationale: "EO rules cannot be deviated"
+```
+
+### BF.3 Engine env detection
+
+Engine reads `CTP_ENV` env var (or `GCTP_ENV` if set). Default: `default`.
+
+```bash
+CTP_ENV=dev composite/dispatch.sh --file foo.ts
+# Uses dev severity threshold
+```
+
+### BF.4 Verdict mapping
+
+Engine returns verdicts according to per-environment threshold:
+
+| Rule severity | Env threshold | Verdict |
+|---|---|---|
+| P0 | P0 | block (red) |
+| P0 | P1 | block (red) |
+| P1 | P0 | warn (yellow) |
+| P1 | P1 | block (red) |
+| P2 | anything | warn (yellow) |
+| P3 | anything | info (green) |
+
+### BF.5 Audit visibility
+
+Per-environment outcomes shown in SARIF results:
+
+```json
+{
+  "level": "error",
+  "properties": {
+    "gctp_rule_id": "g-rule",
+    "gctp_severity": "P1",
+    "gctp_env": "prod",
+    "gctp_threshold": "P1",
+    "gctp_blocked": true
+  }
+}
+```
+
+### BF.6 Cross-env diff
+
+`gctp audit --env-diff dev:prod --scope .`:
+
+```
+Verdict diff: dev → prod
+  37 rules block in prod that warn in dev
+  Recommendation: address before promoting to staging
+```
+
+---
+
+## Appendix BG — Self-updating tools policy
+
+### BG.1 The risk
+
+Some tools have auto-update mechanisms:
+- `semgrep --update` modifies the binary in-place
+- `gh extension upgrade` upgrades `gh markdown-render`
+- Homebrew can update tools out-of-band
+
+CTP needs a stable version posture.
+
+### BG.2 Policy
+
+CTP pins tool versions in `composite/COMPAT.yaml`. The engine:
+
+1. Reads expected version from COMPAT.yaml
+2. Invokes `<tool> --version` at session start
+3. Compares
+4. On mismatch: warn (default) or refuse (`strict` mode)
+
+```yaml
+# composite/COMPAT.yaml
+version_pinning_mode: warn       # warn | strict
+required_tools:
+  semgrep: ">=1.50.0,<2.0.0"
+  eslint:  ">=8.0.0,<9.0.0"
+  checkov: ">=2.5.0,<3.0.0"
+```
+
+### BG.3 Auto-update suppression
+
+CTP wrappers MUST NOT invoke tool auto-update flags:
+
+```bash
+# WRONG (in a runner wrapper):
+semgrep --update && semgrep scan ...
+
+# RIGHT:
+semgrep scan ...
+```
+
+If the wrapper accidentally allows auto-update, the version check in step 3 above catches it on next session start.
+
+### BG.4 Operator-controlled updates
+
+Operator updates tools via:
+
+```bash
+scripts/refresh-tool-pins.sh
+# Reads upstream releases for each tool; surfaces new versions;
+# operator opts in per-tool; updates COMPAT.yaml; re-runs version checks
+```
+
+This is the ONLY sanctioned update path. Out-of-band updates trigger warnings.
+
+### BG.5 Drift detection
+
+`composite/dispatch.sh --check-tool-drift`:
+
+```
+Tool version drift detected:
+  semgrep: COMPAT pin >=1.50.0,<2.0.0 — installed 1.61.3 (in range; OK)
+  eslint:  COMPAT pin >=8.0.0,<9.0.0  — installed 9.2.1 (OUT OF RANGE; WARN)
+Recommendation: pin-bump or address out-of-range tools
+```
+
+---
+
+## Appendix BH — Mid-dispatch network failure / partial-tool failure
+
+### BH.1 Categories
+
+1. **Tool needs network mid-call** (lychee, lighthouse, OSV-Scanner) — network drops while running
+2. **Partial output** — tool emits some results then crashes
+3. **Slow network** — request takes longer than `--timeout`
+
+### BH.2 Retry policy
+
+Per-tool retry policy declared in `composite/runners/<tool>/retry.yaml`:
+
+```yaml
+# composite/runners/lychee/retry.yaml
+max_attempts: 3
+backoff:
+  type: exponential
+  initial_ms: 500
+  multiplier: 2
+  max_ms: 10000
+retry_on_exit_codes: [3, 124]   # not_enforced, timeout
+do_not_retry_on:
+  - error_message_contains: "rate-limited"
+  - error_message_contains: "auth"
+```
+
+Engine wraps each tool invocation with retry logic.
+
+### BH.3 Partial-output handling
+
+If a tool emits SARIF before failing:
+
+```
+runner.sh runs:
+  ↓ tool produces some output
+  ↓ tool crashes
+  ↓ wrapper captures partial SARIF
+  ↓ wrapper validates partial SARIF against profile (Appendix AX)
+  ↓ if profile-conformant: emit partial SARIF with annotation properties.gctp_partial: true
+  ↓ if not conformant: discard, return exit 3 (not_enforced)
+```
+
+Engine aggregates partial SARIF; the `gctp_partial: true` flag surfaces in operator-facing report.
+
+### BH.4 Slow-network handling
+
+`--timeout` is per-tool. Network-dependent tools get longer timeouts:
+
+```yaml
+# composite/runners/lychee/runner.yaml
+default_timeout: 180     # 3 minutes for link checking
+network_dependent: true
+```
+
+If `network_dependent: true`, engine extends the timeout by `CTP_NETWORK_TIMEOUT_MULTIPLIER` (default 2x) when the user is on a slow connection (detected via `composite/network-probe.sh`).
+
+### BH.5 Operator visibility
+
+When retry / partial / slow-network happens:
+
+```json
+{
+  "level": "warning",
+  "properties": {
+    "gctp_rule_id": "g-link-integrity",
+    "gctp_attempt": 2,
+    "gctp_total_attempts": 3,
+    "gctp_partial_results": false,
+    "gctp_network_slow": true
+  }
+}
+```
+
+Final verdict accounts for retries; `not_enforced` reason includes retry history.
+
+### BH.6 Graceful degradation
+
+If a network-dependent tool fails N times in a session, engine temporarily blacklists the tool for that session (logs `tool-circuit-breaker-tripped`). Operator can reset via `composite/dispatch.sh --reset-blacklist`.
+
+---
+
+## Appendix BI — CTP plugin version coordination with the 3 skills
+
+### BI.1 The skills
+
+CTP exposes:
+- `tdd-pro-cl-workflow`
+- `tdd-pro-batch-cl`
+- `tdd-pro-bash32-portability`
+
+Each is independently versioned within the CTP plugin.
+
+### BI.2 Compat declaration
+
+`composite/COMPAT.yaml` extends to include skill ranges:
+
+```yaml
+ctp_version: 1.13.0
+composite_engine: 0.4.0
+skills:
+  tdd-pro-cl-workflow: ">=2.0.0,<3.0.0"     # engine requires skill v2+ for engine integration
+  tdd-pro-batch-cl: ">=1.5.0,<2.0.0"
+  tdd-pro-bash32-portability: ">=1.0.0,<2.0.0"
+```
+
+### BI.3 Skill-version registry
+
+Each skill carries its own version in its SKILL.md frontmatter:
+
+```yaml
+# claude-tdd-pro/.claude/skills/tdd-pro-cl-workflow/SKILL.md
+---
+version: 2.0.0
+ctp_compat: ">=1.13.0"
+composite_engine_required: true     # this skill version requires the engine
+---
+```
+
+### BI.4 Coordinated bumps
+
+When CTP releases v1.13 with the composite engine:
+- `tdd-pro-cl-workflow` v2.0.0 — major bump (engine integration is a breaking change for skill's behavior)
+- `tdd-pro-batch-cl` v1.5.0 — minor bump (additive engine awareness)
+- `tdd-pro-bash32-portability` v1.0.0 — no change (skill is engine-agnostic)
+
+Coordinated release: all three skills + engine ship in one CTP v1.13.0 commit.
+
+### BI.5 Engine-load skill validation
+
+At engine load (Appendix U step 4.5):
+
+```
+4.5. Validate skills compat:
+     - For each skill in composite/COMPAT.yaml.skills:
+         - Read skill's SKILL.md version
+         - Compare with COMPAT range
+         - FAIL (out of range): refuse to start
+         - WARN (out of range but operator override): log and continue
+```
+
+### BI.6 Operator-facing
+
+```bash
+$ gctp sync-plugin --bump-to v1.13.0
+Pin-bump check:
+  composite-engine: 0.3.5 → 0.4.0
+  skills:
+    tdd-pro-cl-workflow: 1.9.0 → 2.0.0 (major bump)
+    tdd-pro-batch-cl: 1.4.0 → 1.5.0 (minor)
+    tdd-pro-bash32-portability: 1.0.0 (unchanged)
+```
+
+---
+
+## Appendix BJ — Privacy-by-design audit (GDPR / CCPA / regulated industries)
+
+### BJ.1 Data flow
+
+```
+[Operator's repo / app tree]
+     ↓ files
+[CTP composite engine]
+     ↓ extract architectural prose for applies_to_prose: true rules
+[prose-judge.sh]
+     ↓ rule body + prose excerpt
+[llm-judge.sh — operator's chosen LLM provider]
+     ↓ verdict + reasoning excerpt
+[Local cache + SARIF aggregator + GCTP audit chain]
+```
+
+The operator is the **data controller**. CTP is the **data processor**. The LLM provider is the **sub-processor**.
+
+### BJ.2 Operator obligations (GDPR Article 28)
+
+The operator must:
+1. Establish a legal basis for processing personal data through prose-judge (legitimate interest in code-quality enforcement, with documented balancing test)
+2. Ensure CTP's data-processor commitments are in writing (CTP ships this ADR as the written commitment)
+3. Disclose the LLM provider as a sub-processor in any data-mapping required by regulation
+4. Honor data-subject requests (right to deletion, etc.) — CTP supports this via cache purge per operator
+
+### BJ.3 CTP's data-processor commitments
+
+CTP commits to:
+- NOT collect, transmit, or store operator data EXCEPT through the operator's explicit configuration (e.g. opt-in telemetry per Appendix AH)
+- Cache LLM tier responses locally (Appendix J) — operator-controlled location + lifecycle
+- Provide audit trail (Appendix K.3) sufficient for operator's compliance review
+- Document sub-processor: the operator's chosen LLM provider (operator-selectable per Appendix AF.5)
+- Allow operator to disable LLM tier entirely (`LLM_JUDGE=0`)
+- Allow operator on-premise LLM (no data leaves operator's network)
+
+### BJ.4 Regulated-industry checklist
+
+For operators in regulated industries:
+
+| Regulation | Operator action |
+|---|---|
+| HIPAA (PHI) | Set `LLM_JUDGE=0` OR use HIPAA-eligible LLM provider; Appendix AF redaction patterns for PHI tokens |
+| GDPR | Document legal basis; declare LLM provider sub-processor; honor data-subject requests via cache purge |
+| CCPA (PI) | Disclose sub-processor in privacy policy; honor opt-out requests |
+| PCI-DSS (PAN) | Set `LLM_JUDGE=0` OR ensure LLM provider is PCI-compliant; redact PAN patterns |
+| FedRAMP | Use FedRAMP-authorized LLM provider OR on-prem; ensure `composite/profiles/` sandbox active |
+| ITAR/EAR | Likely on-prem LLM only; verify export-control posture with legal counsel |
+
+### BJ.5 Right-to-deletion mechanism
+
+Operator runs:
+
+```bash
+composite/privacy-purge.sh --subject-id <id> --reason "GDPR Article 17 request"
+```
+
+Engine:
+1. Searches LLM audit log for entries containing `<id>` (via operator-defined matchers)
+2. Removes matching cache entries
+3. Removes matching audit-log lines
+4. Logs the purge event (without `<id>`) for compliance trail
+5. Emits a deletion certificate (PDF) for operator records
+
+### BJ.6 Data-subject-rights audit trail
+
+Every privacy-relevant operation logged to `.harness/state/privacy-trail.jsonl`:
+
+```json
+{"ts":"...","operation":"prose-judge","data_processor":"ctp","sub_processor":"anthropic","retention":"24h","operator_legal_basis":"legitimate-interest-quality-enforcement"}
+{"ts":"...","operation":"cache-purge","subject_id":"<hash>","reason":"gdpr-article-17"}
+```
+
+### BJ.7 CTP commitments documented
+
+CTP ships `docs/PRIVACY.md` enumerating commitments + operator responsibilities. Operator's legal team reviews before adoption.
+
+---
+
+## Appendix BK — Vendor-neutrality + mirror SLA
+
+### BK.1 The four authorities' vendors
+
+| Authority | Vendor | License | Risk profile |
+|---|---|---|---|
+| GitHub Linguist | Microsoft / GitHub | MIT | Stable; widely adopted; low risk |
+| IaC dialects consensus | Aqua / Aquasec ecosystem (Trivy + Checkov) | Apache-2.0 each | Multi-vendor; medium risk if one defaults |
+| PURL spec | OWASP / community | MIT | Community-governed; low risk |
+| Kubernetes GVK | CNCF / k8s.io | Apache-2.0 | CNCF-stable; very low risk |
+
+### BK.2 Mirror cadence
+
+`vendor/canonical-vocabulary/` is re-mirrored on cadence (default monthly; see ADR-0064 in GCTP for refresh discipline). When upstream changes:
+
+- **Linguist** publishes new releases ~quarterly. CTP mirrors on release.
+- **IaC dialects** — CTP curates from Checkov + Trivy + Kubescape releases. Mirror updates on each release.
+- **PURL** — versioned spec. CTP mirrors at spec-version boundaries.
+- **K8s GVK** — versioned per kubectl release. CTP mirrors per minor.
+
+### BK.3 Survival mode (when authority is unreachable)
+
+CTP ships the LAST KNOWN GOOD snapshot in `vendor/canonical-vocabulary/`. If a refresh fails:
+
+```
+$ composite/refresh-mirrors.sh
+Fetching linguist: ERROR — network unreachable
+Fetching iac-dialects: OK (Trivy release 0.50.0)
+Fetching purl-spec: OK (v1.1.0)
+Fetching k8s-gvks: ERROR — k8s.io unreachable
+
+Refresh complete with errors:
+  - linguist: using last-good snapshot from 2026-05-15
+  - k8s-gvks: using last-good snapshot from 2026-04-22
+
+Engine: proceeding with mirror state (no upgrade required for next session)
+```
+
+Engine continues to function on the last-good snapshot indefinitely. Operator is warned but not blocked.
+
+### BK.4 Pluggable authority
+
+Operator may supply alternative authorities:
+
+```yaml
+# .harness/operator-standards/canonical-vocabulary-overrides.yaml
+linguist:
+  use: .harness/operator-standards/mirrors/linguist-fork.yml
+  rationale: "Internal fork includes our private language extensions"
+```
+
+Engine uses operator override if present; falls back to CTP-shipped mirror otherwise.
+
+### BK.5 Multi-authority resolution (for IaC dialects)
+
+IaC dialects is curated from 3 sources. Resolution rule when sources disagree:
+
+1. Strict consensus (all 3 agree): use that name
+2. Plurality (2 of 3 agree): use plurality name; CTP commits to a `aliases:` mapping for the dissenter
+3. No plurality: CTP picks one canonical name; documents in `composite/iac-dialects.yaml` reasoning section
+
+Operators can verify the resolution via:
+
+```bash
+composite/iac-resolve.sh terraform
+# Returns: terraform (Checkov: terraform, Trivy: terraform, Kubescape: terraform — consensus)
+```
+
+### BK.6 Authority-going-away protocol
+
+If an authority abandons or fundamentally changes (e.g. GitHub deprecates Linguist):
+
+1. CTP's release process notes the change in advance (>=3 months)
+2. CTP ships a replacement mirror (operator-pluggable)
+3. ADR documents the migration
+
+### BK.7 Auditable mirror provenance
+
+Each mirror file carries provenance:
+
+```yaml
+# vendor/canonical-vocabulary/linguist/languages.yml
+# Source: https://github.com/github-linguist/linguist
+# Pinned commit: <SHA>
+# Fetched at: 2026-06-22T15:23:04Z
+# License: MIT
+# Refreshed by: composite/refresh-mirrors.sh
+```
+
+---
+
+## Appendix BL — Documentation versioning strategy
+
+### BL.1 Approach
+
+`docs/` is **versioned per CTP release**. The structure:
+
+```
+claude-tdd-pro/docs/
+├── 1.13.0/                  # snapshot at release
+│   ├── composite-engine.md
+│   ├── adr/                  # ADRs at release time
+│   ├── migration-guide-v1.12-to-v1.13.md
+│   └── ...
+├── 1.14.0/                  # next release snapshot
+├── 1.15.0-rc/               # pre-release
+├── latest -> 1.15.0/         # symlink to latest GA
+└── unreleased.md            # WIP edits for the next release
+```
+
+### BL.2 Operator pins doc to CTP version
+
+When the operator pin-bumps CTP, they read `docs/<their-pin>/`:
+
+```bash
+# Operator's .harness/composite-pin.yaml: ctp_version: 1.13.0
+# Operator opens: github.com/anthropics/claude-tdd-pro/blob/main/docs/1.13.0/composite-engine.md
+```
+
+### BL.3 ADR location
+
+ADRs live in `docs/<version>/adr/` AND a flat `docs/adr/` (most-recent-version cumulative). Convention:
+
+- `docs/1.13.0/adr/0035-composite-engine.md` — snapshot at 1.13.0 release
+- `docs/adr/0035-composite-engine.md` — current canonical (latest version edits)
+
+Both files must stay in sync (CTP CI verifies).
+
+### BL.4 Cross-version migration docs
+
+`docs/migrations/`:
+
+```
+docs/migrations/
+├── v1.12-to-v1.13.md      # the migration doc per Appendix AW.2
+├── v1.13-to-v1.14.md      # future
+└── ...
+```
+
+These survive across versions; not duplicated per version directory.
+
+### BL.5 Latest-symlink update protocol
+
+On each release:
+1. Tag the previous `latest` (e.g. tag `docs-1.13.0`)
+2. Update `latest` symlink to point to new version directory
+3. CI verifies no broken links across versions
+
+### BL.6 Pre-release docs
+
+WIP edits land in `docs/<next-version>-rc/`. Operators using release candidates pin to the RC version.
+
+### BL.7 Diátaxis structure within each version
+
+Within `docs/<version>/`, organize per Diátaxis (tutorials / how-to / reference / explanation):
+
+```
+docs/1.13.0/
+├── tutorials/             # learning-oriented
+├── how-to/                # task-oriented
+├── reference/             # info-oriented (incl. composite-engine.md detail)
+├── explanation/           # understanding-oriented
+└── adr/                   # decision records
+```
+
+ADR-NNNN cites this convention; operators learn from the same structure across versions.
+
+---
+
+## Appendix BM — Cross-organization standard versioning
+
+### BM.1 The need
+
+Two operators ingest the same source URL at different times:
+- Operator A pins `google-ts-style` at 2025-01 (rev 7c3d92a)
+- Operator B pins `google-ts-style` at 2026-06 (rev 89e1f48)
+
+Their `active.json` entries reference the same rule IDs but with different rule bodies. When their teams share CI or audit logs, the rule semantics diverge silently.
+
+### BM.2 Source-version annotation
+
+Every rule in `active.json` carries source-version metadata:
+
+```yaml
+- id: g-google-ts-style-no-any
+  source: google-ts-style
+  source_version: 7c3d92a       # GitHub commit SHA of the source doc at scrape time
+  source_date: 2025-01-15
+  source_url_at_scrape: https://google.github.io/styleguide/tsguide.html
+  source_etag: "etag-from-http-response"
+  ...
+```
+
+### BM.3 Cross-operator diff
+
+`composite/source-version-diff.sh --source-id google-ts-style --operator-a <path> --operator-b <path>`:
+
+```
+google-ts-style source-version diff:
+  Operator A: 7c3d92a (2025-01-15)
+  Operator B: 89e1f48 (2026-06-15)
+  Diff: 17 rules changed, 5 added, 2 removed since A's version
+  Suggested action: bring A up to B's version via gctp standards refresh
+```
+
+### BM.4 Shared-CI policy
+
+For shared CI scenarios, operator declares the canonical source-version:
+
+```yaml
+# .harness/operator-standards/shared-ci.yaml
+canonical_versions:
+  google-ts-style: 89e1f48
+  owasp-asvs: v4.0.3
+on_version_drift:
+  action: warn       # warn | block | auto-refresh
+```
+
+Engine warns when CI runs against a non-canonical source version.
+
+### BM.5 Source-version pinning per source
+
+Operator can pin a source to a specific upstream version:
+
+```yaml
+# .harness/operator-standards/namespaces.yaml
+- id: google-ts-style
+  source_url: https://google.github.io/styleguide/tsguide.html
+  source_pin: 7c3d92a              # exactly this version; refuse to refresh past
+  source_pin_reason: "Pending internal review of post-7c3d92a changes"
+```
+
+When source_pin is set, `gctp standards refresh` skips this source (logs the skip).
+
+### BM.6 Version-migration assistance
+
+When operator unpins (`source_pin: ~`), engine offers to migrate:
+
+```
+$ gctp standards refresh
+google-ts-style: 17 rule changes detected since pinned version.
+  Recommended: review changes via 'gctp standards version-diff google-ts-style'
+  Proceed with refresh? [y/n]:
+```
+
+### BM.7 Engine treats version-stale rules as such
+
+If a rule's source_date is >365 days old, engine emits a `source-stale` warning. Operator can suppress via `source_stale_threshold_days` in operator config.
+
+---
+
+## Appendix BN — LLM-tier eval / drift detection
+
+### BN.1 The problem
+
+LLM models evolve. The 6 prompts (Appendix B in CTP-ADR-NNNN+1) may produce different outputs against the same inputs over time. Without eval, drift is invisible.
+
+### BN.2 Eval corpus
+
+`composite/eval/` contains:
+
+```
+composite/eval/
+├── classifier/
+│   ├── inputs/                # 50 rule-body fixtures across all 4 axes + applies_to_prose cases
+│   ├── expected-outputs/      # canonical classifier verdicts (built once, manually verified)
+│   └── eval.sh
+├── drafter/
+│   ├── inputs/                # 30 rule + target-tool fixtures
+│   ├── expected-outputs/      # canonical drafted DSL artifacts
+│   └── eval.sh
+├── coverage-diff/             # similar shape
+├── fixture-gen/
+├── prose-judge/
+└── extractor/
+```
+
+### BN.3 Eval scores
+
+Each eval produces a score 0.0-1.0:
+
+| Score | Interpretation | Action |
+|---|---|---|
+| ≥0.95 | Excellent — no drift | none |
+| 0.85-0.95 | Acceptable — minor drift | log; review on next pin |
+| 0.70-0.85 | Concerning — meaningful drift | log warning; suggest prompt revision |
+| <0.70 | Failing — significant drift | log error; refuse to proceed without operator override |
+
+### BN.4 Running eval
+
+```bash
+composite/eval-llm-tier.sh                # runs all 6 evals
+composite/eval-llm-tier.sh --eval classifier
+```
+
+Output:
+
+```
+LLM-tier eval results (model: claude-sonnet-4-6):
+  classifier:       0.93 (47/50 correct, 3 partial-match)
+  drafter:          0.88 (acceptable)
+  coverage-diff:    0.91
+  fixture-gen:      0.95
+  prose-judge:      0.97
+  extractor:        0.89
+Overall: 0.92 (acceptable; no action required)
+```
+
+### BN.5 Per-model eval
+
+Eval runs per-model. If operator switches models, eval should be re-run:
+
+```bash
+LLM_MODEL=claude-haiku-4-5 composite/eval-llm-tier.sh
+LLM_MODEL=claude-opus-4-7 composite/eval-llm-tier.sh
+```
+
+Operator chooses model based on eval scores + cost tradeoff.
+
+### BN.6 Drift alerts
+
+Engine runs eval automatically:
+- At install time
+- On pin-bump
+- On `composite/dispatch.sh --self-test`
+- On operator demand
+
+If score drops below threshold, engine alerts via stderr + the LLM audit log.
+
+### BN.7 Eval corpus governance
+
+`composite/eval/<eval>/expected-outputs/` is normative. Changes are reviewed via PR with explicit rationale ("model update changed expected output X because..."). CTP CI gates eval-corpus changes.
+
+### BN.8 Prompt revision protocol
+
+If eval indicates significant drift:
+1. CTP author investigates: is the new behavior wrong, or did the prompt assume outdated model behavior?
+2. If prompt assumed outdated behavior: revise the prompt; bump prompt version (per Appendix AB future schema)
+3. Re-run eval; verify score recovery
+4. Ship in next CTP release
+
+---
+
+## Appendix BO — Production-readiness checklist
+
+This appendix is the consolidated checklist CTP author uses to verify production readiness across waves.
+
+### BO.1 Pre-implementation (Wave 0)
+
+- [ ] Both CTP ADRs landed in `claude-tdd-pro/docs/adr/` with assigned numbers
+- [ ] `gctp_paired_adr` frontmatter cross-references GCTP ADRs 0068 + 0069
+- [ ] CHANGELOG entry drafted for v1.13.0 release
+- [ ] Migration guide `docs/migration-guide-v1.12-to-v1.13.md` drafted
+- [ ] P-8 patch applied to `llm-judge.sh`; backward-compat test passes
+- [ ] `composite/COMPAT.yaml` exists with placeholder pins
+- [ ] Skills compat declarations updated in COMPAT.yaml
+- [ ] `docs/PRIVACY.md` drafted (Appendix BJ.7)
+- [ ] `docs/TELEMETRY.md` drafted (Appendix AH.5)
+
+### BO.2 Wave 1 (vocabulary + schema + SARIF bus)
+
+- [ ] `vendor/canonical-vocabulary/{linguist,iac-dialects,purl-spec,k8s-gvks}/` mirrors present + refreshable
+- [ ] `composite/schemas/active-rule.json` JSON Schema (Appendix B) validates all 118 rules post-migration
+- [ ] `composite/schemas/ctp-sarif-profile.json` (Appendix AX) validates Semgrep + ESLint + Checkov SARIF outputs
+- [ ] Dual-read shim active for `language:` → `applies_to.linguist_aliases` migration
+- [ ] Engine startup sequence (Appendix U) runs; emits `engine ready`
+- [ ] `composite/validate-sarif.sh` and `composite/validate-active-json.sh` both pass on the 118-rule corpus
+- [ ] Backwards-compat fixture set `composite/fixtures/backcompat/schema-v1-to-v2/` green
+
+### BO.3 Wave 2 (per-tool runners + dispatch)
+
+- [ ] ~40 per-tool runners shipped under `composite/runners/<tool>/runner.sh`
+- [ ] Every runner conforms to Appendix C contract (CLI args + exit codes + SARIF profile)
+- [ ] Per-tool fixture corpus (Appendix P) — ≥3 positive + ≥3 negative per tool — all green
+- [ ] `composite/dispatch.sh` walks `enforced_by[]` in order; first-match-wins
+- [ ] `composite/sarif-aggregate.sh` produces normalized verdict stream across tools
+- [ ] Failure-mode matrix (Appendix F) verified for: tool-missing, tool-crash, timeout, SARIF-malformed, LLM-unreachable
+- [ ] Coverage-diff parity (Appendix G) green for all 118 migrated rules
+- [ ] Sandbox profiles (Appendix AC) verified on macOS + Linux
+
+### BO.4 Wave 3 (architectural-content bundle + two-phase wiring)
+
+- [ ] `composite/bundles/architectural-content.yaml` (Appendix R) loaded; expansion works
+- [ ] `composite/detect-architectural-content.sh` returns expected verdicts for 9-fixture corpus (Appendix P.2)
+- [ ] Post-tool-use hook invokes dispatch; PreToolUse variant deferred
+- [ ] Audit-time invocation via `enforce-standards.sh` works
+- [ ] `prose-judge.sh` fires per `applies_to_prose: true` rule (depends on P-8 fix)
+- [ ] `audit-source-citations.sh` validates citation integrity
+- [ ] ADR lifecycle (Appendix F in CTP-ADR-NNNN+1) state-machine validator green
+
+### BO.5 Auto-classification pipeline (CTP-ADR-NNNN+1 waves)
+
+- [ ] Stage 1-2: extractor strategies for all 5 doc shapes pass on respective fixtures
+- [ ] Stage 3: classifier (tier-1 deterministic + tier-2 LLM) achieves ≥0.85 eval score
+- [ ] Stage 4: routing table populates `enforced_by[]` correctly for `applies_to_prose: true` cases
+- [ ] Stage 5: drafter generates DSL + coverage report + fixtures for Google TS style guide end-to-end
+- [ ] Stage 6: review-queue CLI workflow tested manually + scripted
+- [ ] E2E worked example (CTP-ADR-NNNN Appendix O) reproduces with ~$4.50 LLM cost + ~12 min wall-clock
+
+### BO.6 Cross-cutting production concerns
+
+- [ ] Cache layer (Appendices J + AB): SQLite v1 schema present + migrations tested
+- [ ] Observability (Appendix K): per-runner timing sidecars + structured logs + LLM audit trail emitting
+- [ ] Versioning (Appendix L): COMPAT.yaml accurate; compat matrix tested cross-version
+- [ ] Sandboxing (Appendices M + AC): macOS sandbox-exec + Linux firejail + container path all functional
+- [ ] Operator overrides (Appendix N): per-rule override + custom-namespace + tool plug-in all tested
+- [ ] Concurrency (Appendix AD): multi-session same-tree + multi-repo same-machine tested
+- [ ] Performance (Appendix AE): NFS / low-memory / large-repo / sparse-checkout all benchmarked
+- [ ] PII handling (Appendices AF + BJ): GDPR/CCPA commitments documented; redaction layer functional
+- [ ] Cost (Appendix AG + CTP-ADR-NNNN+1 Appendix G): per-invocation accounting + monthly cap tested
+- [ ] Telemetry (Appendix AH): OFF by default; opt-in path tested
+- [ ] License policy (Appendix AI): allowed/disallowed flow tested with AGPL tool subset
+- [ ] Hot-reload (Appendix AJ): opt-in file-watcher tested
+- [ ] i18n (Appendix AK + CTP-ADR-NNNN+1 Appendix I): non-English source ingest tested
+- [ ] Timestamps (Appendix AL): RFC 3339 UTC enforced across schema
+- [ ] Self-test (Appendix AM): 17-step coverage + exit-code semantics verified
+- [ ] Output formats (Appendix AO): 6 alt formats (Markdown + Code Climate + Checkstyle + GitHub + Reviewdog + JUnit) tested
+
+### BO.7 Strategic / governance
+
+- [ ] AGPL legal posture (Appendix AP): operator license-policy override tested with AGPL tools
+- [ ] Dogfood (Appendix AQ): CTP's own CI runs engine self-fire; CTP's ADRs pass architectural-content bundle
+- [ ] Future migrations (Appendix AR): migration framework documented; v1→v2 served as proof
+- [ ] Plugin handshake (Appendix AS): GCTP↔CTP version negotiation tested across skew scenarios
+- [ ] Deprecation policy (Appendix AT): tool deprecation (tfsec example) end-to-end tested
+
+### BO.8 New gaps from this audit
+
+- [ ] ADR template + numbering (Appendix AV): convention documented; numbers assigned
+- [ ] CHANGELOG + migration content (Appendix AW): drafted + reviewed
+- [ ] SARIF profile (Appendix AX): JSON Schema present; validator tested
+- [ ] Pin-bump procedure (Appendix AY): documented in operator-runbook
+- [ ] Backwards-compat corpus (Appendix AZ): present + CI-gated
+- [ ] Pre-prod dry-run mode (Appendix BA): staging path tested end-to-end
+- [ ] First-time adoption playbook (Appendix BB): documented; revised after first real adoption
+- [ ] Multi-bundle composition (Appendix BC): conflict-resolution rules tested
+- [ ] Tool deprecation protocol (Appendix BD): lifecycle states + grace period verified
+- [ ] Engine signal handling (Appendix BE): SIGTERM / SIGINT / SIGHUP behavior tested
+- [ ] Per-env severity (Appendix BF): CTP_ENV-driven verdict mapping tested
+- [ ] Self-updating tools (Appendix BG): pin-violation detection works
+- [ ] Network failures (Appendix BH): retry policy + partial-output handling tested
+- [ ] Skill version coordination (Appendix BI): COMPAT range validation tested
+- [ ] Privacy-by-design audit (Appendix BJ): docs/PRIVACY.md drafted; right-to-deletion tested
+- [ ] Mirror SLA (Appendix BK): survival mode tested with simulated authority outage
+- [ ] Doc versioning (Appendix BL): per-version `docs/` snapshots in place
+- [ ] Source-version tracking (Appendix BM): metadata on every rule; cross-operator diff tool
+- [ ] LLM-tier eval (Appendix BN): `composite/eval/` corpus present; baseline scores recorded
+
+### BO.9 Sign-off criteria
+
+CTP-ADR-NNNN advances `proposed` → `accepted` when:
+- All Wave 1 + Wave 2 + Wave 3 boxes checked
+- BO.6 (cross-cutting) ≥90% checked
+- BO.7 (governance) 100% checked
+- One real operator has completed onboarding and reported back
+
+CTP-ADR-NNNN+1 advances `proposed` → `accepted` when:
+- All BO.5 boxes checked
+- Eval scores ≥0.85 for all 6 LLM operations (Appendix BN)
+- First real operator's standards-onboarding completed without major bugs
+
+### BO.10 Go-live / GA criteria
+
+CTP v1.13.0 declared GA (general availability) when:
+- Both ADRs `accepted`
+- 3 real-world adoption case studies published (Appendix BB.5)
+- All BO checkboxes green
+- No P0 bugs open >30 days
+- Operator feedback loop established (issue tracker + monthly review)
+
+---
+
 End of CTP-ADR-NNNN draft. Land in `claude-tdd-pro/docs/adr/` at the next available number; close `proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md` as adopted on landing.
