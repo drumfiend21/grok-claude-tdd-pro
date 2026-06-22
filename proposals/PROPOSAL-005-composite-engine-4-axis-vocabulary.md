@@ -212,6 +212,94 @@ For tools without `--fix`, the architecture uses **LLM-mediated remediation**: t
 
 **CTP-D-8.** Per-tool positive + negative test fixtures shipped alongside each wrapper. CTP's own CI runs them to catch detector quality regressions. Operator-supplied rule files must also ship fixtures for inclusion in the registry.
 
+## 9b. The architectural-content enforcement bundle (NEW — clarifying section)
+
+Every `.md` file the harness or its agents generate during the architectural design phase — ADRs, decision logs, C4 diagrams, sequence diagrams, traceability matrices, cost-benefit analyses, RFCs, design proposals, SUBMISSION docs, presentation outlines — gets the **full prose enforcement stack** applied at both write time and audit time. This is not implicit in the per-tool listing above; it's a named, first-class bundle the composite engine activates automatically whenever a file is classified as architectural content. The bundle's purpose is the user's explicit requirement: *nothing is written to the repo as architectural content that has not first been vetted against every applicable rule*.
+
+### 9b.1 Defining "architectural content"
+
+A file is classified as architectural content if it satisfies any of:
+
+- **Path-pattern match** — file path matches `docs/architecture/**/*.md`, `docs/adr/**/*.md`, `docs/decisions/**/*.md`, `docs/rfcs/**/*.md`, `docs/design/**/*.md`, `SUBMISSION.md`, `**/c4-*.md`, `**/seq-*.md`, `**/traceability*.md`, `**/cost-benefit*.md`, `**/presentation*.md`
+- **Frontmatter match** — file's YAML frontmatter declares `kind: adr | architecture | decision | design | rfc`
+- **Operator extension** — operator-supplied paths in `.harness/operator-standards/architectural-paths.yaml` are added to the classifier
+
+The classifier emits the boolean tag `is_architectural_content: true` on any matching file, which the routing logic uses to activate the bundle below.
+
+### 9b.2 The bundle — every tool that fires on architectural content
+
+The composite engine treats `bundle:architectural-content` as a named binding that maps to **all** of these tools, invoked in parallel on every architectural file:
+
+| Layer | Tool | Role |
+|---|---|---|
+| **Template / structural** | `markdownlint-cli2` with custom config | MD001-MD060: heading hierarchy, single H1, code-fence languages declared, link-fragments resolve, no inline HTML where forbidden, no duplicate headings, etc. MD043 (`required-headings`) enforces MADR / arc42 template shape mechanically |
+| **Template / structural** | `remark-lint` with `remark-preset-lint-recommended` + `remark-preset-lint-markdown-style-guide` | AST-based markdown lint complementing markdownlint where AST precision matters |
+| **Prose style (Google)** | Vale + `errata-ai/Google` style pack | Active voice, sentence-case headings, present tense, inclusive language, Google developer-docs style guide |
+| **Prose style (Microsoft)** | Vale + `vale-cli/Microsoft` style pack | Microsoft Writing Style Guide — bias-free communication, global communications, grammar, punctuation, formatting |
+| **Prose style (general)** | Vale + `errata-ai/write-good` + `errata-ai/proselint` | Passive voice, weasel words, cliches, hedging, redundancy, typography, archaism, jargon, mixed metaphors |
+| **Inclusive language** | Vale + `errata-ai/alex` (Vale wrapper) AND `alex` (standalone CLI) | Gendered language, ableist phrasing, intolerant terminology (master/slave → primary/replica), condescending words |
+| **Additional prose** | `textlint` with `textlint-rule-no-todo` + `textlint-rule-common-misspellings` + `textlint-rule-max-number-of-lines` | Catches additional anti-patterns that Vale doesn't cover |
+| **Spell-check** | `cspell` (code-aware) + `codespell` (dictionary) | Both — cspell is code-aware (skips identifiers, supports many config formats), codespell catches common typos against a curated misspellings dictionary |
+| **Link integrity** | `lychee` | Internal + external link resolution, anchor fragment validation, dead-link detection |
+| **License headers** | `reuse-tool` | REUSE 3.3 / SPDX header presence on every architectural doc, per FSFE spec |
+| **Diagram validation** | `mmdc --validate` (mermaid-cli) | Validate every `mermaid` fenced code block in architectural docs (C4 diagrams, sequence diagrams, flowcharts) |
+| **Diagram validation** | `plantuml -checkonly` | Same for PlantUML diagrams if present |
+| **Frontmatter schema** | `ajv-cli` against MADR / arc42 / RFC frontmatter schemas | Validate frontmatter shape — required fields (status, kind, date, deciders), enumerated values (status ∈ {proposed, accepted, rejected, deprecated, superseded}), field types |
+| **Token-pattern checks** | Semgrep with generic-mode rules under `composite/rulesets/semgrep/architectural-content/*.yml` | Catches literal forbidden tokens in prose (e.g., `0.0.0.0/0`, `alg":"none"`, `*:*` for IAM) AND the deny-context affordance markers that distinguish "forbid X" from "propose X" |
+| **RFC 2119 keyword discipline** | Custom Vale rule or Semgrep pattern | When uppercase MUST / SHOULD / MAY appear in the prose, the BCP 14 invocation sentence must be present elsewhere in the doc |
+| **Semantic (the moat)** | **`prose-judge.sh`** | The LLM-judge tier — semantic projection of every rule with `applies_to_prose: true` onto the architectural prose. Catches the "this ADR proposes a forbidden design" class that no other tool can catch |
+| **Citation integrity** | `audit-source-citations.sh` (existing GCTP script) | Every claim in an ADR that cites a standard or rule must trace to a real entry in `active.json`'s provenance |
+
+### 9b.3 Schema: how rules reference the bundle
+
+A rule entry can target architectural content explicitly in either of two equivalent ways:
+
+```yaml
+# Explicit bundle binding — operator says "fire the architectural-content bundle on this rule"
+- id: g-madr-template-conformance
+  source_namespace: madr
+  origin: plugin
+  applies_to:
+    is_architectural_content: true
+  enforced_by:
+    - bundle: architectural-content      # ← named bundle reference; expands to ALL tools in §9b.2
+  severity: P1
+  applies_to_prose: true
+
+# Implicit bundle activation — any rule with applies_to_prose: true auto-attaches the bundle
+- id: g-aws-no-unrestricted-ingress
+  applies_to:
+    linguist_aliases: [terraform]        # primary target = .tf files
+  applies_to_prose: true                 # ← auto-activates architectural-content bundle as secondary binding
+  enforced_by:
+    - kinds: { linguist_aliases: [terraform] }
+      tool: checkov
+      ruleset: ".../aws-no-ingress.yaml"
+    # bundle: architectural-content is appended automatically by the engine because applies_to_prose: true
+  severity: P0
+```
+
+The expansion of `bundle: architectural-content` is canonical and central: every tool listed in §9b.2 fires on every architectural file matched by the rule's `applies_to_prose_kinds`. Operators don't pick and choose; the bundle is whole-or-nothing so the architectural enforcement floor is uniform across all rules and all source-namespaces.
+
+### 9b.4 Write-time hook wiring
+
+`.claude/hooks/post-tool-use-review-gate.sh` (existing CL-E) extends its file-extension case statement: when a `.md` file is written, the hook additionally checks the classifier's `is_architectural_content` flag (via `scripts/classify-file.sh --file <path>` → returns `architectural | non-architectural`). If architectural, the hook invokes the architectural-content bundle in parallel and aggregates SARIF before exit. The PreToolUse variant (CTP-D-5 from §9) does the same on proposed content before disk write. Net result: **no architectural .md file lands in the repo without every tool in §9b.2 having vetted it.**
+
+### 9b.5 Audit-chain wiring
+
+`scripts/audit-design-phase-md.sh` (existing CL-C) drives the same bundle at dispatch time across the whole `app_root`'s architectural surface. For every ticket whose `file_scope.may_edit` touches an architectural path (or any file with the `is_architectural_content` flag), the gate runs the full bundle, aggregates SARIF via `sarif-aggregate.sh`, treats deviation rows in `<app_root>/docs/deviations.md` as `deviated`-as-green per ADR-0066 D-F, and blocks `/dispatch` from emitting if any P0 fires without a deviation. Same bundle, same tools, same SARIF output bus — the only difference vs write-time is scope (whole tree vs single file).
+
+### 9b.6 The contract — what this guarantees operationally
+
+After the bundle lands and is wired:
+
+1. **Every architectural .md file passes the full structural + style + spell + link + diagram + frontmatter + semantic stack before commit.** Single-tool-omission is structurally impossible because the bundle is referenced by name.
+2. **Every rule with `applies_to_prose: true` automatically applies to all architectural files** without per-rule manual binding. The bundle is the universal floor for prose-as-code.
+3. **The semantic moat fires on every ADR.** Any rule from any source — Google, Microsoft, OWASP, Walmart, Accenture — that's marked `applies_to_prose: true` gets `prose-judge.sh` evaluation against every ADR's prose, in addition to the deterministic FOSS tools.
+4. **The 5 (or 6, with `is_architectural_content`) classification axes** still drive routing: a rule scoped to TypeScript prose ALSO targets `.ts` files via Semgrep/ESLint; the architectural-content bundle is the additional dimension, not a replacement.
+
+This section closes the gap that PROPOSAL-005 §6 implied but didn't name: the full prose tool stack is now a named, first-class enforcement target activated automatically on architectural content, satisfying the operator's requirement that *every rule applies to every generated architectural artifact through every tool that can enforce it*.
+
 ## 10. Alternatives considered
 
 - **Keep CTP-hand-written grep detectors as primary; use FOSS tools only as fallback.** REJECTED — produces the low-confidence verdict landscape PROPOSAL-004 documents. FOSS tools are deeper, faster, and more accurate at the domains they cover.

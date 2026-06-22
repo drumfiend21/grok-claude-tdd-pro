@@ -29,9 +29,10 @@ URL  →  STAGE 1: SOURCE-REFRESH        (existing — PROPOSAL-003)
        STAGE 2: RULE EXTRACTION         (NEW — per-doc-shape strategies)
                 ↓ list of {title, body, citation_anchor}
        STAGE 3: 4-AXIS CLASSIFICATION   (NEW — deterministic + LLM-judge)
-                ↓ applies_to.* block per rule
+                ↓ applies_to.* block per rule + applies_to_prose flag
        STAGE 4: ROUTING-TABLE LOOKUP    (NEW — kinds → recommended tool)
                 ↓ recommended enforced_by binding(s)
+                ↓ auto-append bundle:architectural-content when applies_to_prose: true (§6a)
        STAGE 5: LLM-DRAFT DSL RULE      (NEW — fidelity-disciplined)
                 ↓ tool-specific custom-rule file + coverage report + test fixtures
        STAGE 6: OPERATOR REVIEW         (NEW — review-queue workflow)
@@ -133,6 +134,27 @@ routing:
 
 For each rule, given its `applies_to.*` set, look up each kind in the table; intersect the candidate tool sets; produce a recommended primary tool (or small list when multiple are equally good). Cross-language rules (a single rule with 8+ `linguist_aliases`) almost always recommend Semgrep because it's the only tool that enforces one rule definition across many languages.
 
+### 6a. Architectural-content auto-binding (NEW — pairs with PROPOSAL-005 §9b)
+
+Stage 4 has a second responsibility beyond per-language tool routing: deciding whether the rule applies to **architectural prose** (ADRs, design docs, RFCs, architecture notes) and, if so, auto-attaching the `architectural-content` bundle defined in PROPOSAL-005 §9b.2.
+
+**Detection.** The Stage-3 LLM-judge prompt is extended with one extra output field — `applies_to_prose: true | false` — derived from whether the rule's body expresses a constraint that can be projected semantically onto natural-language architectural prose (e.g., "JWT alg MUST NOT be none" applies to TypeScript code AND to any ADR that proposes a token design; "indentation must be 2 spaces" applies only to TypeScript code, not to ADRs). Tier-2 LLM-judge classifies this in the same pass as the 4-axis kinds, with the same confidence tagging and review-queue routing.
+
+**Auto-binding.** When `applies_to_prose: true`, the router unconditionally appends `{ bundle: architectural-content }` to the rule's `enforced_by[]` list AFTER the per-language tool binding. The expansion happens at engine load time (PROPOSAL-005 §9b.3 — the engine reads the bundle name and dispatches the full prose stack on every architectural .md). The drafter (Stage 5) does NOT need to enumerate the bundle tools individually.
+
+**Inverted lookup for ADR-only rules.** When `applies_to_prose: true` AND the deterministic 4-axis tagging produces no per-language kinds (i.e., the rule is purely about architectural prose — RFC 2119 keyword usage, mandatory ADR sections, citation discipline, prose-style requirements), the router omits the per-language binding entirely and binds ONLY `{ bundle: architectural-content }`. The bundle is sufficient on its own for ADR-only rules.
+
+**Routing-table addendum.** `composite/kind-to-tool-routing.yaml` carries one synthetic entry for the prose dimension:
+
+```yaml
+prose:architectural-content:
+  primary: [bundle:architectural-content]   # expands per PROPOSAL-005 §9b.2
+  secondary: []
+  notes: "Auto-attached when applies_to_prose: true. Fires markdownlint-cli2, remark-lint, Vale (Google + Microsoft + write-good + proselint + alex), textlint, cspell, codespell, lychee, reuse-tool, mmdc, plantuml, ajv-cli, Semgrep generic-mode, RFC 2119 check, prose-judge.sh, audit-source-citations.sh on every architectural file."
+```
+
+The operator never has to manually attach the bundle. Every rule that the classifier flags as projectable onto prose gets the full architectural enforcement stack automatically.
+
 ## 7. Stage 5 — LLM-draft DSL rule (fidelity-disciplined)
 
 For each rule + recommended tool, the LLM drafts the rule body in the tool's DSL with **four layered fidelity mechanisms** (the same four PROPOSAL-005 §10 requires):
@@ -160,6 +182,20 @@ OUTPUT: <tool-specific DSL syntax with metadata + coverage_report>
 **D. Coverage-gap fallback to prose-judge:** Any clause that the coverage diff flags as un-translatable to the tool's DSL is routed to a second `enforced_by` binding using `prose-judge.sh`. The rule's `enforced_by[]` ends up with two entries: one deterministic Semgrep/Checkov/etc. binding for syntactic clauses, one `prose-judge.sh` binding for semantic-judgment clauses. The operator sees the split explicitly in the coverage report: *"5 of 7 clauses enforced deterministically by Semgrep; 2 clauses enforced semantically by prose-judge."*
 
 **The "no language silently dropped" contract:** every clause of the original prose ends up either (a) deterministically enforced in the tool's DSL, (b) semantically enforced via `prose-judge.sh`, or (c) explicitly flagged as un-enforceable with operator acknowledgment. Never silently dropped.
+
+### 7a. Drafting for architectural-prose rules (NEW — pairs with §6a)
+
+When Stage 4 attaches `bundle: architectural-content` (i.e., `applies_to_prose: true`), the Stage-5 drafter's job shrinks substantially because the bundle's structural tools (markdownlint-cli2, remark-lint, Vale × packs, textlint, cspell, codespell, lychee, reuse-tool, mmdc, plantuml, ajv-cli, RFC 2119 check) fire on every architectural file **regardless of the rule** — they enforce universal architectural-prose hygiene. The drafter therefore generates only:
+
+1. **The `prose-judge.sh` binding metadata** — a structured directive for the LLM-judge tier containing: the rule's verbatim prose, the rule ID, the source citation, the confidence threshold, and any deny-context affordance markers. This is the per-rule semantic projection that the bundle's `prose-judge.sh` invocation reads at audit/write time.
+
+2. **Optional Semgrep generic-mode rule** — only when the rule contains literal forbidden tokens that admit deterministic catching in prose (e.g., `0.0.0.0/0`, `alg":"none"`, `*:*` for IAM). Drafter emits this as `composite/rulesets/semgrep/architectural-content/<rule-id>.yml` and the bundle's generic-mode Semgrep run picks it up automatically — no per-rule binding edit needed.
+
+3. **The coverage report** still emitted, but now reads against the bundle's combined capability: "Clause 1 covered deterministically by bundle's markdownlint MD025 (single H1); clause 2 covered semantically by prose-judge.sh with rule body; clause 3 covered by bundle's Vale Microsoft rule write-good.E-Prime." The coverage report shows that the bundle's combined capability + the per-rule prose-judge binding together cover every clause of the original.
+
+**Per-tool custom-rule files for the bundle's structural tools are NOT generated per rule.** The bundle's tools already enforce universal architectural-prose hygiene through their default rule packs; per-rule custom Vale / markdownlint files would be redundant and create maintenance debt. The drafter writes one prose-judge directive per architectural-prose rule and lets the bundle do the structural work.
+
+**Cross-applicability rules.** When a rule applies to BOTH code and prose (the typical case — e.g., the JWT-none example applies to TypeScript code AND to ADRs proposing JWT designs), the drafter emits TWO bindings: the per-language DSL rule (Semgrep / ESLint / etc.) for code targets, AND the prose-judge directive for ADR targets. The two bindings are independent; either fires depending on which file the engine encounters. The coverage report sums their combined coverage.
 
 ## 8. Stage 6 — operator review queue
 
@@ -209,6 +245,8 @@ On accept: rule entry committed to `active.json`, rule body committed to `.harne
 
 **CTP-D-7.** Document the "no language silently dropped" contract prominently. Every drafted rule MUST emit a coverage report; any prose clause that isn't covered by the deterministic binding MUST appear in a second `prose-judge.sh` binding OR be flagged with explicit operator acknowledgment.
 
+**CTP-D-8.** **Architectural-content auto-binding.** Stage-3 LLM-judge emits `applies_to_prose: true | false` alongside the 4-axis kinds. Stage-4 router unconditionally appends `{ bundle: architectural-content }` to `enforced_by[]` whenever `applies_to_prose: true`. Stage-5 drafter, on auto-bound rules, generates ONLY a per-rule `prose-judge.sh` directive (plus an optional Semgrep generic-mode rule for literal forbidden tokens) — it does NOT generate per-rule custom files for the bundle's structural tools (markdownlint, Vale, textlint, etc.), which fire universally on every architectural .md via PROPOSAL-005 §9b.2. Together this means every classifier-flagged prose-applicable rule receives the full architectural-content enforcement stack with no per-rule manual binding effort.
+
 ## 10. Alternatives considered
 
 - **Manual authoring of every rule.** REJECTED — the catalog of operator-sourced standards is large (Google + Microsoft + OWASP + federal + Accenture + Walmart + internal teams = ~500-1000 rules in typical adoption). Manual is multi-month effort. LLM-assisted reduces to multi-week with review.
@@ -235,6 +273,8 @@ On accept: rule entry committed to `active.json`, rule body committed to `.harne
 ## 12. Pairs with PROPOSAL-005
 
 PROPOSAL-005 (composite engine + 4-axis vocabulary) provides the runtime — it routes tagged rules to tools and enforces them at write + audit time. PROPOSAL-006 (this brief) provides the upstream — it scrapes URLs, tags rules, drafts custom-rule files. Both target the same `active.json` rule registry; both compose on PROPOSAL-003's source refresh; both reuse the same canonical vocabulary.
+
+**Architectural-content coupling.** PROPOSAL-005 §9b defines the architectural-content bundle (the named expansion of markdownlint-cli2 + remark-lint + Vale × packs + textlint + cspell + codespell + lychee + reuse-tool + mmdc + plantuml + ajv-cli + Semgrep generic-mode + RFC 2119 check + `prose-judge.sh` + `audit-source-citations.sh`). This brief's Stages 4 + 5 (§§6a + 7a + CTP-D-8) ensure that every classifier-processed rule with `applies_to_prose: true` automatically attaches to that bundle without operator effort. PROPOSAL-005 provides the bundle definition + write/audit-time invocation; PROPOSAL-006 provides the auto-attachment at rule-ingest time. Neither is functional without the other for the architectural-prose enforcement story.
 
 PROPOSAL-006 **depends on** the P-8 fix from PROPOSAL-004 because the prose-judge LLM tier is required for the coverage-gap fallback (Stage 5D). P-8 should land before PROPOSAL-006 wave 2 (Stage 5 + 6).
 
