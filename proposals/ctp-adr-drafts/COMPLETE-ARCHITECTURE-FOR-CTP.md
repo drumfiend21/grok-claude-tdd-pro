@@ -27,12 +27,20 @@ The two ADRs share a contract: **CTP-ADR-NNNN+1 outputs rules that CTP-ADR-NNNN'
 When fetching any GCTP file, use this commit for reproducibility. Replace `main` in raw URLs with the hash below.
 
 ```
-Pinned: 9d58b07347fdbfc486e9774e66c5a549d87643e4
+Pinned: e44f484f0034b2cd86eb7193a78325fc87120417
 Date:   2026-06-22
 Author: drumfiend21 + Claude Opus 4.7 (GCTP cloud session)
 ```
 
-Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/9d58b07347fdbfc486e9774e66c5a549d87643e4/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit (includes the Mermaid diagram suite + the complete ~115-tool inventory inlined into both CTP-ADR drafts as Appendix A). Subsequent edits live on `main` HEAD with full `git log proposals/` history.
+Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/e44f484f0034b2cd86eb7193a78325fc87120417/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit, which includes:
+- Mermaid diagram suite (8 diagrams)
+- Complete ~115-tool inventory (Appendix A in both CTP-ADRs)
+- CTP-ADR-NNNN Appendices B-P: schemas, runner contract, bundle expansion, path classifier, failure-mode matrix, migration plan, P-8 patch, perf/cost budget, cache, observability, versioning, sandboxing, operator overrides, worked example, fixture commitments
+- CTP-ADR-NNNN+1 Appendices B-F: LLM prompt corpus verbatim, extractor strategies, coverage-diff harness, per-CL acceptance gates, ADR lifecycle state machine
+- Non-goals section + boundary discipline (cover doc §6, §6.5)
+- Paired GCTP-side ADRs: `docs/adr/0068-gctp-side-composite-engine-wiring.md` + `docs/adr/0069-gctp-side-auto-classification-pipeline-wiring.md`
+
+Subsequent edits live on `main` HEAD with full `git log proposals/ docs/adr/` history.
 
 ---
 
@@ -64,8 +72,11 @@ Read these in order. Each is a single `curl`/`gh api`/WebFetch fetch.
     - `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/standards-sources-yaml.md`
     - `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/standards-sources-json.md`
     - `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/standards-sources-md.md`
+12. **Paired GCTP-side ADRs** (the consumer-side wiring — informative for understanding the boundary, NOT something the CTP author lands):
+    - `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/adr/0068-gctp-side-composite-engine-wiring.md`
+    - `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/adr/0069-gctp-side-auto-classification-pipeline-wiring.md`
 
-That's the full fetch set. Everything else you need is in those 11 documents (plus the two CTP ADR drafts you'll land).
+That's the full fetch set. Everything else you need is in those 13 documents (plus the two CTP ADR drafts you'll land).
 
 ---
 
