@@ -432,6 +432,16 @@ yamllint (GPL-3.0) • ajv-cli — JSON Schema (700+ SchemaStore) (MIT) • jq (
 
 ---
 
+## 5.19 Appendix index — the two CTP ADRs together cover this
+
+**CTP-ADR-NNNN appendices:** A (tool inventory) — B (rule schema) — C (runner contract) — D (bundle expansion) — E (path classifier) — F (failure-mode matrix) — G (migration plan) — H (P-8 patch) — I (perf budget) — J (cache spec) — K (observability) — L (versioning) — M (sandboxing) — N (operator overrides) — O (worked example) — P (fixtures) — Q (severity→gate) — R (bundle YAML) — S (routing table) — T (concrete worked runner) — U (startup sequence) — V (empty-state) — W (status advancement) — X (test framework) — Y (repo file-tree diff) — Z (skills integration) — AA (rollback) — AB (cache migration) — AC (sandbox profile content) — AD (concurrency) — AE (degraded perf) — AF (PII / sensitive data) — AG (cost reporting) — AH (telemetry posture) — AI (license policy) — AJ (hot-reload) — AK (i18n) — AL (RFC 3339 timestamps) — AM (engine self-test) — AN (bundle naming) — AO (output formats) — AP (AGPL legal posture) — AQ (CTP dogfood) — AR (future schema migrations) — AS (plugin handshake) — AT (deprecation policy) — AU (Open Questions).
+
+**CTP-ADR-NNNN+1 appendices:** A (tool inventory mirror) — B (LLM prompt corpus verbatim) — C (extractor strategies per doc shape) — D (coverage-diff harness) — E (per-CL acceptance gates) — F (ADR lifecycle state machine) — G (pipeline cost reporting addendum) — H (pipeline PII handling) — I (pipeline i18n addendum) — J (cross-cutting concerns ↔ CTP-ADR-NNNN index).
+
+47 + 10 = 57 appendices total across the two ADRs. Most pipeline-specific concerns are short addenda to the corresponding CTP-ADR-NNNN appendix; cross-references are explicit.
+
+---
+
 ## 5.17 Worked end-to-end example — pointer
 
 The canonical wave-1 acceptance test is the Google TS style guide URL ingest, demonstrated step-by-step in **CTP-ADR-NNNN Appendix O**. It walks through:

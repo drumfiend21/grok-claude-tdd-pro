@@ -1031,4 +1031,175 @@ stateDiagram-v2
 
 ---
 
+---
+
+## Appendix G — Pipeline-specific cost reporting
+
+The auto-classification pipeline is the largest single LLM-cost generator in CTP. Per-pipeline-run accounting:
+
+### G.1 Cost estimate before run
+
+`scripts/classify-from-url.sh` emits a cost estimate before starting Stage 2:
+
+```
+$ scripts/classify-from-url.sh --source-id google-ts-style --url <url>
+Stage 1 complete: 2 MB cached, 47 rules detected.
+
+Cost estimate (Sonnet pricing, P50):
+  Stage 2 (extraction):           $0.04
+  Stage 3 (classification x 47):  $0.28
+  Stage 5 (drafting x 47):        $1.18  (ESLint) + $1.18 (Semgrep)
+  Stage 5 (coverage diff x 47):   $0.71
+  Stage 5 (fixture gen x 47):     $0.85
+  Total estimate:                 $4.24 (+/- 25%)
+  Budget:                         $5.00 (--budget-usd)
+
+Proceed? [y/n]:
+```
+
+### G.2 Per-stage cost accounting
+
+Logged to `${XDG_DATA_HOME}/ctp/llm-audit.jsonl` (Appendix K.3 in CTP-ADR-NNNN). Each line is one LLM call with cost.
+
+### G.3 Per-source cost summary
+
+`composite/cost-report.sh --source-id google-ts-style`:
+
+```
+Source: google-ts-style (last ingested 2026-06-22)
+  Stage 2:          1 call, $0.04
+  Stage 3:         47 calls, $0.27
+  Stage 5 ESLint:  47 calls, $1.15
+  Stage 5 Semgrep: 47 calls, $1.21
+  Stage 5 cov-dif: 47 calls, $0.69
+  Stage 5 fixtures: 47 calls, $0.83
+  Total:                     $4.19
+
+ROI: 47 rules now enforced; ~$0.089/rule one-time cost.
+Ongoing prose-judge cost: $0.004/file-rule (cache-mediated, expected <1% of total).
+```
+
+### G.4 Budget-cap interaction
+
+Per Appendix AG in CTP-ADR-NNNN, the operator's `monthly_cap_usd` applies engine-wide. The pipeline respects:
+
+- If pre-run estimate exceeds remaining monthly budget → operator confirmation required even if `--budget-usd` is unset
+- If `--budget-usd <N>` is set and estimate exceeds N → abort
+- During run, if actual cost (cumulative) exceeds estimate by >20% → pause + prompt operator
+
+This prevents runaway bulk-ingest costs.
+
+---
+
+## Appendix H — Pipeline-specific PII / sensitive-data handling
+
+When operator-supplied URLs contain sensitive content (rare but possible — internal wiki URLs, confidential procurement docs):
+
+### H.1 Detection at scrape time
+
+`scripts/standards-refresh.sh` runs the scraped content through `detect-secrets` + operator's `.harness/operator-standards/redaction-patterns.yaml` BEFORE feeding to Stage 2:
+
+```yaml
+# .harness/operator-standards/redaction-patterns.yaml
+redact_in_pipeline:
+  - pattern: "INTERNAL-PROJECT-[A-Z0-9]+"
+    replacement: "<INTERNAL-CODENAME>"
+  - pattern: "(Q[1-4]) FY[0-9]+ revenue: \\$[0-9.]+[BMK]"
+    replacement: "<FY-REVENUE-REDACTED>"
+abort_if_present:
+  - pattern: "TOP-SECRET"
+  - pattern: "EYES-ONLY"
+```
+
+### H.2 Behavior on detection
+
+- `redact_in_pipeline` matches → content replaced before LLM tier
+- `abort_if_present` matches → pipeline refuses to proceed; operator notified
+
+### H.3 LLM audit trail flags
+
+When redaction happens, the audit-log entry (Appendix K.3 in CTP-ADR-NNNN) records:
+
+```json
+{"...":"...","redactions":[{"pattern":"INTERNAL-PROJECT-[A-Z0-9]+","count":3}]}
+```
+
+Operator can verify redaction completeness post-hoc.
+
+---
+
+## Appendix I — Pipeline-specific localization
+
+### I.1 Multi-language source URLs
+
+The pipeline's extractor + classifier + drafter prompts (Appendix B) are English. When operator brings a non-English source:
+
+- **Stage 2 (extraction):** LLM segmentation auto-handles non-English; rules emitted with body in original language
+- **Stage 3 (classification):** LLM-tier auto-translates non-English bodies for classification; `applies_to.*` always uses English canonical IDs (Linguist + IaC + PURL + GVK are English-only)
+- **Stage 5 (drafting):** Drafter sees the original-language rule body but generates English DSL (the tool DSLs are English-only)
+- **Stage 5 (coverage diff):** Operator's review-queue display preserves original-language prose; English-language coverage report is the canonical artifact
+
+### I.2 Operator notes
+
+If an operator's standards are in Japanese / German / Mandarin / etc.:
+
+```yaml
+# .harness/operator-standards/namespaces.yaml
+- id: nikkei-microservices
+  source_url: https://nikkei.example/jp/standards/microservices.html
+  source_language: ja-JP
+  classifier_translation: true     # tier-2 auto-translates before classification
+  drafter_target_language: en      # DSL is English regardless
+```
+
+Engine handles per-source language without operator pre-processing.
+
+### I.3 Quality caveats
+
+Non-English source quality may degrade Stage 3 confidence. Operator review-queue should expect more medium/low confidence on non-English sources.
+
+---
+
+## Appendix J — Cross-cutting concerns from CTP-ADR-NNNN
+
+The auto-classification pipeline composes on the composite engine. For each concern, see the referenced appendix in CTP-ADR-NNNN:
+
+| Concern | See appendix |
+|---|---|
+| Severity → gate behavior mapping | CTP-ADR-NNNN Appendix Q |
+| Bundle YAML (architectural-content) | CTP-ADR-NNNN Appendix R |
+| `kind-to-tool-routing.yaml` (full) | CTP-ADR-NNNN Appendix S |
+| Concrete tool runner (hadolint worked example) | CTP-ADR-NNNN Appendix T |
+| Engine startup sequence | CTP-ADR-NNNN Appendix U |
+| Empty-state behavior | CTP-ADR-NNNN Appendix V |
+| ADR status-advancement criteria | CTP-ADR-NNNN Appendix W |
+| Test framework + infrastructure | CTP-ADR-NNNN Appendix X |
+| Repo file-tree diff | CTP-ADR-NNNN Appendix Y |
+| Skills integration | CTP-ADR-NNNN Appendix Z |
+| Rollback strategy | CTP-ADR-NNNN Appendix AA |
+| Cache schema migration | CTP-ADR-NNNN Appendix AB |
+| Sandbox profile concrete content | CTP-ADR-NNNN Appendix AC |
+| Concurrency at scale | CTP-ADR-NNNN Appendix AD |
+| Performance under degraded conditions | CTP-ADR-NNNN Appendix AE |
+| PII handling (engine-wide) | CTP-ADR-NNNN Appendix AF |
+| Cost reporting (engine-wide) | CTP-ADR-NNNN Appendix AG (this ADR's Appendix G is the pipeline-specific addendum) |
+| Telemetry / phone-home posture | CTP-ADR-NNNN Appendix AH |
+| License-policy declaration | CTP-ADR-NNNN Appendix AI |
+| Hot-reload protocol | CTP-ADR-NNNN Appendix AJ |
+| Localization / i18n (engine-wide) | CTP-ADR-NNNN Appendix AK (this ADR's Appendix I is the pipeline-specific addendum) |
+| Timestamp format | CTP-ADR-NNNN Appendix AL |
+| Engine self-test | CTP-ADR-NNNN Appendix AM |
+| Bundle naming convention | CTP-ADR-NNNN Appendix AN |
+| Output formats beyond SARIF | CTP-ADR-NNNN Appendix AO |
+| AGPL legal posture | CTP-ADR-NNNN Appendix AP |
+| CTP self-bootstrap / dogfood | CTP-ADR-NNNN Appendix AQ |
+| Future schema migrations | CTP-ADR-NNNN Appendix AR |
+| Plugin handshake (GCTP ↔ CTP) | CTP-ADR-NNNN Appendix AS |
+| Deprecation policy | CTP-ADR-NNNN Appendix AT |
+| Open Questions (intentional deferrals) | CTP-ADR-NNNN Appendix AU |
+
+The pipeline ADR does not duplicate these; it consumes them. Together the two ADRs are a complete spec.
+
+---
+
 End of CTP-ADR-NNNN+1 draft. Land in `claude-tdd-pro/docs/adr/` at the next available number (paired with CTP-ADR-NNNN). On landing, close `proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md` as adopted, and pin-bump in GCTP to mark the auto-classification pipeline live.
