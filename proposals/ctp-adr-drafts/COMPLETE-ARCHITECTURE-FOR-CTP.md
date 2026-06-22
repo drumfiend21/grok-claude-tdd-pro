@@ -421,6 +421,63 @@ yamllint (GPL-3.0) • ajv-cli — JSON Schema (700+ SchemaStore) (MIT) • jq (
 
 ---
 
+## 5.17 Worked end-to-end example — pointer
+
+The canonical wave-1 acceptance test is the Google TS style guide URL ingest, demonstrated step-by-step in **CTP-ADR-NNNN Appendix O**. It walks through:
+
+1. `scripts/classify-from-url.sh --source-id google-ts-style --url https://google.github.io/styleguide/tsguide.html`
+2. Stage 1 scrape → cached HTML
+3. Stage 2 extraction → 47 rules in JSONL
+4. Stage 3 classification → per-rule `applies_to.*` + `applies_to_prose`
+5. Stage 4 routing → ESLint + Semgrep + auto-bound architectural-content bundle
+6. Stage 5 drafting → 47 ESLint rules + 47 Semgrep rules + 47 coverage reports + per-rule fixtures
+7. Stage 6 review-queue → operator batch-accepts 41 high-confidence + reviews 6 individually
+8. Final state → 47 entries in `active.json`, ~$4.50 LLM cost, ~12 minutes wall-clock
+
+If that example reproduces end-to-end on the CTP author's machine, the engine is wave-1 complete. See CTP-ADR-NNNN Appendix O for the full transcript.
+
+## 5.18 Fixture-corpus commitments — pointer
+
+CTP ships a comprehensive fixture corpus under `composite/fixtures/` enumerated in **CTP-ADR-NNNN Appendix P**. Covers:
+
+- ≥3 positive + ≥3 negative fixtures per tool runner (Appendix A inventory, ~40 runners)
+- 9+ fixtures for the architectural-content bundle (valid ADR / broken frontmatter / broken mermaid / dead links / Vale violation / Semgrep token pattern / RFC 2119 missing / wrong status transition / semantic violation)
+- Per-namespace parity-diff fixtures for the migration (Appendix G in CTP-ADR-NNNN)
+- ≥1 worked example per source-type in the auto-classification pipeline (Google TS, OWASP ASVS, Walmart-style HTML, NIST PDF, free-form blog)
+
+---
+
+## 6. Explicit non-goals (so CTP doesn't try to build them)
+
+These are NOT in scope for CTP-ADR-NNNN or CTP-ADR-NNNN+1. CTP author should call them out explicitly when landing the ADRs so future-CTP doesn't misread the scope:
+
+| Non-goal | Why excluded | If operator needs it |
+|---|---|---|
+| **Cross-rule conflict resolution** — when two rules from different sources contradict on the same file | Engine has no policy for "Google says X, Microsoft says ¬X" arbitration | Operator lands a deviation row in `<app_root>/docs/deviations.md` per ADR-0066 D-F (GCTP) |
+| **Cluster-runtime / admission-control enforcement** | This ADR is build-time / write-time / audit-time only. Kyverno is in the inventory as a *linter* not as an admission controller | Operator wires Kyverno cluster-side independently via the kyverno-cli ruleset CTP emits |
+| **Auto-translation between tool DSLs** | If a rule's Semgrep binding also needs Bandit, the drafter generates two bindings — engine doesn't auto-translate one DSL to another | Drafter handles per-target-tool generation (PROPOSAL-006 D-5) |
+| **Custom LLM provider integration** | LLM calls go through `llm-judge.sh`'s existing provider abstraction. The engine doesn't pick the model. | Operator configures provider via `~/.config/ctp/llm.yaml` (PROPOSAL-005 §M.4) |
+| **Real-time IDE feedback** | The engine fires on write (post-tool-use hook) + on audit. IDE-time feedback requires an LSP, which is NOT this ADR's scope (Vale's LSP is in the inventory for ADR-time IDE feedback specifically; not a general code-time LSP) | Future ADR; current path is hook-based |
+| **Detecting whether an operator's app code conforms to its own ADRs (cross-doc consistency)** | Engine enforces rules against files; it does not verify "code matches the design ADR says it should match" — that's a TICKET-level concern | Operator manually validates code-vs-ADR alignment via consult-loop reviews |
+| **Generating ADRs from code** (reverse direction) | The architectural-content bundle ENFORCES on ADRs; it does not GENERATE them. ADR drafting is the operator's responsibility via the GCTP consult loop (`/consult` → `/roadmap`) | Operator drafts in plain English; GCTP's consult loop drives the structure |
+| **Multi-language single-rule DSL** (one rule body that enforces in TS + Python + Go simultaneously) | Semgrep already does this for ~30 languages; for the rare case where Semgrep can't, the drafter emits separate per-language bindings (PROPOSAL-006 §6.6) | Drafter handles |
+| **Real-time rule-source URL change detection** | `standards-refresh.sh` (PROPOSAL-003) refreshes on cadence (default 1d). Real-time webhook-driven refresh is not in scope | Operator may shorten cadence or trigger manually |
+
+These non-goals are intentional. The composite-engine + auto-classification ADRs are scoped tightly; future ADRs can re-open any of them.
+
+---
+
+## 6.5 Boundary discipline — what CTP must NOT do
+
+Recap of the prime directive boundaries (see CTP-ADR-NNNN §"Boundary discipline" and CTP-ADR-NNNN+1 §"Boundary discipline" for the full statement):
+
+- CTP MUST NOT edit GCTP files. If a CTP need arises that requires GCTP-side wiring, file it as a paired GCTP ADR (the operator drafts it; see §3.7 paired ADRs below) — never patch GCTP from a CTP commit.
+- CTP MUST NOT consume or imitate GCTP's audit chain, consult-loop commands, or harness-side script names. The contract surface is `active.json` + canonical vocabulary mirrors + SARIF + the four runtime scripts CTP exposes.
+- CTP MUST NOT alter the `prose-judge.sh` or `audit-source-citations.sh` interface in a way that breaks GCTP's existing consumers without a paired GCTP ADR.
+- CTP MUST NOT bundle GCTP-side enforcement scripts into CTP's plugin distribution. GCTP-side scripts stay in GCTP.
+
+---
+
 ## 6. Implementation order (high level)
 
 The detailed CL inventory is in CTP-ADR-NNNN §"Implementation CLs" and CTP-ADR-NNNN+1 §"Implementation waves". Here's the sequencing constraint summary:

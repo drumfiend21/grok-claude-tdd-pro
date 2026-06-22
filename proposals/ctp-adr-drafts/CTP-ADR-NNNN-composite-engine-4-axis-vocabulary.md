@@ -660,4 +660,917 @@ License posture: ~80% permissive (MIT / Apache-2.0 / BSD); the few GPL/AGPL tool
 
 ---
 
+---
+
+## Appendix B — `active.json` rule schema (JSON Schema 2020-12)
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://claude-tdd-pro.dev/schemas/active-rule.json",
+  "type": "object",
+  "required": ["id", "source", "cite", "applies_to", "enforced_by", "severity", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^g-[a-z0-9-]+-[a-z0-9-]+$",
+      "description": "Stable rule ID. Convention: g-<namespace>-<slug>"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source-namespace key (e.g. google-ts-style, owasp-asvs, rfc-8725, walmart-microservices)"
+    },
+    "cite": {
+      "type": "string",
+      "description": "Verbatim citation with anchor (e.g. 'RFC 8725 §3.1 — algorithm none MUST NOT be accepted')"
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["url", "retrieved_at", "license"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "anchor": { "type": "string" },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "license": { "type": "string" },
+        "extracted_by": { "enum": ["heading-segmenter", "dom-walker", "regex-list", "llm-segmenter", "pdf-llm", "manual"] },
+        "classifier_confidence": { "enum": ["high", "medium", "low", "abstain"] }
+      }
+    },
+    "applies_to": {
+      "type": "object",
+      "properties": {
+        "linguist_aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Lowercase Linguist aliases[0]; resolves against vendor/canonical-vocabulary/linguist/"
+        },
+        "iac_dialects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Lowercase IaC dialect names; resolves against vendor/canonical-vocabulary/iac-dialects/"
+        },
+        "purl_uses": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^pkg:[a-z]+/" },
+          "description": "PURL identifiers; pkg:<ecosystem>/<name>"
+        },
+        "k8s_gvks": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[^/]+/[^/]+/[^/]+$" },
+          "description": "Group/Version/Kind; e.g. apps/v1/Deployment"
+        }
+      },
+      "additionalProperties": false
+    },
+    "applies_to_prose": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, engine auto-attaches { bundle: architectural-content } to enforced_by[]"
+    },
+    "enforced_by": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["tool", "ruleset"],
+            "properties": {
+              "tool": { "type": "string", "description": "Tool name; must have a composite/runners/<tool>/runner.sh" },
+              "ruleset": { "type": "string", "description": "Path to ruleset file relative to repo root" },
+              "kinds": {
+                "type": "array",
+                "description": "Optional sub-filter; when present, this binding fires only for files whose kinds intersect this list"
+              },
+              "config": {
+                "type": "object",
+                "description": "Tool-specific configuration overrides"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["bundle"],
+            "properties": {
+              "bundle": { "enum": ["architectural-content"] }
+            }
+          }
+        ]
+      }
+    },
+    "severity": { "enum": ["P0", "P1", "P2", "P3"] },
+    "status": { "enum": ["proposed", "active", "deprecated", "superseded"] },
+    "superseded_by": { "type": "string", "description": "Rule ID that supersedes this one when status=superseded" },
+    "deviation_policy": {
+      "enum": ["allowed-with-row", "non-exemptible"],
+      "default": "allowed-with-row",
+      "description": "EO + security-governance rules are typically non-exemptible (ADR-0045 in GCTP)"
+    }
+  }
+}
+```
+
+The schema is validated by `composite/validate-active-json.sh` at session start. Schema violations are fatal (engine refuses to start).
+
+---
+
+## Appendix C — Tool runner interface contract
+
+Every `composite/runners/<tool>/runner.sh` MUST conform to this contract.
+
+### C.1 Invocation
+
+```
+runner.sh --file <path> --rules <ruleset-path> [--root <repo-root>] [--config <config-file>] [--json|--sarif]
+```
+
+Required flags:
+- `--file <path>` — absolute path to the file under analysis
+- `--rules <path>` — absolute path to the tool's ruleset file (Semgrep YAML / ESLint config / Checkov external-checks / etc.)
+
+Optional flags:
+- `--root <path>` — repository root (some tools need this for resolution); defaults to `$(git rev-parse --show-toplevel)`
+- `--config <path>` — tool-specific config override
+- `--json` — emit results as JSON to stdout (engine internal)
+- `--sarif` — emit results as SARIF 2.1.0 to stdout (preferred)
+- `--timeout <seconds>` — runner exits with code 124 if the underlying tool exceeds this
+
+### C.2 Exit codes
+
+| Code | Meaning | Engine action |
+|---:|---|---|
+| 0 | `pass` — no violations | continue dispatch |
+| 1 | `fail` — at least one violation | aggregate into SARIF; gate decides green/red |
+| 2 | `block` — P0 violation; never accept | force engine red regardless of other tools |
+| 3 | `not_enforced` — tool unavailable or crashed | log warning; rule marked `not_enforced` in `rules_verified` |
+| 4 | `not_applicable` — rule does not apply to this file | rule marked `not_applicable` |
+| 124 | timeout | treated as `not_enforced` with timeout reason |
+| any other | unexpected error | treated as `not_enforced`; engine logs full stderr |
+
+### C.3 Output contract
+
+SARIF 2.1.0 emission MUST include:
+- `runs[].tool.driver.name` — the tool name
+- `runs[].tool.driver.version` — the tool version (engine cross-checks against pin)
+- `runs[].invocations[].executionSuccessful` — boolean
+- `runs[].results[]` — per-violation with `ruleId`, `level`, `message.text`, `locations[].physicalLocation`
+- `runs[].results[].properties.gctp_rule_id` — the `active.json` rule ID that bound this run (engine adds this if the wrapper doesn't)
+
+Non-SARIF JSON emission (`--json`) is allowed only for tools without SARIF support; the engine translates via a per-tool adapter at `composite/adapters/<tool>-to-sarif.sh`.
+
+### C.4 Wrapper template
+
+```bash
+#!/usr/bin/env bash
+# composite/runners/<TOOL>/runner.sh
+set -uo pipefail
+
+FILE=""; RULES=""; ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+CONFIG=""; OUTPUT=sarif; TIMEOUT=300
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --file)    FILE="$2";    shift 2 ;;
+    --rules)   RULES="$2";   shift 2 ;;
+    --root)    ROOT="$2";    shift 2 ;;
+    --config)  CONFIG="$2";  shift 2 ;;
+    --json)    OUTPUT=json;  shift ;;
+    --sarif)   OUTPUT=sarif; shift ;;
+    --timeout) TIMEOUT="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+# 1. Tool-present check
+command -v <TOOL_BIN> >/dev/null || exit 3
+
+# 2. Applicability check (tool can read file?)
+<TOOL_BIN> --can-read "$FILE" >/dev/null 2>&1 || exit 4
+
+# 3. Invoke with timeout
+timeout "$TIMEOUT" <TOOL_BIN> [tool-specific flags] "$FILE"
+TOOL_EXIT=$?
+
+# 4. Translate exit code
+case $TOOL_EXIT in
+  0)   exit 0 ;;
+  1|2) exit 1 ;;  # tool-specific: P0 vs P1+
+  124) exit 124 ;;
+  *)   exit 3 ;;
+esac
+```
+
+---
+
+## Appendix D — Bundle expansion mechanism
+
+### D.1 Resolution timing
+
+Bundle references in `enforced_by[]` are **resolved at engine load time** (not at dispatch). The engine reads `active.json`, walks every rule's `enforced_by[]`, and replaces every `{ bundle: <name> }` entry with the expansion of `composite/bundles/<name>.yaml` *in-place* in memory. After load, no rule's `enforced_by[]` contains a `{ bundle: ... }` reference — only `{ tool: ..., ruleset: ... }` entries.
+
+### D.2 Implicit attachment
+
+For every rule with `applies_to_prose: true`, the engine appends `{ bundle: architectural-content }` to `enforced_by[]` BEFORE the expansion step. Operator never has to write the binding manually.
+
+### D.3 Bundle composition
+
+Bundles MAY reference other bundles. Resolution is recursive with cycle detection (engine refuses to start on a cycle).
+
+### D.4 Bundle override
+
+A rule MAY add per-binding `config:` to a bundled tool, but cannot remove a tool from a bundle (the bundle is whole-or-nothing per CTP-D-5). Per-tool config flows to that tool's runner as `--config <path>`.
+
+### D.5 Resolution pseudocode
+
+```python
+def expand_bundles(active_json: dict) -> dict:
+    for rule in active_json["rules"]:
+        if rule.get("applies_to_prose"):
+            rule["enforced_by"].append({"bundle": "architectural-content"})
+        rule["enforced_by"] = expand_one(rule["enforced_by"], seen=set())
+    return active_json
+
+def expand_one(bindings: list, seen: set) -> list:
+    out = []
+    for b in bindings:
+        if "bundle" in b:
+            if b["bundle"] in seen:
+                raise CycleError(f"bundle cycle: {seen}")
+            seen.add(b["bundle"])
+            tools = load_bundle(b["bundle"])
+            out.extend(expand_one(tools, seen))
+        else:
+            out.append(b)
+    return out
+```
+
+---
+
+## Appendix E — Architectural-content path classifier (complete spec)
+
+`composite/detect-architectural-content.sh` returns `is_architectural_content: true` on stdout (line 1) when ANY criterion below matches.
+
+### E.1 Path globs (exact set)
+
+```
+docs/architecture/**/*.md
+docs/architecture/**/*.markdown
+docs/adr/**/*.md
+docs/adrs/**/*.md
+docs/decisions/**/*.md
+docs/decision-records/**/*.md
+docs/rfc/**/*.md
+docs/rfcs/**/*.md
+docs/design/**/*.md
+docs/designs/**/*.md
+docs/specifications/**/*.md
+docs/specs/**/*.md
+**/ADR-*.md
+**/RFC-*.md
+**/DESIGN-*.md
+**/SUBMISSION.md
+**/ARCHITECTURE.md
+**/DESIGN.md
+**/DECISIONS.md
+**/c4-*.md
+**/sequence-*.md
+**/seq-*.md
+**/traceability*.md
+**/cost-benefit*.md
+**/presentation*.md
+**/0[0-9][0-9][0-9]-*.md
+```
+
+The `0NNN-*.md` glob catches the standard Nat-Pryce ADR file-naming convention.
+
+### E.2 Frontmatter detection
+
+YAML frontmatter (delimited by `---`) is parsed. File is architectural content when any of:
+- `kind: adr | architecture | decision | design | rfc | spec | specification`
+- `type: adr | architecture-decision-record | rfc`
+- `madr_version: <any>` (any MADR-tagged file)
+- `arc42_section: <any>`
+
+TOML frontmatter (delimited by `+++`) and JSON frontmatter (delimited by `;;;`) are also parsed.
+
+### E.3 Operator extension schema
+
+`.harness/operator-standards/architectural-content-paths.yaml`:
+
+```yaml
+extend_globs:
+  - docs/internal-architecture/**/*.md
+  - **/runbooks/architecture/*.md
+extend_frontmatter_kinds:
+  - kind: runbook-architecture
+  - type: ops-design
+narrow_globs:
+  # Operator-declared exclusions (overridden by frontmatter match)
+  - docs/architecture/external-contributions/**/*.md
+```
+
+### E.4 Output
+
+```bash
+$ composite/detect-architectural-content.sh docs/adr/0042-foo.md
+is_architectural_content: true
+matched_by: path-glob
+matched_pattern: docs/adr/**/*.md
+
+$ composite/detect-architectural-content.sh src/index.ts
+is_architectural_content: false
+```
+
+Engine reads stdout line-by-line; the absence of `is_architectural_content: true` is treated as `false`.
+
+---
+
+## Appendix F — Failure-mode matrix
+
+| Failure | Per-tool runner behavior | Engine behavior | Verdict in `rules_verified` |
+|---|---|---|---|
+| Tool binary missing (`command -v` fails) | exit 3 | log warning; continue other tools | `not_enforced` (`reason: tool-missing`) |
+| Tool present but version pin mismatch | exit 3; warn to stderr | log warning; continue | `not_enforced` (`reason: version-mismatch`) |
+| Tool crashes (signal, OOM) | exit 3 + stderr capture | log; continue | `not_enforced` (`reason: tool-crash`) |
+| Tool timeout (`--timeout` exceeded) | exit 124 | log; continue | `not_enforced` (`reason: timeout`) |
+| SARIF malformed (parser fails) | exit 1 (tool said fail but engine can't read) | discard tool result; warn | `not_enforced` (`reason: sarif-malformed`) |
+| LLM tier unreachable (network) | `prose-judge.sh` exits 3 | bundle's structural tools still run; semantic tier marked `not_enforced` | per-rule mix: structural clauses get verdicts; semantic clauses `not_enforced` |
+| LLM tier disabled (`LLM_JUDGE=0`) | `prose-judge.sh` exits 3 with `reason: judge-disabled` | same as unreachable | same |
+| Network unreachable for online tools (Lighthouse, lychee external links) | tool's `--offline` mode if available, else exit 3 | log; continue | `not_enforced` with `reason: offline-required` |
+| Rule's `applies_to.*` references unknown linguist alias | engine refuses to start | n/a — fatal | n/a |
+| Bundle cycle detected | engine refuses to start | n/a — fatal | n/a |
+| Operator-extension YAML malformed | engine refuses to start | n/a — fatal | n/a |
+| Two tools disagree on the same file/line | both verdicts recorded; aggregator preserves both runs in SARIF; gate uses STRICTER (highest severity) | n/a | both runs in SARIF; rule status = strictest verdict |
+| Same rule bound multiple times to same file via different bindings | engine runs both; results aggregated; gate uses strictest | n/a | first failing run wins |
+
+**Engine green requires:** every applicable rule has either `pass`, `deviated`, or `not_applicable`. Any `fail` is red. Any `not_enforced` is red UNLESS the operator has a `## Deviation` row in `<app_root>/docs/deviations.md` accepting the non-enforcement (ADR-0066 D-F in GCTP).
+
+---
+
+## Appendix G — Migration plan for the existing 118 rules
+
+### G.1 Dual-read period
+
+CTP-ADR-NNNN ships with a dual-read schema validator. Each rule entry MUST eventually have `applies_to.*` but during migration may carry the legacy `language: <string>` field. The validator:
+
+1. For every rule, if `applies_to` is absent and `language` is present, synthesize `applies_to.linguist_aliases = [language]` in memory at load.
+2. Emit a deprecation warning per rule lacking `applies_to`.
+3. After 1 minor CTP version (e.g. v1.11 → v1.12), the dual-read shim is removed; missing `applies_to` is fatal.
+
+### G.2 Mechanical migration script
+
+`scripts/migrate-language-to-applies-to.sh`:
+
+```bash
+# For every rule:
+#   if applies_to absent and language=typescript: applies_to.linguist_aliases=[typescript]
+#   if language=terraform: applies_to.iac_dialects=[terraform]
+#   if language=yaml AND filescope contains k8s manifests: applies_to.iac_dialects=[kubernetes]
+#   ... per namespace mapping table
+```
+
+The script handles the 24-namespace seed mechanically. Remaining ambiguous rules go through the LLM-assisted classifier path (CTP-ADR-NNNN+1).
+
+### G.3 Per-namespace mapping table
+
+| Existing namespace | Default `applies_to` synthesis |
+|---|---|
+| `typescript` | `linguist_aliases: [typescript]` |
+| `node` | `linguist_aliases: [javascript, typescript]` + `purl_uses: [pkg:npm/*]` |
+| `react` | `linguist_aliases: [typescript, javascript]` + `purl_uses: [pkg:npm/react]` |
+| `owasp` | broad; usually `applies_to_prose: true` + per-rule LLM classification |
+| `google` | per-rule LLM (style guide spans many languages) |
+| `slsa` | supply-chain → `iac_dialects: []` + `applies_to_prose: true` |
+| `web-vitals` | `linguist_aliases: [html, javascript, typescript]` |
+| `w3c` | `linguist_aliases: [html]` + `applies_to_prose: true` |
+| `_community` | per-rule LLM |
+| `_universal` | apply-by-default (per ADR-0060 in GCTP); no `applies_to` filter |
+| `security-governance` / `eo` | per-rule LLM; usually `applies_to_prose: true` |
+
+### G.4 Migration regression test
+
+`test/composite/migration/regression.sh`:
+
+1. Run the pre-migration audit on a curated fixture set (the GCTP harness's own `.harness/rules/active.json` at pin `39903da`).
+2. Apply the migration script.
+3. Run the post-migration audit on the same fixtures.
+4. Diff verdicts. Pass criterion: zero verdict-state changes (verdicts identical or differ only in `not_enforced` → `pass`).
+
+### G.5 Per-rule operator review path
+
+For rules where the LLM-assisted classifier emits `confidence: medium` or `low`, the operator reviews via the review-queue CLI (CTP-ADR-NNNN+1 D-7) before commit. The 118-rule migration is bounded; operator review is 1-2 hours.
+
+---
+
+## Appendix H — P-8 fix patch
+
+The architectural-content bundle's semantic moat depends on `llm-judge.sh` accepting a `--text` mode in addition to its current `--target` (file path) mode. The patch:
+
+```diff
+--- a/scripts/llm-judge.sh
++++ b/scripts/llm-judge.sh
+@@ -10,11 +10,18 @@
+-TARGET=""
++TARGET=""
++TEXT=""
+ while [[ $# -gt 0 ]]; do
+   case "$1" in
+     --target) TARGET="$2"; shift 2 ;;
++    --text)   TEXT="$2";   shift 2 ;;
+     *) shift ;;
+   esac
+ done
+
+-if [[ -z "$TARGET" ]]; then
+-  echo "ERR: --target required" >&2; exit 2
++if [[ -z "$TARGET" && -z "$TEXT" ]]; then
++  echo "ERR: --target or --text required" >&2; exit 2
++fi
++
++if [[ -n "$TEXT" ]]; then
++  TARGET=$(mktemp); printf '%s' "$TEXT" > "$TARGET"
++  trap 'rm -f "$TARGET"' EXIT
+ fi
+```
+
+**Backward-compat:** existing `--target` callers continue to work without change.
+
+**Test fixture:** `test/llm-judge/text-mode.test.sh`:
+
+```bash
+# Should succeed with --text
+result=$(./scripts/llm-judge.sh --text "JWT alg none is forbidden" --rule g-jwt-no-none-alg)
+[[ "$result" == *"fail"* ]] || { echo "FAIL: expected fail verdict"; exit 1; }
+
+# Should succeed with --target (regression test)
+echo "JWT alg none is forbidden" > /tmp/test.md
+result=$(./scripts/llm-judge.sh --target /tmp/test.md --rule g-jwt-no-none-alg)
+[[ "$result" == *"fail"* ]] || { echo "FAIL: target mode broke"; exit 1; }
+```
+
+P-8 fix is the smallest possible change to enable `prose-judge.sh` tier-2 + Layer D fidelity-discipline fallback.
+
+---
+
+## Appendix I — Performance / cost budget
+
+### I.1 Per-file dispatch wall-clock
+
+Target on a modern dev laptop (M2 / 16GB):
+
+| File type | P50 | P95 | P99 |
+|---|---:|---:|---:|
+| `.ts` (Semgrep + ESLint) | 800 ms | 2.5 s | 6 s |
+| `.tf` (Checkov + Trivy) | 1.5 s | 4 s | 10 s |
+| `.yaml` (k8s, Checkov + Kubescape + kubeconform) | 2 s | 5 s | 12 s |
+| `.md` architectural-content (full bundle, parallel) | 8 s | 18 s | 35 s |
+| `.md` architectural-content (sequential — slow path) | 60 s | 90 s | 150 s |
+
+The bundle runs tools in parallel via GNU parallel (or `xargs -P`) up to `min(num_tools, num_cores - 1)`.
+
+### I.2 LLM token budget (cost-side)
+
+| Operation | P50 input | P50 output | P50 cost (Sonnet pricing) |
+|---|---:|---:|---:|
+| Tier-2 classifier per rule | 1.5k tokens | 300 tokens | $0.006 |
+| Drafter (Semgrep) per rule | 3k tokens | 1.5k tokens | $0.025 |
+| Drafter (ESLint plugin) per rule | 4k tokens | 2k tokens | $0.035 |
+| Coverage diff per rule | 2k tokens | 800 tokens | $0.015 |
+| Fixture gen per rule | 1k tokens | 1.5k tokens | $0.018 |
+| prose-judge per file-rule pair | 800 tokens | 200 tokens | $0.004 |
+
+Per-rule end-to-end drafting: ~$0.10. For a 500-rule operator catalog: ~$50 one-time + ongoing prose-judge invocations bounded by hash cache (target >90% hit rate).
+
+### I.3 Cache hit-rate targets
+
+- Classifier cache: ≥95% hit after warm-up (one-shot per rule body)
+- Drafter cache: ≥90% hit after warm-up
+- prose-judge cache: ≥90% hit (file + rule SHA pair)
+
+Below these thresholds, CTP logs a warning and the operator reviews cache config.
+
+### I.4 Concurrency contract
+
+- Per-file dispatch: tools run in parallel
+- Per-bundle dispatch: at most `num_cores - 1` tools concurrent
+- LLM calls: serialized within a single classify-from-url run; parallel across rules during bulk re-classification
+- SARIF aggregation: single-threaded reduce
+
+---
+
+## Appendix J — Cache layer specifics
+
+### J.1 Cache key derivation
+
+| Cache | Key | TTL | Eviction |
+|---|---|---|---|
+| Classifier (`applies_to.*`) | `sha256(rule_body + linguist_sha + iac_sha + purl_sha + gvk_sha)` | none — pure function | LRU bounded by 100 MB |
+| Drafter | `sha256(rule_body + tool_name + tool_version)` | 30 days (tool DSL may evolve) | LRU bounded by 500 MB |
+| prose-judge | `sha256(file_content + rule_body + model_id)` | 7 days (LLM model may update) | LRU bounded by 1 GB |
+| SARIF results | `sha256(file_content + tool_version + ruleset_sha)` | 24 hours | LRU bounded by 200 MB |
+
+### J.2 Cache location
+
+`${XDG_CACHE_HOME:-$HOME/.cache}/ctp/composite/` with subdirectories per cache. Per-machine, not per-repo (rule-body-keyed entries are repo-agnostic).
+
+### J.3 Concurrent access
+
+SQLite-backed cache index (`cache.sqlite3` per cache directory). Connection-per-process with `BEGIN IMMEDIATE` for writes. Read traffic uses WAL mode.
+
+### J.4 Cache invalidation
+
+- Bumping the canonical vocabulary mirrors invalidates classifier cache (built into the key).
+- Bumping a tool version invalidates that tool's drafter + SARIF cache (built into the key).
+- Operator can force-clear via `composite/cache-clear.sh [--cache classifier|drafter|prose-judge|sarif|all]`.
+
+---
+
+## Appendix K — Observability spec
+
+### K.1 Per-runner timing
+
+Each runner emits a sidecar `<file>.<tool>.timing.json`:
+
+```json
+{
+  "tool": "semgrep",
+  "version": "1.50.0",
+  "started_at": "2026-06-22T15:23:04.123Z",
+  "duration_ms": 847,
+  "rules_evaluated": 47,
+  "violations_found": 2,
+  "cache_hit": true
+}
+```
+
+Engine aggregates per-run into `${SARIF_DIR}/timing.summary.json`.
+
+### K.2 Structured logging
+
+CTP emits JSON-lines logs to `${XDG_STATE_HOME:-$HOME/.local/state}/ctp/composite.log`:
+
+```json
+{"ts":"2026-06-22T15:23:04Z","level":"info","event":"dispatch.begin","file":"docs/adr/0042.md","rule":"g-rfc-2119-keyword-discipline","tool":"vale"}
+{"ts":"2026-06-22T15:23:05Z","level":"info","event":"dispatch.end","file":"docs/adr/0042.md","rule":"g-rfc-2119-keyword-discipline","tool":"vale","verdict":"pass","duration_ms":847}
+```
+
+### K.3 Audit trail for LLM-tier decisions
+
+Every `prose-judge.sh` invocation appends to `${XDG_DATA_HOME:-$HOME/.local/share}/ctp/llm-audit.jsonl`:
+
+```json
+{"ts":"...","operation":"prose-judge","file":"docs/adr/0042.md","rule":"g-jwt-no-none-alg","file_sha":"...","rule_sha":"...","model":"claude-sonnet-4-6","prompt_tokens":823,"completion_tokens":189,"verdict":"pass","confidence":"high","reasoning_excerpt":"..."}
+```
+
+The audit log is append-only; the operator can reconstruct any past LLM-tier decision.
+
+### K.4 Metrics endpoint
+
+Local-file Prometheus exposition format at `${XDG_RUNTIME_DIR:-/tmp}/ctp/metrics.prom`. Re-written each dispatch. Operator can `curl --unix-socket` or `cat` to read.
+
+---
+
+## Appendix L — Versioning + release strategy
+
+### L.1 Component versions
+
+- **CTP plugin version** — semver (e.g. v1.12.0)
+- **Composite engine version** — independent semver (e.g. composite-engine v0.4.1)
+- **Rule schema version** — separate (e.g. rule-schema v2)
+- **Canonical vocabulary mirror version** — tracks upstream Linguist + IaC + PURL + GVK releases
+
+`active.json` carries `schema_version: <int>` at top level.
+
+### L.2 Compat matrix
+
+CTP ships `composite/COMPAT.yaml`:
+
+```yaml
+ctp_version: 1.12.0
+composite_engine: ">=0.4.0,<0.5.0"
+rule_schema: 2
+canonical_vocab:
+  linguist: ">=v7.30.0"
+  purl_spec: ">=v1.0.0"
+required_tools:
+  semgrep: ">=1.50.0"
+  eslint: ">=8.0.0"
+  # ... per-tool minimums
+```
+
+Operator's `.harness/composite-pin.yaml` declares which composite-engine version is locked.
+
+### L.3 Breaking-change protocol
+
+- **Patch** — bug fix; no schema or contract change
+- **Minor** — additive (new tool, new bundle); existing rules unaffected
+- **Major** — rule schema breaking change (e.g. removing `language:` shim); requires operator migration
+
+Major bumps include a `composite/migrations/v<N>-to-v<N+1>.sh` script and a deprecation period (1 minor version).
+
+### L.4 Pin-bump cadence
+
+- **Tool pins:** refreshed monthly via `scripts/refresh-tool-pins.sh`; operator opts in to each bump.
+- **Canonical vocabulary mirrors:** refreshed daily on cadence (per `docs/standards-refresh.sh` in GCTP, parallel mechanism in CTP).
+- **Composite engine version:** released alongside CTP plugin releases.
+
+---
+
+## Appendix M — Sandboxing / security model
+
+### M.1 Tool execution sandboxing
+
+Each runner invocation is wrapped by `composite/sandbox.sh`:
+
+- macOS: `sandbox-exec -f composite/profiles/tool.sb`
+- Linux: `firejail --net=none --read-only=/ --tmpfs=/tmp` (or `bubblewrap` if available)
+- Container path: `composite/docker/run-in-container.sh <tool> <file>` for hermetic execution
+
+Network egress is disabled for all runners by default. Tools that legitimately need network (lychee external-links, lighthouse, OSV-Scanner) opt in via `composite/runners/<tool>/network.allowed` marker file.
+
+### M.2 Untrusted operator URL handling
+
+`scripts/standards-refresh.sh` (Stage 1) scrapes operator-declared URLs. The scraper:
+
+- Validates URL scheme (`https://` only by default; `http://` requires `--allow-insecure`)
+- Honors `robots.txt`
+- Rate-limits per-host (1 req/sec default)
+- Caps download size (10 MB default)
+- Strips inline `<script>`, `<iframe>` before feeding to extractor (Stage 2)
+- Quarantines suspicious content (>10 KB inline JS, etc.) for operator review
+
+### M.3 Supply chain for the tools themselves
+
+Each tool's installer in `scripts/install-composite.sh` verifies:
+
+- Cryptographic checksum against a pinned `composite/tool-checksums.txt`
+- Cosign signature if available (`composite/tool-cosign-keys/<tool>.pub`)
+- Refuses to install on mismatch
+
+### M.4 LLM data handling
+
+- prose-judge content is hashed before transmission; only the hash + rule body are sent for cache lookup; full content sent only on cache miss.
+- Operator can declare data-residency via `LLM_PROVIDER=<provider>` + per-provider config in `~/.config/ctp/llm.yaml`.
+- Operator opt-out: `LLM_JUDGE=0` disables all LLM-tier; bundle's structural tools still run; semantic verdicts become `not_enforced`.
+
+---
+
+## Appendix N — Operator override / extensibility
+
+### N.1 Per-rule operator override
+
+`.harness/operator-standards/rule-overrides.yaml`:
+
+```yaml
+overrides:
+  - rule_id: g-jwt-no-none-alg
+    action: tighten          # tighten | loosen | disable
+    new_severity: P0         # only when tightening
+    rationale: "Per our Series-B security audit, JWT none is hard-block, not P1."
+  - rule_id: g-google-ts-no-any
+    action: loosen
+    config:
+      allow_in_tests: true
+    rationale: "Our test harness needs `any` for jest.fn mocks."
+```
+
+Engine applies overrides AFTER bundle expansion, BEFORE dispatch.
+
+### N.2 Custom-namespace registration
+
+`.harness/operator-standards/namespaces.yaml`:
+
+```yaml
+namespaces:
+  - id: walmart-microservices
+    source_url: https://walmart.example/standards/microservices.html
+    license: "Walmart Internal"
+    refresh_cadence: 7d
+    extractor: heading-segmenter
+```
+
+### N.3 Tool plug-in protocol
+
+Operator adds a tool not in the canonical set by:
+
+1. Placing a runner at `.harness/operator-standards/runners/<tool>/runner.sh` conforming to Appendix C
+2. Declaring it in `.harness/operator-standards/tools.yaml`:
+
+```yaml
+tools:
+  - name: my-custom-linter
+    runner: .harness/operator-standards/runners/my-custom-linter/runner.sh
+    sarif_native: true
+    version: "1.0.0"
+```
+
+The engine consults operator-declared tools BEFORE CTP-shipped tools when a rule's `enforced_by[]` names them.
+
+### N.4 Custom architectural-content path patterns
+
+(Already in Appendix E.3 — operator extends globs + frontmatter kinds.)
+
+### N.5 Custom architectural-content bundle additions
+
+Operator can extend (NOT replace) the bundle via `.harness/operator-standards/bundle-extensions.yaml`:
+
+```yaml
+architectural-content:
+  add_tools:
+    - my-custom-prose-checker
+```
+
+CTP-shipped bundle tools are non-removable (per CTP-D-5 whole-or-nothing).
+
+---
+
+## Appendix O — Worked example: Google TS style guide URL → review-queue → `active.json`
+
+This is the canonical end-to-end demonstration. The CTP author runs this as the wave-1 acceptance test.
+
+### O.1 Input
+
+```bash
+scripts/classify-from-url.sh \
+  --source-id google-ts-style \
+  --url https://google.github.io/styleguide/tsguide.html
+```
+
+### O.2 Stage 1 — scrape
+
+`.harness/standards-cache/google-ts-style.html` written. ~2 MB. Cached for 7 days.
+
+### O.3 Stage 2 — extract
+
+`extract-rules-from-url.sh --shape html-section-walk` walks `<h2>` and `<h3>` headings. Output:
+
+```jsonl
+{"rule_index":1,"title":"Avoid var","body":"Always use let or const for variable declarations...","source_anchor":"#variable-declarations"}
+{"rule_index":2,"title":"Prefer const","body":"Use const for variables that are not reassigned...","source_anchor":"#prefer-const"}
+{"rule_index":3,"title":"No any","body":"Avoid the any type. Use unknown or a specific type instead...","source_anchor":"#any"}
+...
+{"rule_index":47,"title":"Source file structure","body":"Files consist of...","source_anchor":"#source-file-structure"}
+```
+
+### O.4 Stage 3 — classify
+
+Per rule, tier-1 deterministic produces candidates from token matching against the 4 canonical mirrors. Tier-2 LLM-judge refines.
+
+Example for rule 3 ("No any"):
+
+```yaml
+applies_to:
+  linguist_aliases: [typescript]
+  iac_dialects: []
+  purl_uses: []
+  k8s_gvks: []
+applies_to_prose: true   # also applies to ADRs proposing TypeScript designs
+confidence: high
+```
+
+### O.5 Stage 4 — route
+
+Routing table lookup: `linguist:typescript` → `[semgrep, eslint]`. Auto-bind because `applies_to_prose: true` → adds `{ bundle: architectural-content }`.
+
+Final `enforced_by[]` for rule 3:
+
+```yaml
+enforced_by:
+  - tool: eslint
+    ruleset: composite/rulesets/eslint/google-ts-style/no-any.js
+  - tool: semgrep
+    ruleset: composite/rulesets/semgrep/google-ts-style/no-any.yml
+  - bundle: architectural-content
+```
+
+### O.6 Stage 5 — draft
+
+Drafter generates:
+
+**`composite/rulesets/eslint/google-ts-style/no-any.js`:**
+```javascript
+module.exports = {
+  rules: {
+    "google-ts-style/no-any": {
+      meta: {
+        type: "problem",
+        docs: {
+          description: "Avoid the any type. Use unknown or a specific type instead.",
+          url: "https://google.github.io/styleguide/tsguide.html#any"
+        }
+      },
+      create(context) {
+        return {
+          "TSAnyKeyword": (node) => {
+            context.report({ node, message: "Avoid `any` type — use `unknown` or a specific type." });
+          }
+        };
+      }
+    }
+  }
+};
+```
+
+**`composite/rulesets/eslint/google-ts-style/no-any.coverage.md`:**
+```markdown
+# Coverage report for g-google-ts-style-no-any
+
+| Clause from prose | Covered by | Notes |
+|---|---|---|
+| "Avoid the any type" | ESLint `TSAnyKeyword` AST visitor (line 8) | deterministic, AST-precise |
+| "Use unknown or a specific type instead" | message string in violation (line 9) | informative, not enforced separately |
+| Exceptions for legacy code | NOT COVERED — Google style guide doesn't enumerate exceptions; treat as zero-tolerance |
+
+Coverage: 2/2 clauses deterministic. 0 prose-judge fallback needed.
+```
+
+**`composite/rulesets/eslint/google-ts-style/fixtures/no-any/`:**
+- `positive/any-direct.ts` — `let x: any = 1;` — must flag
+- `positive/any-as-cast.ts` — `let x = 1 as any;` — must flag
+- `negative/unknown.ts` — `let x: unknown = 1;` — must not flag
+- `negative/specific.ts` — `let x: number = 1;` — must not flag
+
+### O.7 Stage 6 — review
+
+Review-queue output:
+
+```
+$ scripts/review-queue.sh --list
+google-ts-style-001  [high confidence, 0 gaps]  "Avoid var"
+google-ts-style-002  [high confidence, 0 gaps]  "Prefer const"
+google-ts-style-003  [high confidence, 0 gaps]  "No any"
+...
+google-ts-style-047  [medium confidence, 1 gap] "Source file structure"
+
+$ scripts/review-queue.sh --batch-accept --confidence high
+✓ Accepted 41 high-confidence rules
+6 remaining: 5 medium, 1 low — review individually
+```
+
+### O.8 Final state
+
+After operator approves all 47:
+
+- `.harness/rules/active.json` has 47 new entries under `source: google-ts-style`
+- `composite/rulesets/eslint/google-ts-style/` has 47 ESLint rule files
+- `composite/rulesets/semgrep/google-ts-style/` has 47 Semgrep YAMLs
+- Each with `.coverage.md` + `fixtures/<rule-id>/` directory
+- Architectural-content bundle now also fires `prose-judge.sh` on every ADR with all 47 rules' prose
+
+End-to-end wall-clock: ~12 minutes for the 47 rules. LLM cost: ~$4.50.
+
+This is the wave-1 acceptance test. If this example reproduces, the engine is wave-1 complete.
+
+---
+
+## Appendix P — Fixture-corpus commitments
+
+CTP ships `composite/fixtures/` with:
+
+### P.1 Per-tool runner fixtures
+
+For every tool in the inventory (Appendix A), a directory:
+
+```
+composite/fixtures/<tool>/
+  positive/
+    <case-1>.<ext>      # must produce a finding
+    <case-1>.expected.sarif
+  negative/
+    <case-1>.<ext>      # must NOT produce a finding
+```
+
+Engine self-test: `scripts/test-composite.sh --tool <tool>` runs all fixtures.
+
+### P.2 Bundle integration fixtures
+
+`composite/fixtures/architectural-content/`:
+
+- `valid-adr.md` — passes the full bundle
+- `invalid-frontmatter.md` — fails frontmatter schema
+- `broken-mermaid.md` — fails mmdc validation
+- `dead-links.md` — fails lychee
+- `style-violation.md` — fails Vale Google pack
+- `cited-token-pattern.md` — fails Semgrep generic-mode (`0.0.0.0/0` in deny context vs. propose context)
+- `no-rfc-2119-invocation.md` — fails RFC 2119 check
+- `wrong-status-transition.md` — fails adr-tools lifecycle check
+- `semantically-violating.md` — passes structural; fails prose-judge.sh
+
+### P.3 Parity-diff fixtures (Wave 2)
+
+`composite/fixtures/parity/<old-detector>/`:
+
+- Sample files exercising the old detector
+- Expected verdicts (under old detector)
+- Expected verdicts (under new tool runner)
+- Both should match; any diff is documented in `parity-diff.md`
+
+### P.4 Coverage commitments
+
+- Every tool: ≥3 positive + ≥3 negative fixtures
+- Architectural-content bundle: ≥9 fixture files covering each enforcement layer
+- Migration parity: every namespace gets ≥1 parity fixture set
+
+---
+
 End of CTP-ADR-NNNN draft. Land in `claude-tdd-pro/docs/adr/` at the next available number; close `proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md` as adopted on landing.

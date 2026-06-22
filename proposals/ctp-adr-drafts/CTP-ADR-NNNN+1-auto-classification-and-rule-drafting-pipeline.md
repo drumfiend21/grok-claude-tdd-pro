@@ -483,4 +483,552 @@ For convenience when this ADR is read standalone, the same inventory is reproduc
 
 ---
 
+---
+
+## Appendix B — LLM prompt corpus (verbatim, not summarized)
+
+These prompts are normative. CTP MUST ship them verbatim under `composite/prompts/` and treat any modification as a breaking change to the pipeline contract.
+
+### B.1 Tier-2 classifier prompt (`composite/prompts/classify-rule.md`)
+
+```
+You are a rule classifier. Your job is to assign a single normative rule to
+the four canonical content-kind axes, with confidence.
+
+INPUT:
+- RULE TEXT: <verbatim prose of one rule>
+- CANDIDATE KINDS from deterministic tier-1 scan:
+    linguist_aliases: <list>
+    iac_dialects:    <list>
+    purl_uses:       <list>
+    k8s_gvks:        <list>
+- AUTHORITY REGISTRIES for validation:
+    Linguist:   https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml
+    IaC dialects (Checkov + Trivy + Kubescape consensus): <embedded list>
+    PURL spec:  https://github.com/package-url/purl-spec
+    K8s GVK:    canonical via kubectl api-resources
+
+OUTPUT — JSON conforming to this schema:
+{
+  "applies_to": {
+    "linguist_aliases": [string, ...],
+    "iac_dialects":    [string, ...],
+    "purl_uses":       [string, ...],
+    "k8s_gvks":        [string, ...]
+  },
+  "applies_to_prose": boolean,
+  "confidence": "high" | "medium" | "low" | "abstain",
+  "rationale": {
+    "<axis>:<id>": "one-sentence reason this kind was included"
+  },
+  "rejected_candidates": {
+    "<axis>:<id>": "one-sentence reason this tier-1 candidate was REJECTED"
+  }
+}
+
+DISCIPLINE:
+1. Wildcards ("*") are FORBIDDEN. If a rule is truly universal, leave all
+   four arrays empty AND set applies_to_prose: true (universal architectural
+   constraint).
+2. Include a kind only if you can name the specific construct the rule
+   constrains. "Don't know" → reject.
+3. False positives are MORE COSTLY than false negatives. When in doubt,
+   reject.
+4. applies_to_prose: true iff the rule's normative content can be projected
+   onto natural-language architectural prose. Test: could an ADR violate
+   this rule by PROPOSING a design that the rule forbids? If yes → true.
+5. confidence: "high" = unambiguous; "medium" = clear but with judgment
+   calls; "low" = significant ambiguity remains; "abstain" = cannot
+   classify, send to manual review.
+6. Cite the source registry entry in rationale (e.g. "linguist: typescript
+   is aliases[0] of TypeScript per languages.yml line 6291").
+
+RULE TEXT:
+"""
+<verbatim rule body>
+"""
+
+Output JSON only. No prose preamble or postamble.
+```
+
+### B.2 Drafter prompt template (`composite/prompts/draft-rule.md`)
+
+```
+You are a rule drafter. Translate a natural-language normative rule into
+the rule DSL of a specific FOSS tool, with explicit fidelity discipline.
+
+INPUT:
+- RULE TEXT (verbatim): <prose>
+- RULE ID: <g-...>
+- TARGET TOOL: <semgrep|eslint|checkov|spectral|vale|...>
+- TARGET DSL VERSION: <tool version pinned in COMPAT.yaml>
+- TARGET LANGUAGES (linguist aliases): <list>
+- TARGET FILE GLOBS (derived from applies_to.*): <list>
+- SOURCE CITATION: <URL + anchor>
+
+YOU MUST:
+1. Translate every clause of the rule, including:
+   - exceptions ("except when...")
+   - edge cases ("does not apply to test files")
+   - conditional phrasing ("if A then B")
+   - severity hedges (RFC 2119 MUST vs SHOULD vs MAY)
+2. For each clause, identify whether <TARGET TOOL>'s DSL can express it:
+   - YES → translate
+   - NO  → emit a coverage_gap entry with the clause text and reason
+3. NEVER silently drop a clause. If you cannot translate AND cannot
+   identify a clear coverage_gap, emit confidence: abstain.
+4. Include the source citation in the rule's metadata block.
+5. Use <TARGET TOOL>'s idiomatic patterns. For Semgrep: prefer pattern
+   over pattern-either when one suffices. For ESLint: use AST visitors
+   over selector strings when AST-precise. For Vale: prefer existence
+   over substitution. For Checkov: prefer the policy-as-code mode.
+6. Pin metadata: emit the target tool version pinned for this rule.
+
+OUTPUT — two artifacts:
+
+ARTIFACT A: the rule body in <TARGET TOOL>'s DSL, with metadata.
+
+ARTIFACT B: a JSON coverage report:
+{
+  "rule_id": "<g-...>",
+  "target_tool": "<tool>",
+  "clauses": [
+    {
+      "prose_excerpt": "<verbatim 1-3 sentences from the rule>",
+      "coverage": "covered" | "coverage_gap" | "abstain",
+      "covered_by": "<line ref in artifact A>" (if covered),
+      "gap_reason": "<reason DSL can't express this>" (if gap),
+      "prose_judge_fallback_recommended": boolean
+    }
+  ],
+  "overall_confidence": "high" | "medium" | "low" | "abstain"
+}
+
+DISCIPLINE: artifact A must be deterministically enforceable. Artifact B
+must list every clause from the prose. The clauses array MUST have at
+least one entry per sentence of the rule body.
+
+RULE TEXT:
+"""
+<verbatim rule body>
+"""
+
+Output artifact A (in the tool's DSL syntax, fenced in triple-backticks
+with the tool name) followed by artifact B (in fenced JSON).
+```
+
+### B.3 Round-trip coverage-diff prompt (`composite/prompts/coverage-diff.md`)
+
+```
+You are reviewing a rule translation. Given the original prose and a
+drafted DSL artifact, verify the translation is faithful.
+
+INPUT:
+- ORIGINAL PROSE: <verbatim>
+- DRAFTED DSL: <artifact A from drafter>
+- DRAFTER'S COVERAGE REPORT: <artifact B from drafter>
+
+YOUR JOB:
+1. Re-read the prose. List every distinct normative clause yourself.
+   Do not rely on the drafter's clause list.
+2. For each clause you list, check whether the drafted DSL enforces it.
+3. Compare your clause list against the drafter's.
+
+OUTPUT — JSON:
+{
+  "drafter_complete": boolean,    # does drafter's clause list match yours?
+  "missing_clauses": [
+    {
+      "prose_excerpt": "<clause the drafter missed>",
+      "criticality": "P0" | "P1" | "P2"
+    }
+  ],
+  "spurious_clauses": [
+    {
+      "drafter_clause": "<clause drafter listed that isn't in prose>",
+      "reason": "<why this is spurious>"
+    }
+  ],
+  "coverage_disagreements": [
+    {
+      "clause": "<...>",
+      "drafter_said": "covered" | "coverage_gap",
+      "reviewer_says": "covered" | "coverage_gap",
+      "rationale": "<why>"
+    }
+  ],
+  "verdict": "accept" | "redraft" | "review-individual",
+  "fidelity_score": <0.0 to 1.0>
+}
+
+DISCIPLINE: the reviewer is harder than the drafter. If you would rate
+fidelity below 0.85, set verdict: redraft.
+
+Output JSON only.
+```
+
+### B.4 Fixture-generation prompt (`composite/prompts/generate-fixtures.md`)
+
+```
+Generate positive and negative test fixtures for a drafted rule.
+
+INPUT:
+- RULE PROSE: <verbatim>
+- DRAFTED DSL: <artifact A>
+- TARGET TOOL: <tool>
+- TARGET LANGUAGES: <list>
+
+OUTPUT — directory structure as JSON:
+{
+  "positive": [
+    {
+      "filename": "<descriptive-name>.<ext>",
+      "content": "<file content that MUST trigger the rule>",
+      "expected_violation_location": "<line N or block range>",
+      "rationale": "<why this triggers>"
+    }
+  ],
+  "negative": [
+    {
+      "filename": "<descriptive-name>.<ext>",
+      "content": "<file content that must NOT trigger>",
+      "rationale": "<why this is conformant>"
+    }
+  ]
+}
+
+DISCIPLINE:
+1. At least 3 positive fixtures, exercising different forms of violation.
+2. At least 3 negative fixtures, exercising boundary cases (almost-but-not-
+   quite a violation).
+3. Each fixture is minimal — smallest file that demonstrates the case.
+4. Fixtures are syntactically valid for the target language.
+
+Output JSON only.
+```
+
+### B.5 prose-judge prompt (`composite/prompts/prose-judge.md`)
+
+```
+You are evaluating whether a piece of architectural prose violates a
+normative rule.
+
+INPUT:
+- RULE: <verbatim prose>
+- RULE ID: <g-...>
+- RULE SEVERITY: <P0|P1|P2|P3>
+- ARCHITECTURAL DOCUMENT EXCERPT: <verbatim>
+- DOC METADATA: { kind: <adr|design|rfc>, status: <proposed|accepted|...> }
+
+TASK: determine whether the doc excerpt PROPOSES, ACCEPTS, or RECOMMENDS
+a design that violates the rule.
+
+CRITICAL DISTINCTION — deny-context affordance:
+- "We forbid using 0.0.0.0/0 in any production ingress" → MENTIONS the
+  forbidden token in DENY context. Not a violation.
+- "For convenience, we'll allow 0.0.0.0/0 on dev clusters" → PROPOSES the
+  forbidden design. Violation.
+
+The author of the rule has annotated this distinction in the rule's
+metadata under `deny_context_markers`. Honor these.
+
+OUTPUT — JSON:
+{
+  "verdict": "pass" | "fail" | "uncertain",
+  "confidence": "high" | "medium" | "low",
+  "violated_clause": "<which clause of the rule, if any>",
+  "doc_excerpt_violating": "<the exact text from the doc that violates>",
+  "rationale": "<1-3 sentences>",
+  "deny_context_check": "the prose mentions the forbidden token in DENY|PROPOSE|UNCLEAR context"
+}
+
+DISCIPLINE: when verdict is "uncertain", the gate treats it as fail UNLESS
+operator has a deviation row. Lean toward "uncertain" rather than false
+"pass" — under-reporting is worse than over-reporting here.
+
+Output JSON only.
+```
+
+### B.6 Extractor LLM-segmentation prompt (`composite/prompts/extract-segments.md`)
+
+```
+You are extracting individual normative rules from a body of source text.
+
+INPUT:
+- SOURCE TEXT: <verbatim, may be raw markdown / HTML-extracted text /
+  pdftotext output>
+- SOURCE TYPE: markdown | html | pdf | prose
+- HINT (if known): "this is OWASP ASVS so rules are numbered like '1.1.1'"
+
+TASK: segment the text into discrete normative rules. Each rule is a
+self-contained constraint with a title, body, and ideally a citation
+anchor.
+
+OUTPUT — JSON array:
+[
+  {
+    "rule_index": <int, monotonic>,
+    "title": "<short, imperative>",
+    "body": "<verbatim normative content>",
+    "source_anchor": "<URL fragment if identifiable, else null>",
+    "confidence": "high" | "medium" | "low"
+  }
+]
+
+DISCIPLINE:
+1. One concrete constraint per rule. Don't merge multiple constraints.
+2. If a rule has exceptions/edge cases, include them in the body verbatim.
+3. Discard preamble, motivation paragraphs, examples without normative
+   content.
+4. Preserve verbatim language (no paraphrasing) — the body is what
+   downstream LLM-tier work cites.
+
+Output JSON only.
+```
+
+---
+
+## Appendix C — Extractor strategies (per doc shape)
+
+### C.1 Markdown heading-segmented (e.g. Google TS style guide)
+
+```bash
+extract-rules-from-url.sh --shape md-heading
+```
+
+Algorithm:
+1. Parse markdown via `remark` AST
+2. Walk H2 + H3 headings
+3. Each heading becomes one rule
+4. Body = AST content between heading and next sibling heading at same-or-higher level
+5. `source_anchor` = heading slug (per `github-slugger` convention)
+6. Skip headings tagged with HTML class `non-normative` or text matching `^(Introduction|Motivation|Examples?|Background)$`
+
+### C.2 HTML structured-page (e.g. styleguides with `<section>` markup)
+
+```bash
+extract-rules-from-url.sh --shape html-section
+```
+
+Algorithm:
+1. Parse via `cheerio`
+2. Each `<section id="...">` with an `<h2>`/`<h3>` becomes one rule
+3. Body = innerText of the section, excluding nav / breadcrumbs / sibling-link blocks
+4. `source_anchor` = section ID
+
+### C.3 OWASP / regex-numbered lists (e.g. OWASP ASVS, OWASP Top 10)
+
+```bash
+extract-rules-from-url.sh --shape regex-numbered \
+  --pattern '^[VL]\d+\.\d+\.\d+' \
+  --title-pattern '^V?\d+\.\d+ '
+```
+
+Algorithm:
+1. Plain-text extract via `html-to-text` or `pdftotext`
+2. Regex-split on the rule prefix pattern
+3. First sentence after the prefix is the title; remainder is the body
+4. `source_anchor` = `#<prefix>` (e.g. `#V2.1.1`)
+
+### C.4 PDF (e.g. NIST 800-53, federal specifications)
+
+```bash
+extract-rules-from-url.sh --shape pdf
+```
+
+Algorithm:
+1. `pdftotext -layout <pdf>` → plain text
+2. Strip page numbers + running heads + footers (heuristic: lines repeated on >50% of pages)
+3. Feed to LLM segmentation (Appendix B.6 prompt)
+4. Reconcile against the document's table of contents (if detectable) for `source_anchor` resolution
+
+### C.5 Free-form prose / blog post / policy doc
+
+```bash
+extract-rules-from-url.sh --shape free-form
+```
+
+Algorithm:
+1. Strip non-content elements (nav, footer, ads)
+2. Feed full text to LLM segmentation
+3. `source_anchor` is best-effort (paragraph offset) — usually null
+
+### C.6 Operator-pluggable extractor
+
+`.harness/operator-standards/extractors/<source-id>/extract.sh` — if present, used in place of CTP-shipped extractors. Conforms to the same JSONL output contract.
+
+---
+
+## Appendix D — Coverage-diff harness specifics
+
+### D.1 Format
+
+Per-rule coverage report at `.harness/operator-standards/custom-rules/<tool>/<rule-id>.coverage.md`:
+
+```markdown
+# Coverage report — <rule-id>
+
+**Source:** <URL + anchor>
+**Target tool:** <tool> @ <version>
+**Drafter confidence:** <high|medium|low|abstain>
+**Reviewer fidelity score:** <0.0–1.0>
+**Verdict:** <accept|redraft|review-individual>
+
+## Clauses
+
+| # | Prose excerpt | Coverage | Covered by | Notes |
+|---:|---|---|---|---|
+| 1 | "..." | covered | DSL line 15 | AST-precise |
+| 2 | "..." | coverage_gap | prose-judge.sh | binding emitted |
+| 3 | "..." | covered | DSL line 22 | |
+
+## prose-judge.sh fallback binding (if any)
+
+<rule-body subset used by prose-judge for un-translated clauses>
+
+## Operator notes
+
+<free-form, optional>
+```
+
+### D.2 Pass criterion
+
+`accept` verdict requires:
+- `reviewer_fidelity_score >= 0.85`
+- Every clause is either `covered` or has a `prose-judge.sh` binding
+- Zero `coverage_gap` entries without a fallback binding
+
+Engine rejects ingest into `active.json` for rules failing this gate. Operator can override with explicit `--accept-with-gaps` flag (logged in audit trail).
+
+### D.3 Reviewer disagreement
+
+If the round-trip coverage-diff (Appendix B.3) flags `missing_clauses` or `coverage_disagreements`, the drafter is re-invoked with the reviewer's feedback embedded in the prompt. Maximum 3 re-draft attempts; on the 4th attempt, the rule is routed to manual review (review-queue with `confidence: abstain`).
+
+### D.4 Operator visibility
+
+Review-queue CLI surfaces the coverage report:
+
+```
+$ scripts/review-queue.sh --review walmart-microservices-007
+Rule: g-walmart-rest-versioning
+Source: https://walmart.example/std/microservices.html#rest-versioning
+Confidence: high; Fidelity: 0.91
+Clauses: 5 total — 4 covered deterministically, 1 prose-judge fallback
+
+Press [a] to accept, [r] to reject, [v] to view coverage report,
+[e] to edit DSL, [j] to view prose-judge fallback, [q] to skip.
+```
+
+---
+
+## Appendix E — Per-CL acceptance gates
+
+Concrete green-light criteria per CL in PROPOSAL-006 §"Implementation waves".
+
+### E.1 Wave 1 — extraction + classification + routing
+
+| CL | Green criterion (exit-0 test command) |
+|---|---|
+| W1-A | `scripts/test-composite.sh --component vocabulary-mirrors` — mirrors present + parseable + 4-axis registries resolve |
+| W1-B | `scripts/test-composite.sh --component classifier-tier-1` — deterministic classifier produces expected candidates for 20-rule fixture set |
+| W1-C | `scripts/test-composite.sh --component classifier-tier-2` — LLM-tier classifier matches expected `applies_to.*` + `applies_to_prose` for the same 20-rule fixtures (within confidence bands) |
+| W1-D | `scripts/test-composite.sh --e2e google-ts-style` — Google TS guide URL → 47 rules in review-queue with populated `applies_to.*` (the Appendix O worked example) |
+
+### E.2 Wave 2 — drafter + fidelity discipline
+
+| CL | Green criterion |
+|---|---|
+| W2-A | `scripts/test-composite.sh --component drafter --tool semgrep` — drafts the 47 Google TS rules with fidelity ≥0.85 each |
+| W2-B | Same for ESLint, Checkov, Spectral, Vale (one CL each) |
+| W2-C | `scripts/test-composite.sh --component coverage-diff` — coverage diff harness produces expected reports for the fixture set |
+| W2-D | `scripts/test-composite.sh --component fixture-gen` — fixture generator produces ≥3 positive + ≥3 negative per rule |
+| W2-E | `scripts/test-composite.sh --component prose-judge-fallback` — Layer D un-translatable-clause binding works end-to-end (depends on P-8 fix) |
+
+### E.3 Wave 3 — review queue + driver
+
+| CL | Green criterion |
+|---|---|
+| W3-A | `scripts/test-composite.sh --component review-queue` — list / accept / reject / batch-accept work |
+| W3-B | `scripts/test-composite.sh --e2e walmart-microservices` — operator-private URL ingest → review-queue → accept → rules live in `active.json` |
+| W3-C | `scripts/test-composite.sh --e2e fixture-corpus` — full architectural-content fixture set (Appendix P in CTP-ADR-NNNN) passes |
+
+---
+
+## Appendix F — ADR lifecycle state machine
+
+The architectural-content bundle's ADR-lifecycle tools (`adr-tools` + `log4brains` + `adr-log` + `adr-manager`) enforce this state machine on every ADR landing in the operator's app tree (NOT on CTP's or GCTP's own ADRs — those live under their own conventions).
+
+### F.1 States
+
+- `proposed` — initial state; ADR drafted but not approved
+- `accepted` — approved by deciders; in force
+- `deprecated` — no longer recommended but not yet removed; still informative
+- `superseded` — replaced by another ADR (must point to successor)
+- `rejected` — proposed but explicitly not adopted (kept for historical context)
+
+### F.2 Valid transitions
+
+```
+proposed → accepted        (deciders approve)
+proposed → rejected        (deciders decline)
+accepted → deprecated      (no longer recommended)
+accepted → superseded      (replaced by successor ADR)
+deprecated → superseded    (a successor lands later)
+```
+
+Invalid transitions (engine red):
+- `rejected → *` (rejected is terminal except via new ADR)
+- `superseded → *` (superseded is terminal)
+- `accepted → proposed` (no reversal)
+
+### F.3 Frontmatter contract
+
+Every ADR's frontmatter MUST include:
+
+```yaml
+---
+id: NNNN
+title: <short title>
+status: proposed | accepted | deprecated | superseded | rejected
+date: YYYY-MM-DD
+deciders: [<list>]
+superseded_by: NNNN   # required when status=superseded
+supersedes: NNNN      # optional when this ADR replaces another
+---
+```
+
+`ajv-cli` validates against `composite/schemas/adr-frontmatter.schema.json` (Appendix A.14 in CTP-ADR-NNNN).
+
+### F.4 Numbering authority
+
+`adr-tools new <title>` (Nat Pryce's CLI) assigns the next available number based on the local ADR directory. Monotonic; no gaps; engine checks this at audit time.
+
+Operator-extended numbering schemes (e.g. namespaced like `PRODUCT-NNNN`) are permitted via `.harness/operator-standards/adr-numbering.yaml`.
+
+### F.5 Supersession chain validation
+
+`adr-log` generates a chronological index. Engine verifies:
+- Every `superseded_by` reference resolves to a real ADR
+- The successor's `supersedes` reference points back (bidirectional)
+- No cycles in the supersession graph
+- The terminal `accepted` ADR in any chain is what's in force
+
+Violations are P0 — block the commit.
+
+### F.6 State diagram
+
+```mermaid
+stateDiagram-v2
+  [*] --> proposed: adr-tools new
+  proposed --> accepted: deciders approve
+  proposed --> rejected: deciders decline
+  accepted --> deprecated: no longer recommended
+  accepted --> superseded: replaced by successor
+  deprecated --> superseded: successor lands later
+  rejected --> [*]
+  superseded --> [*]
+```
+
+---
+
 End of CTP-ADR-NNNN+1 draft. Land in `claude-tdd-pro/docs/adr/` at the next available number (paired with CTP-ADR-NNNN). On landing, close `proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md` as adopted, and pin-bump in GCTP to mark the auto-classification pipeline live.
