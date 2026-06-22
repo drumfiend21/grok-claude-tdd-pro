@@ -114,18 +114,34 @@ When `/audit` runs or the dispatch gate (`scripts/audit-design-phase-md.sh` from
 |---|---|---|---|---|
 | Universal | **Semgrep** community | LGPL-2.1 engine, Apache-2.0 rules | Multi-language SAST (~30 languages, ~5000 community rules: OWASP/CWE/MITRE/SANS/JWT BCP) | yes |
 | Universal | **Trivy** | Apache-2.0 | CVE scanning + secrets + IaC misconfig + SBOM (CycloneDX + SPDX) | yes |
+| Universal | **OSV-Scanner** | Apache-2.0 | Google's vuln scanner against OSV.dev database (complements Trivy) | yes |
+| Universal | **syft + grype** | Apache-2.0 | Anchore SBOM generator + vulnerability scanner (cross-checks Trivy results) | yes |
 | Universal | **gitleaks** | MIT | Secrets in source (any text) | yes |
+| Universal | **detect-secrets** | Apache-2.0 | Yelp's secrets scanner with baseline support (complements gitleaks) | yes (via formatter) |
+| Universal | **trufflehog** | AGPL-3.0 | Live-credential verification beyond pattern match | yes (via formatter) |
 | Universal | **conftest** | Apache-2.0 | Rego policies over YAML/JSON/TOML/HCL/Dockerfile/Cue | yes (via SARIF wrapper) |
+| Universal | **OPA** + **regal** | Apache-2.0 | Open Policy Agent runtime + Rego linter (for authoring policies) | yes |
 | Universal | **OpenSSF Scorecard** | Apache-2.0 | Repo-level supply-chain posture | yes |
 | Universal | **cosign + slsa-verifier** | Apache-2.0 | SLSA build provenance + signing | n/a (attestations) |
-| JS/TS | **ESLint** + plugin family: `gts`, `@typescript-eslint`, `@microsoft/eslint-plugin-sdl`, `eslint-plugin-n`, `eslint-plugin-react`, `eslint-config-next`, `eslint-plugin-jsx-a11y`, `@angular-eslint/eslint-plugin` | MIT/Apache-2.0 | Google TS/JS style, Microsoft SDL, Node best practices, React/Next/Angular, a11y | yes (via formatter) |
-| CSS | **stylelint** + `stylelint-config-recommended-scss` + `stylelint-config-recommended-less` + `stylelint-config-tailwindcss` | MIT | CSS/SCSS/Less/PostCSS/Tailwind | yes (via formatter) |
+| Universal | **in-toto** + **slsa-github-generator** | Apache-2.0 | Supply-chain attestations + SLSA build-level provenance generation | n/a (attestations) |
+| JS/TS | **ESLint** + plugin family: `gts`, `@typescript-eslint`, `@microsoft/eslint-plugin-sdl`, `eslint-plugin-n`, `eslint-plugin-react`, `eslint-config-next`, `eslint-plugin-jsx-a11y`, `@angular-eslint/eslint-plugin`, `eslint-plugin-security` | MIT/Apache-2.0 | Google TS/JS style, Microsoft SDL, Node best practices, React/Next/Angular, a11y, Node security | yes (via formatter) |
+| JS/TS | **Biome** + **oxlint** | MIT | Rust-based fast JS/TS linter+formatter (10-100x ESLint+Prettier); oxlint is a complementary fast linter | yes (via formatter) |
+| JS/TS | **Prettier** | MIT | Opinionated formatter for JS/TS/CSS/HTML/Markdown/YAML/JSON — runs alongside ESLint when Biome not adopted | n/a (format-only) |
+| CSS | **stylelint** + `stylelint-config-recommended-scss` + `stylelint-config-recommended-less` + `stylelint-config-tailwindcss` + `stylelint-config-standard` | MIT | CSS/SCSS/Less/PostCSS/Tailwind | yes (via formatter) |
+| HTML | **htmlhint** + `html-validate` | MIT | HTML lint + W3C validator | yes (via formatter) |
+| Accessibility | **axe-core** + **pa11y** + **pa11y-ci** | MPL-2.0/MIT | WCAG 2.2 a11y auditing — runs against rendered HTML or via headless-Chrome | yes (via formatter) |
+| Web Vitals | **Lighthouse** + **lighthouse-ci** | Apache-2.0 | Core Web Vitals (LCP/CLS/INP), PWA, SEO, performance budgets | yes (via formatter) |
 | IaC | **Checkov** | Apache-2.0 | 1000+ policies for Terraform/CFN/k8s/Helm/Dockerfile/ARM/Bicep/Compose/GHA/GitLab CI/Azure Pipelines/Ansible/CircleCI/Bitbucket/Argo — with NIST 800-53/FedRAMP/SOC2/PCI/HIPAA/CIS framework mappings | yes |
+| IaC | **tfsec** + **terrascan** + **tflint** | MIT/Apache-2.0 | Terraform-specific SAST + linting (complementary alternatives to Checkov/Trivy) | yes |
 | K8s | **Kubescape** | Apache-2.0 | 260+ controls (NSA-CISA + CIS + MITRE ATT&CK + NIST SSDF + FedRAMP) | yes |
-| K8s | **kubeconform** | Apache-2.0 | K8s schema validation | yes |
+| K8s | **kube-linter** + **kubeconform** + **polaris** | Apache-2.0 | K8s manifest lint + JSON-schema validation + best-practice analysis | yes |
+| K8s | **kyverno** + **kyverno-cli** | Apache-2.0 | K8s-native policy engine (alternative to OPA/conftest for cluster-side enforcement) | yes |
 | OpenAPI | **Spectral** + `@stoplight/spectral-owasp-ruleset` | Apache-2.0 | OpenAPI 3.x + AsyncAPI + OWASP API Top 10 | yes |
+| OpenAPI | **vacuum** + **redocly-cli** | Apache-2.0/MIT | Fast Go-based OpenAPI linter + Redocly's CI suite (alternatives to Spectral) | yes |
 | GHA | **zizmor** + `actionlint` + `pinact` | Apache-2.0 / MIT | GitHub Actions security + correctness | yes (zizmor) |
 | Dockerfile | **hadolint** | GPL-3.0 | Dockerfile lint | yes |
+| YAML | **yamllint** | GPL-3.0 | General YAML lint (complements IaC-specific tools for plain YAML) | yes (via formatter) |
+| JSON | **ajv-cli** + **jq** | MIT | JSON schema validation (700+ schemas via SchemaStore) + structural query | n/a |
 | Markdown | **markdownlint-cli2** | MIT | Structural Markdown (MD001-MD060) | yes |
 | Prose | **Vale** with `errata-ai/Google` + `vale-cli/Microsoft` + `errata-ai/alex` style packs | MIT | Tone/style/inclusive-language prose | yes |
 | Links | **lychee** | Apache-2.0 OR MIT | Link integrity | yes |
@@ -249,6 +265,13 @@ The composite engine treats `bundle:architectural-content` as a named binding th
 | **RFC 2119 keyword discipline** | Custom Vale rule or Semgrep pattern | When uppercase MUST / SHOULD / MAY appear in the prose, the BCP 14 invocation sentence must be present elsewhere in the doc |
 | **Semantic (the moat)** | **`prose-judge.sh`** | The LLM-judge tier — semantic projection of every rule with `applies_to_prose: true` onto the architectural prose. Catches the "this ADR proposes a forbidden design" class that no other tool can catch |
 | **Citation integrity** | `audit-source-citations.sh` (existing GCTP script) | Every claim in an ADR that cites a standard or rule must trace to a real entry in `active.json`'s provenance |
+| **ADR lifecycle** | `adr-tools` (Nat Pryce, MIT) + `log4brains` (Apache-2.0) + `adr-log` (Apache-2.0) + `adr-manager` (Apache-2.0) | Validate ADR file-naming convention (`NNNN-kebab-title.md`), monotonic numbering with no gaps, status transitions (proposed → accepted → deprecated → superseded), supersession chains resolve, and that each ADR has a corresponding entry in the ADR log/index |
+| **TOC integrity** | `doctoc` + `markdown-toc` + `markdown-it-toc-done-right` | Auto-generated and verified table-of-contents for ADRs that span multiple sections; fails if the rendered TOC drifts from the heading structure |
+| **Additional prose CLIs** | `write-good` (MIT, standalone) + `mdformat` (Python, MIT) + `vale-ls` (Vale language server for IDE integration) | Belt-and-braces prose checks beyond the Vale packs; consistent MD formatting; IDE-time feedback for authors |
+| **Link checker (alt)** | `markdown-link-check` (MIT) | Lychee's complement — different traversal strategy catches different edge cases (relative path resolution + anchor parsing) |
+| **Commit message hygiene** | `commitlint` + `@commitlint/config-conventional` | Conventional Commits enforcement on the commit that lands an ADR; ties ADR ID → commit → PR for traceability |
+| **Inline-table validation** | `markdown-table-formatter` + `prettier --parser markdown` | Renders the ADR's tables consistently; catches malformed pipe alignment that breaks rendering on GitHub vs editor |
+| **Style for kata/competition deliverables** | `gh markdown-render` + `markdownlint-cli2 --fix` dry-run | Renders the ADR exactly as GitHub/GitLab will see it so author can detect drift before commit |
 
 ### 9b.3 Schema: how rules reference the bundle
 

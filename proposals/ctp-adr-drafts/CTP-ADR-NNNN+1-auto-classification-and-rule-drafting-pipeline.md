@@ -219,4 +219,24 @@ Document the "no language silently dropped" contract prominently in `claude-tdd-
 
 ---
 
+---
+
+## Supplementary GCTP files to fetch (the CTP session has no access to the GCTP repo, so fetch via raw URL)
+
+GCTP repo: `https://github.com/drumfiend21/grok-claude-tdd-pro` — branch `main` at HEAD or any specific commit. Fetch the following with WebFetch / `curl` / `gh api`:
+
+| Purpose | Raw URL (replace `main` with a pinned commit if reproducibility matters) |
+|---|---|
+| **The full source design** for this ADR | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md` |
+| The paired composite-engine ADR draft (this ADR consumes its runtime) | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/proposals/ctp-adr-drafts/CTP-ADR-NNNN-composite-engine-4-axis-vocabulary.md` |
+| The composite-engine source design | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md` |
+| P-8 upstream blocker (prose-judge.sh `--text` ↔ `--target`) — needed for D-5 Layer D (coverage-gap fallback) | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/upstream-ctp-proposals.md` |
+| Prior CTP-side ADR for PROPOSAL-003 (already adopted at pin `39903da`) — establishes the source refresh + prose-judge.sh surface this ADR composes on | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/proposals/PROPOSAL-003-ctp-session-brief.md` |
+| YAML / JSON / MD source corpora (worked examples of operator-sourced standards the pipeline will ingest) | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/docs/standards-sources-yaml.md`, `.../standards-sources-json.md`, `.../standards-sources-md.md` |
+| Complete-architecture cover doc (single entry point with all context) | `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/main/proposals/ctp-adr-drafts/COMPLETE-ARCHITECTURE-FOR-CTP.md` |
+
+**Pinned-commit canonicalization (recommended):** swap `main` for commit `<HEAD-at-handoff>` in every URL above. The handoff cover doc records the canonical pin.
+
+---
+
 End of CTP-ADR-NNNN+1 draft. Land in `claude-tdd-pro/docs/adr/` at the next available number (paired with CTP-ADR-NNNN). On landing, close `proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md` as adopted, and pin-bump in GCTP to mark the auto-classification pipeline live.
