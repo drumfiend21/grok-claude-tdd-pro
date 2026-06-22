@@ -69,6 +69,206 @@ That's the full fetch set. Everything else you need is in those 11 documents (pl
 
 ---
 
+## 3.5 Diagrams — the architecture in pictures
+
+All diagrams below are Mermaid. The architectural-content bundle validates them via `mmdc --validate`, so they are first-class enforcement artifacts (not just documentation).
+
+### 3.5.1 System context — GCTP ↔ CTP ↔ Operator boundary
+
+```mermaid
+flowchart LR
+  OP([Operator])
+  subgraph GCTP[GCTP harness - consumer]
+    GC["/consult /roadmap /decompose<br/>/dispatch /inner-loop /audit"]
+    GA["enforce-standards.sh<br/>audit-design-phase-md.sh<br/>post-tool-use hook"]
+  end
+  subgraph CTP[CTP plugin - provider]
+    CE["Composite engine<br/>per-tool runners + SARIF bus<br/>(CTP-ADR-NNNN)"]
+    CP["Auto-classification pipeline<br/>extract → classify → draft → review<br/>(CTP-ADR-NNNN+1)"]
+    CM["prose-judge.sh<br/>the semantic moat<br/>(CTP-owned)"]
+  end
+  AJ[(active.json<br/>rule registry)]
+  SARIF[(SARIF 2.1.0<br/>verdict bus)]
+  OP -->|plain-English intent| GC
+  OP -->|standards URLs| CP
+  OP -->|review-queue accept/reject| CP
+  GC -->|consult via contract| CE
+  GA -->|invoke per file| CE
+  CP -->|writes rules| AJ
+  CE -->|reads rules| AJ
+  CE -->|calls for semantic tier| CM
+  CE --> SARIF
+  CM --> SARIF
+  SARIF -->|aggregated verdicts| GA
+```
+
+### 3.5.2 Composite engine — file-to-verdict flow
+
+```mermaid
+flowchart TD
+  F[File written: foo.ts] --> D[Detect kinds via tools<br/>linguist + IaC + PURL + GVK]
+  D --> A["applies_to:<br/>linguist_aliases: typescript<br/>purl_uses: pkg:npm/react"]
+  A --> R[Resolve rules from active.json<br/>matching applies_to.*]
+  R --> W["Walk enforced_by[]<br/>per rule, first match wins"]
+  W --> T[Dispatch tool runner:<br/>semgrep / eslint / checkov / etc.]
+  T --> S[Tool emits SARIF]
+  S --> AG[sarif-aggregate.sh<br/>combine across tools]
+  AG --> V{Any P0 violation?}
+  V -->|yes| FAIL[exit 2 → block]
+  V -->|no| PASS[exit 0 → green]
+```
+
+### 3.5.3 4-axis canonical vocabulary — how rules join to tools
+
+```mermaid
+flowchart LR
+  subgraph Auth[Industry-standard authorities - mirrored under vendor/canonical-vocabulary/]
+    L1["GitHub Linguist<br/>aliases[0]: typescript,<br/>python, rust... ~700 entries"]
+    L2["IaC-scanner consensus<br/>kubernetes, terraform,<br/>dockerfile, openapi..."]
+    L3["PURL spec<br/>pkg:npm/react<br/>pkg:pypi/django"]
+    L4["Kubernetes GVK<br/>apps/v1/Deployment<br/>rbac/v1/Role"]
+  end
+  L1 --> AT1[applies_to.linguist_aliases]
+  L2 --> AT2[applies_to.iac_dialects]
+  L3 --> AT3[applies_to.purl_uses]
+  L4 --> AT4[applies_to.k8s_gvks]
+  AT1 --> R[(Rule in active.json)]
+  AT2 --> R
+  AT3 --> R
+  AT4 --> R
+  R --> RT["composite/kind-to-tool-routing.yaml"]
+  RT --> TS[Tool selected for this file:<br/>semgrep, checkov, kubescape, etc.]
+```
+
+### 3.5.4 Architectural-content bundle — bundle name fans out to ~24 tools
+
+```mermaid
+flowchart TD
+  AT["Rule with<br/>applies_to_prose: true"] -->|engine load time| AB["Bundle auto-attached:<br/>{ bundle: architectural-content }"]
+  F["File matches architectural-content<br/>(docs/adr/**, frontmatter kind: adr, etc.)"] -->|detect-architectural-content.sh| AC[is_architectural_content: true]
+  AB --> EXP[Bundle expansion at dispatch]
+  AC --> EXP
+  EXP --> T1[markdownlint-cli2<br/>remark-lint]
+  EXP --> T2[Vale × Google + Microsoft<br/>+ write-good + proselint + alex]
+  EXP --> T3[textlint + write-good<br/>+ mdformat + vale-ls]
+  EXP --> T4[cspell + codespell]
+  EXP --> T5[lychee + markdown-link-check]
+  EXP --> T6[reuse-tool<br/>SPDX headers]
+  EXP --> T7[mmdc + plantuml<br/>diagram validation]
+  EXP --> T8[ajv-cli<br/>frontmatter schema]
+  EXP --> T9[Semgrep generic-mode<br/>token patterns]
+  EXP --> T10[RFC 2119 keyword check]
+  EXP --> T11[adr-tools + log4brains<br/>+ adr-log + adr-manager]
+  EXP --> T12[doctoc + markdown-toc]
+  EXP --> T13[commitlint<br/>Conventional Commits]
+  EXP --> T14[markdown-table-formatter<br/>+ prettier]
+  EXP --> T15[gh markdown-render<br/>kata-deliverable rendering]
+  EXP --> T16["prose-judge.sh<br/>(CTP semantic moat)"]
+  EXP --> T17[audit-source-citations.sh]
+  T1 --> SA[SARIF aggregator]
+  T2 --> SA
+  T3 --> SA
+  T4 --> SA
+  T5 --> SA
+  T6 --> SA
+  T7 --> SA
+  T8 --> SA
+  T9 --> SA
+  T10 --> SA
+  T11 --> SA
+  T12 --> SA
+  T13 --> SA
+  T14 --> SA
+  T15 --> SA
+  T16 --> SA
+  T17 --> SA
+  SA --> V[Verdict]
+```
+
+### 3.5.5 Two-phase enforcement — write-time + audit-time
+
+```mermaid
+sequenceDiagram
+  participant Claude as Claude Code agent
+  participant Pre as PreToolUse hook (strict)
+  participant Disk as Filesystem
+  participant Post as PostToolUse hook (pragmatic)
+  participant Disp as composite/dispatch.sh
+  participant Tools as FOSS tools + prose-judge.sh
+  participant Audit as enforce-standards.sh
+
+  Claude->>Pre: proposes Write tool call
+  Pre->>Disp: run engine on proposed content
+  Disp->>Tools: dispatch by applies_to
+  Tools-->>Disp: SARIF results
+  alt P0 violation
+    Pre-->>Claude: block (exit 2) — never on disk
+  else clean
+    Pre-->>Disk: write proceeds
+    Disk->>Post: PostToolUse fires
+    Post->>Disp: run engine on file
+    Disp->>Tools: dispatch
+    Tools-->>Post: SARIF
+    Post-->>Claude: inline violations → self-correct loop
+  end
+
+  Note over Audit: At /audit time (whole-tree scope)
+  Audit->>Disp: drive across app_root
+  Disp->>Tools: dispatch every file
+  Tools-->>Audit: aggregated SARIF
+  Audit-->>Claude: rules_verified block
+```
+
+### 3.5.6 Auto-classification pipeline — URL to enforcement in 6 stages
+
+```mermaid
+flowchart TD
+  URL["Operator URL<br/>(Google TS guide, OWASP ASVS,<br/>Walmart microservices doc, etc.)"] -->|Stage 1| S1["standards-refresh.sh<br/>scrape + cache"]
+  S1 -->|raw text| S2["Stage 2: extract-rules-from-url.sh<br/>segment per doc shape"]
+  S2 -->|"list of {title, body, anchor}"| S3["Stage 3: classify-rule.sh<br/>tier-1 deterministic + tier-2 LLM"]
+  S3 -->|"applies_to.* + applies_to_prose"| S4[Stage 4: routing-table lookup]
+  S4 --> AB{applies_to_prose?}
+  AB -->|yes| AUTO["Auto-append<br/>bundle: architectural-content"]
+  AB -->|no| LANG[Per-language binding only]
+  AUTO --> S5["Stage 5: draft-custom-rule.sh<br/>(4-layer fidelity discipline)"]
+  LANG --> S5
+  S5 -->|"drafted DSL + coverage report + fixtures"| S6[Stage 6: review-queue.sh]
+  S6 -->|operator approves| AJ[(active.json +<br/>custom-rules/&lt;tool&gt;/)]
+```
+
+### 3.5.7 Auto-binding decision tree
+
+```mermaid
+flowchart TD
+  R[Drafted rule] --> Q1{applies_to_prose: true?}
+  Q1 -->|no| BIND_LANG["enforced_by:<br/>per-language tool<br/>(semgrep / eslint / checkov)"]
+  Q1 -->|yes| Q2{any per-language kinds detected?}
+  Q2 -->|yes — cross-applicability| BIND_BOTH["enforced_by:<br/>1. per-language tool<br/>2. bundle: architectural-content"]
+  Q2 -->|no — ADR-only rule| BIND_BUNDLE["enforced_by:<br/>{ bundle: architectural-content }<br/>ONLY"]
+  BIND_LANG --> AJ[(active.json)]
+  BIND_BOTH --> AJ
+  BIND_BUNDLE --> AJ
+```
+
+### 3.5.8 Four-layer fidelity discipline — no language silently dropped
+
+```mermaid
+flowchart TD
+  P["Original prose<br/>(e.g., RFC 8725 §3.1)"] --> L1["Layer A: prompt discipline<br/>'translate every clause; emit coverage_gap<br/>for un-translatable clauses'"]
+  L1 --> DSL[Drafted DSL<br/>e.g., Semgrep rule YAML]
+  DSL --> L2["Layer B: round-trip coverage diff<br/>LLM re-reads prose + DSL,<br/>emits per-clause coverage report"]
+  L2 --> CR["Coverage report<br/>clause 1: covered by DSL line 15<br/>clause 2: NOT COVERED, reason: X<br/>clause 3: covered by DSL line 22"]
+  CR --> L3[Layer C: test-fixture generation<br/>positive + negative fixtures<br/>verify DSL ≡ prose intent]
+  L3 --> L4{any clause uncovered?}
+  L4 -->|yes| LD[Layer D: bind clause to prose-judge.sh<br/>second enforced_by entry]
+  L4 -->|no| DONE[Single deterministic binding]
+  LD --> DONE2[Dual binding:<br/>1. Semgrep for syntactic clauses<br/>2. prose-judge.sh for semantic clauses]
+  DONE --> AJ[(active.json)]
+  DONE2 --> AJ
+```
+
+---
+
 ## 4. The single technical core, in 10 bullets
 
 If you read nothing else, read this:

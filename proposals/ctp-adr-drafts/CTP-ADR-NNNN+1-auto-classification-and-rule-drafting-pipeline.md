@@ -32,6 +32,75 @@ Today every step is manual. With the typical operator adopting ~500-1000 rules a
 
 ---
 
+## Architecture diagrams
+
+### Auto-classification pipeline — URL to enforcement in 6 stages
+
+```mermaid
+flowchart TD
+  URL["Operator URL<br/>(Google TS guide, OWASP ASVS,<br/>Walmart microservices doc, etc.)"] -->|Stage 1| S1["standards-refresh.sh<br/>scrape + cache"]
+  S1 -->|raw text| S2["Stage 2: extract-rules-from-url.sh<br/>segment per doc shape"]
+  S2 -->|"list of {title, body, anchor}"| S3["Stage 3: classify-rule.sh<br/>tier-1 deterministic + tier-2 LLM"]
+  S3 -->|"applies_to.* + applies_to_prose"| S4[Stage 4: routing-table lookup]
+  S4 --> AB{applies_to_prose?}
+  AB -->|yes| AUTO["Auto-append<br/>bundle: architectural-content"]
+  AB -->|no| LANG[Per-language binding only]
+  AUTO --> S5["Stage 5: draft-custom-rule.sh<br/>(4-layer fidelity discipline)"]
+  LANG --> S5
+  S5 -->|drafted DSL + coverage report + fixtures| S6[Stage 6: review-queue.sh]
+  S6 -->|operator approves| AJ[(active.json +<br/>custom-rules/&lt;tool&gt;/)]
+```
+
+### Auto-binding decision tree
+
+```mermaid
+flowchart TD
+  R[Drafted rule] --> Q1{applies_to_prose: true?}
+  Q1 -->|no| BIND_LANG["enforced_by:<br/>per-language tool<br/>(semgrep / eslint / checkov)"]
+  Q1 -->|yes| Q2{any per-language kinds detected?}
+  Q2 -->|yes — cross-applicability| BIND_BOTH["enforced_by:<br/>1. per-language tool<br/>2. bundle: architectural-content"]
+  Q2 -->|no — ADR-only rule| BIND_BUNDLE["enforced_by:<br/>{ bundle: architectural-content }<br/>ONLY"]
+  BIND_LANG --> AJ[(active.json)]
+  BIND_BOTH --> AJ
+  BIND_BUNDLE --> AJ
+```
+
+### Four-layer fidelity discipline — no language silently dropped
+
+```mermaid
+flowchart TD
+  P["Original prose<br/>(e.g., RFC 8725 §3.1)"] --> L1["Layer A: prompt discipline<br/>'translate every clause; emit coverage_gap<br/>for un-translatable clauses'"]
+  L1 --> DSL[Drafted DSL<br/>e.g., Semgrep rule YAML]
+  DSL --> L2["Layer B: round-trip coverage diff<br/>LLM re-reads prose + DSL,<br/>emits per-clause coverage report"]
+  L2 --> CR["Coverage report<br/>clause 1: covered by DSL line 15<br/>clause 2: NOT COVERED, reason: X<br/>clause 3: covered by DSL line 22"]
+  CR --> L3[Layer C: test-fixture generation<br/>positive + negative fixtures<br/>verify DSL ≡ prose intent]
+  L3 --> L4{any clause uncovered?}
+  L4 -->|yes| LD[Layer D: bind clause to prose-judge.sh<br/>second enforced_by entry]
+  L4 -->|no| DONE[Single deterministic binding]
+  LD --> DONE2["Dual binding:<br/>1. Semgrep for syntactic clauses<br/>2. prose-judge.sh for semantic clauses"]
+  DONE --> AJ[(active.json)]
+  DONE2 --> AJ
+```
+
+### Review-queue confidence routing
+
+```mermaid
+flowchart TD
+  DR[Drafted rule + coverage report] --> C{confidence?}
+  C -->|high + 0 gaps| AUTO[Auto-stage for batched commit<br/>--batch-accept --confidence high]
+  C -->|high + gaps| REV1[Operator reviews coverage split:<br/>deterministic + prose-judge fallback]
+  C -->|medium / low| REV2[Individual review:<br/>prose + draft side-by-side]
+  C -->|abstain| MAN[Manual authoring<br/>LLM provides scaffolding only]
+  AUTO --> CMT[Commit to active.json + custom-rules/]
+  REV1 -->|accept| CMT
+  REV2 -->|accept| CMT
+  MAN --> CMT
+  REV1 -->|reject| DROP[Dropped — re-run or manual]
+  REV2 -->|reject| DROP
+```
+
+---
+
 ## Decision
 
 Eight numbered decisions (D-1..D-8) implementing the six-stage pipeline + the fidelity discipline + the architectural-content auto-binding. Each defines a component or contract. Implementation is itemized in §"Implementation waves".

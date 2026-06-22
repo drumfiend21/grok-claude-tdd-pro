@@ -26,6 +26,104 @@ Industry-standard naming registries already exist and are battle-tested by matur
 
 ---
 
+## Architecture diagrams
+
+All diagrams below are Mermaid. The architectural-content bundle validates them via `mmdc --validate`, so the architecture-of-the-architecture is itself enforcement-conformant.
+
+### Composite engine — file-to-verdict flow
+
+```mermaid
+flowchart TD
+  F[File written: foo.ts] --> D[Detect kinds via tools]
+  D --> A["applies_to:<br/>linguist_aliases: typescript<br/>purl_uses: pkg:npm/react"]
+  A --> R[Resolve rules from active.json]
+  R --> W["Walk enforced_by[]<br/>first match wins"]
+  W --> T[Dispatch tool runner]
+  T --> S[SARIF emitted]
+  S --> AG[sarif-aggregate.sh]
+  AG --> V{P0 violation?}
+  V -->|yes| FAIL[exit 2 - block]
+  V -->|no| PASS[exit 0 - green]
+```
+
+### 4-axis vocabulary — rule binding through industry authorities
+
+```mermaid
+flowchart LR
+  L1["GitHub Linguist<br/>~700 languages"] --> AT1[applies_to.linguist_aliases]
+  L2["IaC-scanner consensus<br/>15+ dialects"] --> AT2[applies_to.iac_dialects]
+  L3["PURL spec<br/>pkg:ecosystem/name"] --> AT3[applies_to.purl_uses]
+  L4["Kubernetes GVK<br/>group/version/kind"] --> AT4[applies_to.k8s_gvks]
+  AT1 --> R[(Rule in active.json)]
+  AT2 --> R
+  AT3 --> R
+  AT4 --> R
+  R --> RT[kind-to-tool-routing.yaml]
+  RT --> TS[Tool selected]
+```
+
+### Architectural-content bundle — auto-attached when applies_to_prose: true
+
+```mermaid
+flowchart TD
+  AT["Rule with<br/>applies_to_prose: true"] --> AB["Bundle auto-attached"]
+  F[File matches architectural-content] --> AC[is_architectural_content: true]
+  AB --> EXP[Bundle expansion at dispatch]
+  AC --> EXP
+  EXP --> T1[markdownlint + remark-lint]
+  EXP --> T2[Vale × 5 packs + textlint]
+  EXP --> T3[cspell + codespell]
+  EXP --> T4[lychee + markdown-link-check]
+  EXP --> T5[reuse-tool]
+  EXP --> T6[mmdc + plantuml]
+  EXP --> T7[ajv-cli frontmatter]
+  EXP --> T8[Semgrep generic-mode]
+  EXP --> T9[RFC 2119 check]
+  EXP --> T10[adr-tools + log4brains<br/>+ adr-log + adr-manager]
+  EXP --> T11[doctoc + markdown-toc]
+  EXP --> T12[commitlint]
+  EXP --> T13["prose-judge.sh<br/>(semantic moat)"]
+  EXP --> T14[audit-source-citations.sh]
+  T1 --> SA[SARIF aggregator]
+  T2 --> SA
+  T13 --> SA
+  T14 --> SA
+  SA --> V[Verdict]
+```
+
+### Two-phase enforcement — write-time + audit-time
+
+```mermaid
+sequenceDiagram
+  participant Claude
+  participant Pre as PreToolUse (strict)
+  participant Disk
+  participant Post as PostToolUse (pragmatic)
+  participant Disp as composite/dispatch.sh
+  participant Tools
+  participant Audit as enforce-standards.sh
+
+  Claude->>Pre: proposes Write
+  Pre->>Disp: run engine on proposed content
+  Disp->>Tools: dispatch
+  Tools-->>Disp: SARIF
+  alt violation
+    Pre-->>Claude: block - never on disk
+  else clean
+    Pre-->>Disk: write proceeds
+    Disk->>Post: PostToolUse fires
+    Post->>Disp: run engine
+    Disp->>Tools: dispatch
+    Tools-->>Post: SARIF
+    Post-->>Claude: inline violations
+  end
+  Note over Audit: At /audit time
+  Audit->>Disp: drive across app_root
+  Tools-->>Audit: aggregated SARIF
+```
+
+---
+
 ## Decision
 
 Eight numbered decisions (D-1..D-8) implementing the composite engine, the 4-axis vocabulary, and the architectural-content enforcement bundle. Each defines a contract or component. Implementation is itemized in §"Implementation CLs".
