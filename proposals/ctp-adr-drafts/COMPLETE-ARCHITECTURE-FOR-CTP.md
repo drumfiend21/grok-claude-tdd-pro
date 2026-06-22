@@ -27,12 +27,12 @@ The two ADRs share a contract: **CTP-ADR-NNNN+1 outputs rules that CTP-ADR-NNNN'
 When fetching any GCTP file, use this commit for reproducibility. Replace `main` in raw URLs with the hash below.
 
 ```
-Pinned: a1efe2c32d993bdd9692d2a84efc7cf907e346ca
+Pinned: f84f5b5a9ae0d76c06491c335cbee00c9fba6b9b
 Date:   2026-06-22
 Author: drumfiend21 + Claude Opus 4.7 (GCTP cloud session)
 ```
 
-Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/a1efe2c32d993bdd9692d2a84efc7cf907e346ca/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit. Subsequent edits live on `main` HEAD with full `git log proposals/` history.
+Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/f84f5b5a9ae0d76c06491c335cbee00c9fba6b9b/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit (includes the Mermaid diagram suite added in this commit). Subsequent edits live on `main` HEAD with full `git log proposals/` history.
 
 ---
 
