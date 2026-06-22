@@ -27,18 +27,23 @@ The two ADRs share a contract: **CTP-ADR-NNNN+1 outputs rules that CTP-ADR-NNNN'
 When fetching any GCTP file, use this commit for reproducibility. Replace `main` in raw URLs with the hash below.
 
 ```
-Pinned: 9b4a366c7cb344ac1edcd3d5dabd94bbbc04fbc3
+Pinned: 31d774872826e777ae7bc3344e20e0c655889619
 Date:   2026-06-22
 Author: drumfiend21 + Claude Opus 4.7 (GCTP cloud session)
+Status: PRODUCTION-READY (per Appendix BO checklist in CTP-ADR-NNNN)
 ```
 
-Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/9b4a366c7cb344ac1edcd3d5dabd94bbbc04fbc3/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit, which includes:
+Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/31d774872826e777ae7bc3344e20e0c655889619/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit, which includes:
+
+**Production-ready completeness:**
 - Mermaid diagram suite (8 diagrams)
 - Complete ~115-tool inventory (Appendix A in both CTP-ADRs)
-- CTP-ADR-NNNN Appendices B-AU (47 appendices total): schemas, contracts, runner specs, bundle YAML, routing table, worked runner, startup sequence, empty-state behavior, status advancement, test framework, repo file-tree diff, skills integration, rollback, cache migration, sandbox profiles, concurrency, performance, PII, cost, telemetry, license policy, hot-reload, i18n, timestamps, self-test, bundle naming, output formats, AGPL posture, dogfood, future migrations, plugin handshake, deprecation policy, Open Questions
-- CTP-ADR-NNNN+1 Appendices B-J (10 appendices total): LLM prompt corpus verbatim, extractor strategies, coverage-diff harness, per-CL gates, ADR lifecycle state machine, pipeline-specific cost / PII / i18n addenda, cross-cutting concerns index
+- CTP-ADR-NNNN Appendices A-BO (67 appendices total): schemas, contracts, runner specs, bundle YAML verbatim, full routing table, concrete worked runner (hadolint), startup sequence, empty-state behavior, status advancement, test framework, repo file-tree diff, skills integration, rollback, cache migration, sandbox profiles, concurrency, performance, PII handling, cost reporting, telemetry, license policy, hot-reload, i18n, timestamps, self-test, bundle naming, output formats, AGPL posture, dogfood, future migrations, plugin handshake, deprecation policy, ADR numbering + MADR 4.0 template, CHANGELOG + migration guide content, SARIF profile JSON Schema, pin-bump procedure, backwards-compat fixture corpus, pre-prod / dry-run mode, first-time adoption playbook, multi-bundle composition, tool deprecation lifecycle, engine signal handling, per-environment severity overrides, self-updating tools policy, network failure recovery, skill version coordination, GDPR/CCPA/HIPAA/PCI/FedRAMP privacy audit, vendor-neutrality + mirror SLA, documentation versioning, cross-org standard versioning, LLM-tier eval + drift detection, production-readiness checklist
+- CTP-ADR-NNNN+1 Appendices A-J (10 appendices total)
 - Non-goals section + boundary discipline (cover doc §6, §6.5)
 - Paired GCTP-side ADRs: `docs/adr/0068-gctp-side-composite-engine-wiring.md` + `docs/adr/0069-gctp-side-auto-classification-pipeline-wiring.md`
+
+**Total: 77 appendices across the two CTP ADRs + 2 paired GCTP ADRs.** The CTP development session can fetch this pin and execute Waves 0-3 without further design work. Sign-off and GA criteria are explicit in Appendix BO §§ BO.9 + BO.10.
 
 Subsequent edits live on `main` HEAD with full `git log proposals/ docs/adr/` history.
 
@@ -434,11 +439,11 @@ yamllint (GPL-3.0) • ajv-cli — JSON Schema (700+ SchemaStore) (MIT) • jq (
 
 ## 5.19 Appendix index — the two CTP ADRs together cover this
 
-**CTP-ADR-NNNN appendices:** A (tool inventory) — B (rule schema) — C (runner contract) — D (bundle expansion) — E (path classifier) — F (failure-mode matrix) — G (migration plan) — H (P-8 patch) — I (perf budget) — J (cache spec) — K (observability) — L (versioning) — M (sandboxing) — N (operator overrides) — O (worked example) — P (fixtures) — Q (severity→gate) — R (bundle YAML) — S (routing table) — T (concrete worked runner) — U (startup sequence) — V (empty-state) — W (status advancement) — X (test framework) — Y (repo file-tree diff) — Z (skills integration) — AA (rollback) — AB (cache migration) — AC (sandbox profile content) — AD (concurrency) — AE (degraded perf) — AF (PII / sensitive data) — AG (cost reporting) — AH (telemetry posture) — AI (license policy) — AJ (hot-reload) — AK (i18n) — AL (RFC 3339 timestamps) — AM (engine self-test) — AN (bundle naming) — AO (output formats) — AP (AGPL legal posture) — AQ (CTP dogfood) — AR (future schema migrations) — AS (plugin handshake) — AT (deprecation policy) — AU (Open Questions).
+**CTP-ADR-NNNN appendices (67):** A (tool inventory) — B (rule schema) — C (runner contract) — D (bundle expansion) — E (path classifier) — F (failure-mode matrix) — G (migration plan) — H (P-8 patch) — I (perf budget) — J (cache spec) — K (observability) — L (versioning) — M (sandboxing) — N (operator overrides) — O (worked example) — P (fixtures) — Q (severity→gate) — R (bundle YAML verbatim) — S (full routing table) — T (concrete worked runner: hadolint) — U (startup sequence) — V (empty-state) — W (status advancement) — X (test framework) — Y (repo file-tree diff) — Z (skills integration) — AA (rollback) — AB (cache migration) — AC (sandbox profile content) — AD (concurrency) — AE (degraded perf) — AF (PII / sensitive data) — AG (cost reporting) — AH (telemetry posture) — AI (license policy) — AJ (hot-reload) — AK (i18n) — AL (RFC 3339 timestamps) — AM (engine self-test) — AN (bundle naming) — AO (output formats) — AP (AGPL legal posture) — AQ (CTP dogfood) — AR (future schema migrations) — AS (plugin handshake) — AT (deprecation policy) — AU (Open Questions) — **AV** (ADR numbering + MADR 4.0 template) — **AW** (CHANGELOG + migration guide content) — **AX** (SARIF profile / subset) — **AY** (pin-bump procedure) — **AZ** (backwards-compat fixture corpus) — **BA** (pre-prod / dry-run mode) — **BB** (first-time adoption playbook) — **BC** (multi-bundle composition rules) — **BD** (tool deprecation / supersession protocol) — **BE** (engine signal handling) — **BF** (per-environment severity overrides) — **BG** (self-updating tools policy) — **BH** (network / partial-tool failure) — **BI** (skills ↔ engine version coordination) — **BJ** (privacy-by-design audit: GDPR/CCPA/HIPAA/PCI/FedRAMP) — **BK** (vendor-neutrality + mirror SLA) — **BL** (documentation versioning strategy) — **BM** (cross-organization standard versioning) — **BN** (LLM-tier eval / drift detection) — **BO** (production-readiness checklist + sign-off criteria).
 
-**CTP-ADR-NNNN+1 appendices:** A (tool inventory mirror) — B (LLM prompt corpus verbatim) — C (extractor strategies per doc shape) — D (coverage-diff harness) — E (per-CL acceptance gates) — F (ADR lifecycle state machine) — G (pipeline cost reporting addendum) — H (pipeline PII handling) — I (pipeline i18n addendum) — J (cross-cutting concerns ↔ CTP-ADR-NNNN index).
+**CTP-ADR-NNNN+1 appendices (10):** A (tool inventory mirror) — B (LLM prompt corpus verbatim) — C (extractor strategies per doc shape) — D (coverage-diff harness) — E (per-CL acceptance gates) — F (ADR lifecycle state machine) — G (pipeline cost reporting addendum) — H (pipeline PII handling) — I (pipeline i18n addendum) — J (cross-cutting concerns ↔ CTP-ADR-NNNN index).
 
-47 + 10 = 57 appendices total across the two ADRs. Most pipeline-specific concerns are short addenda to the corresponding CTP-ADR-NNNN appendix; cross-references are explicit.
+**67 + 10 = 77 appendices total** across the two ADRs. The CTP development session has everything needed to execute Waves 0-3 + auto-classification + cross-cutting concerns. **Appendix BO is the production-readiness checklist** — the single document the CTP author walks through to verify completion before declaring GA.
 
 ---
 
