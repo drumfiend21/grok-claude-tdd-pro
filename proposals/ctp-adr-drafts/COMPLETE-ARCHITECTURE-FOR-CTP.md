@@ -27,16 +27,16 @@ The two ADRs share a contract: **CTP-ADR-NNNN+1 outputs rules that CTP-ADR-NNNN'
 When fetching any GCTP file, use this commit for reproducibility. Replace `main` in raw URLs with the hash below.
 
 ```
-Pinned: e44f484f0034b2cd86eb7193a78325fc87120417
+Pinned: 9b4a366c7cb344ac1edcd3d5dabd94bbbc04fbc3
 Date:   2026-06-22
 Author: drumfiend21 + Claude Opus 4.7 (GCTP cloud session)
 ```
 
-Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/e44f484f0034b2cd86eb7193a78325fc87120417/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit, which includes:
+Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/9b4a366c7cb344ac1edcd3d5dabd94bbbc04fbc3/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit, which includes:
 - Mermaid diagram suite (8 diagrams)
 - Complete ~115-tool inventory (Appendix A in both CTP-ADRs)
-- CTP-ADR-NNNN Appendices B-P: schemas, runner contract, bundle expansion, path classifier, failure-mode matrix, migration plan, P-8 patch, perf/cost budget, cache, observability, versioning, sandboxing, operator overrides, worked example, fixture commitments
-- CTP-ADR-NNNN+1 Appendices B-F: LLM prompt corpus verbatim, extractor strategies, coverage-diff harness, per-CL acceptance gates, ADR lifecycle state machine
+- CTP-ADR-NNNN Appendices B-AU (47 appendices total): schemas, contracts, runner specs, bundle YAML, routing table, worked runner, startup sequence, empty-state behavior, status advancement, test framework, repo file-tree diff, skills integration, rollback, cache migration, sandbox profiles, concurrency, performance, PII, cost, telemetry, license policy, hot-reload, i18n, timestamps, self-test, bundle naming, output formats, AGPL posture, dogfood, future migrations, plugin handshake, deprecation policy, Open Questions
+- CTP-ADR-NNNN+1 Appendices B-J (10 appendices total): LLM prompt corpus verbatim, extractor strategies, coverage-diff harness, per-CL gates, ADR lifecycle state machine, pipeline-specific cost / PII / i18n addenda, cross-cutting concerns index
 - Non-goals section + boundary discipline (cover doc §6, §6.5)
 - Paired GCTP-side ADRs: `docs/adr/0068-gctp-side-composite-engine-wiring.md` + `docs/adr/0069-gctp-side-auto-classification-pipeline-wiring.md`
 
