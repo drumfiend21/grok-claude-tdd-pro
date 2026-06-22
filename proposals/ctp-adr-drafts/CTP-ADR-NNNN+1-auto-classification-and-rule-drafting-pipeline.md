@@ -308,4 +308,179 @@ GCTP repo: `https://github.com/drumfiend21/grok-claude-tdd-pro` — branch `main
 
 ---
 
+---
+
+## Appendix A — Complete tool inventory the pipeline targets
+
+The auto-classification pipeline routes drafted rules into the FOSS tools enumerated in **CTP-ADR-NNNN Appendix A** (the composite engine's complete ~115-tool inventory across 27 categories). That appendix is the single source of truth; this ADR consumes it.
+
+For convenience when this ADR is read standalone, the same inventory is reproduced below verbatim. If both ADRs land in the same CTP commit, the CTP author MAY collapse this appendix into a `See CTP-ADR-NNNN Appendix A` cross-reference; if they land separately, this duplication ensures the pipeline ADR is self-contained.
+
+### A.1 Universal tier (cross-language, fires on everything)
+
+**SAST**
+- Semgrep (community) — LGPL-2.1 engine / Apache-2.0 rules — ~30 languages, ~5000 community rules: OWASP/CWE/MITRE/SANS/JWT BCP
+
+**SCA / CVE**
+- Trivy — Apache-2.0 — CVE + secrets + IaC misconfig + SBOM (CycloneDX + SPDX)
+- OSV-Scanner (Google, against OSV.dev) — Apache-2.0
+- syft (Anchore SBOM gen) — Apache-2.0
+- grype (Anchore vuln scanner) — Apache-2.0
+- dependency-check (OWASP) — Apache-2.0
+
+**Secrets**
+- gitleaks — MIT
+- detect-secrets (Yelp) — Apache-2.0
+- trufflehog — AGPL-3.0 — live-credential verification beyond pattern match
+
+**Policy / Rego**
+- conftest — Apache-2.0 — Rego over YAML/JSON/TOML/HCL/Dockerfile/Cue
+- OPA (Open Policy Agent) — Apache-2.0
+- regal (Rego linter) — Apache-2.0
+- kyverno + kyverno-cli — Apache-2.0 — K8s-native policy engine
+
+**Supply-chain / Provenance**
+- OpenSSF Scorecard — Apache-2.0
+- cosign — Apache-2.0
+- slsa-verifier — Apache-2.0
+- in-toto — Apache-2.0
+- slsa-github-generator — Apache-2.0
+
+**SARIF**
+- SARIF 2.1.0 (OASIS) — the universal output bus
+- `sarif-aggregate.sh` (GCTP-shipped, mirrored to CTP) — Apache-2.0
+
+### A.2 JavaScript / TypeScript
+
+- ESLint — MIT
+- `gts` (Google TS style) — Apache-2.0
+- `@typescript-eslint` — MIT
+- `@microsoft/eslint-plugin-sdl` — MIT
+- `eslint-plugin-n` (Node) — MIT
+- `eslint-plugin-react` — MIT
+- `eslint-config-next` — MIT
+- `eslint-plugin-jsx-a11y` — MIT
+- `@angular-eslint/eslint-plugin` — MIT
+- `eslint-plugin-security` — Apache-2.0
+- Biome (Rust-based fast linter+formatter) — MIT
+- oxlint — MIT
+- Prettier — MIT
+
+### A.3 CSS
+
+- stylelint — MIT
+- `stylelint-config-recommended-scss` — MIT
+- `stylelint-config-recommended-less` — MIT
+- `stylelint-config-tailwindcss` — MIT
+- `stylelint-config-standard` — MIT
+
+### A.4 HTML
+
+- htmlhint — MIT
+- html-validate — MIT
+
+### A.5 Accessibility (WCAG 2.2)
+
+- axe-core — MPL-2.0
+- pa11y — MIT
+- pa11y-ci — MIT
+
+### A.6 Web Vitals
+
+- Lighthouse — Apache-2.0
+- lighthouse-ci — Apache-2.0
+
+### A.7 IaC (general)
+
+- Checkov (1000+ policies; NIST 800-53 / FedRAMP / SOC2 / PCI / HIPAA / CIS mappings) — Apache-2.0
+- tfsec — MIT
+- terrascan — Apache-2.0
+- tflint — MPL-2.0
+
+### A.8 Kubernetes
+
+- Kubescape (260+ controls: NSA-CISA + CIS + MITRE ATT&CK + NIST SSDF + FedRAMP) — Apache-2.0
+- kube-linter — Apache-2.0
+- kubeconform — Apache-2.0
+- polaris — Apache-2.0
+- kyverno + kyverno-cli — Apache-2.0
+
+### A.9 OpenAPI / AsyncAPI
+
+- Spectral + `@stoplight/spectral-owasp-ruleset` — Apache-2.0
+- vacuum — Apache-2.0
+- redocly-cli — MIT
+
+### A.10 GitHub Actions
+
+- zizmor — Apache-2.0
+- actionlint — MIT
+- pinact — MIT
+
+### A.11 Dockerfile
+
+- hadolint — GPL-3.0
+
+### A.12 YAML / JSON / Schema
+
+- yamllint — GPL-3.0
+- ajv-cli — MIT
+- jq — MIT
+
+### A.13 Language-specific
+
+**Rust:** rustfmt, clippy, cargo-audit, cargo-deny — Apache-2.0/MIT
+**Go:** golangci-lint, govulncheck, gosec, staticcheck — MIT/BSD/Apache-2.0/MIT
+**Python:** ruff, bandit, mypy, pip-audit — MIT/Apache-2.0/MIT/Apache-2.0
+**Java/JVM:** Spotless, ErrorProne, SpotBugs, PMD — Apache-2.0/Apache-2.0/LGPL/BSD
+**Kotlin:** ktlint, Detekt — MIT/Apache-2.0
+**Swift:** SwiftLint, SwiftFormat — MIT/MIT
+**C#/.NET:** Roslyn analyzers, SonarAnalyzer.CSharp, SecurityCodeScan — MIT/LGPL/LGPL
+**Ruby:** RuboCop, brakeman, bundler-audit — MIT
+**Elixir:** credo, dialyxir, sobelow — MIT/Apache-2.0/Apache-2.0
+**Scala:** Scalafix, Scalafmt, scapegoat — BSD/Apache-2.0/BSD
+**PHP:** PHPStan, psalm, phpcs-security-audit — MIT/MIT/Apache-2.0
+**Solidity:** Slither, solhint, Mythril — AGPL-3.0/MIT/MIT
+**Shell:** ShellCheck, shfmt — GPL-3.0/BSD
+**SQL:** SQLFluff, sqlfmt, sqlcheck — MIT/Apache-2.0/Apache-2.0
+**GraphQL:** graphql-eslint, graphql-schema-linter — MIT
+**Protobuf:** buf lint, protolint — Apache-2.0/MIT
+
+### A.14 Architectural-content bundle (fires on every ADR / design doc / RFC)
+
+**Markdown structural:** markdownlint-cli2 (MIT), remark-lint + presets (MIT)
+**Prose style packs:** Vale engine (MIT) + Google (CC-BY), Microsoft (CC-BY-4.0), write-good (MIT), proselint (BSD)
+**Inclusive language:** alex (MIT) standalone + alex (MIT) Vale pack
+**Additional prose CLIs:** textlint + rule plugins (MIT), write-good standalone (MIT), mdformat (MIT), vale-ls (MIT)
+**Spelling:** cspell (MIT), codespell (GPL-2.0)
+**Link integrity:** lychee (Apache-2.0/MIT), markdown-link-check (MIT)
+**License headers:** reuse-tool (GPL-3.0) — REUSE 3.3 / SPDX (FSFE)
+**Diagram validation:** mmdc (MIT), plantuml (GPL)
+**Frontmatter schema:** ajv-cli (MIT) against MADR / arc42 / RFC schemas
+**Token-pattern checks:** Semgrep generic-mode rules
+**RFC 2119 discipline:** custom Vale rule or Semgrep pattern (BCP 14 invocation)
+**ADR lifecycle:** adr-tools (MIT, Nat Pryce), log4brains (Apache-2.0), adr-log (Apache-2.0), adr-manager (Apache-2.0)
+**TOC integrity:** doctoc (MIT), markdown-toc (MIT), markdown-it-toc-done-right (MIT)
+**Commit message hygiene:** commitlint + `@commitlint/config-conventional` (MIT)
+**Inline-table validation:** markdown-table-formatter (MIT), prettier (MIT)
+**Kata / competition rendering:** `gh markdown-render` (MIT), markdownlint-cli2 `--fix` dry-run (MIT)
+**Semantic moat (CTP-owned):** `prose-judge.sh`
+**Citation integrity (CTP-owned):** `audit-source-citations.sh`
+
+### A.15 Industry-standard naming registries (mirrored under `vendor/canonical-vocabulary/`)
+
+- GitHub Linguist (`aliases[0]` for ~700 languages) — MIT
+- IaC-scanner consensus (Checkov + Trivy + Kubescape) — Apache-2.0
+- PURL spec (`pkg:<ecosystem>/<name>`) — MIT
+- Kubernetes GVK (`apps/v1/Deployment`-style) — Apache-2.0
+
+### A.16 Counts + license summary
+
+- **Total distinct tools/libs/packs/registries:** ~115
+- **Distinct categories:** 27
+- **License distribution:** MIT 55% / Apache-2.0 25% / BSD 5% / MPL 2% / GPL/AGPL 8% / LGPL 3% / CC-BY 2%
+- **GPL/AGPL tools** (all CLI-only — no derivative-work concern): hadolint, ShellCheck, codespell, reuse-tool, plantuml, Slither, trufflehog, yamllint
+
+---
+
 End of CTP-ADR-NNNN+1 draft. Land in `claude-tdd-pro/docs/adr/` at the next available number (paired with CTP-ADR-NNNN). On landing, close `proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md` as adopted, and pin-bump in GCTP to mark the auto-classification pipeline live.

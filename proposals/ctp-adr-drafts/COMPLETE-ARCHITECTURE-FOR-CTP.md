@@ -286,73 +286,138 @@ If you read nothing else, read this:
 
 ---
 
-## 5. Tools we use — complete inventory (single source of truth for the CTP ADR landing PRs)
+## 5. Tools we use — complete inventory (single source of truth)
 
-Below is the **complete** list of every FOSS tool the composite engine + architectural-content bundle dispatches. Use this as the checklist when shipping per-tool runner wrappers under `composite/runners/<tool>/runner.sh`.
+This is the canonical, complete list. The two CTP-ADR drafts duplicate it as Appendix A (CTP-ADR-NNNN is authoritative; CTP-ADR-NNNN+1 reproduces for portability). Use as the checklist for `composite/runners/<tool>/runner.sh`.
+
+**Totals:** ~115 distinct tools / libs / packs / registries across 27 categories. License posture: ~80% permissive (MIT / Apache-2.0 / BSD); 8% GPL/AGPL — all CLI-only (no derivative-work concern).
 
 ### 5.1 Universal tier (cross-language, fires on everything)
 
-- **SAST:** Semgrep community
-- **SCA / CVE:** Trivy, OSV-Scanner, syft + grype
-- **Secrets:** gitleaks, detect-secrets, trufflehog
-- **Policy:** conftest, OPA, regal
-- **Supply chain:** OpenSSF Scorecard, cosign, slsa-verifier, in-toto, slsa-github-generator
+**SAST:** Semgrep community (LGPL-2.1 engine / Apache-2.0 rules; ~30 languages, ~5000 community rules including OWASP / CWE / MITRE / SANS / JWT BCP)
 
-### 5.2 Language-specific tier
+**SCA / CVE:** Trivy (Apache-2.0) • OSV-Scanner / Google (Apache-2.0) • syft / Anchore SBOM (Apache-2.0) • grype / Anchore vuln (Apache-2.0) • dependency-check / OWASP (Apache-2.0)
 
-- **JS/TS:** ESLint + `gts` + `@typescript-eslint` + `@microsoft/eslint-plugin-sdl` + `eslint-plugin-n` + `eslint-plugin-react` + `eslint-config-next` + `eslint-plugin-jsx-a11y` + `@angular-eslint/eslint-plugin` + `eslint-plugin-security`; Biome; oxlint; Prettier
-- **CSS:** stylelint + `stylelint-config-recommended-scss` + `stylelint-config-recommended-less` + `stylelint-config-tailwindcss` + `stylelint-config-standard`
-- **HTML:** htmlhint, html-validate
-- **Accessibility:** axe-core, pa11y, pa11y-ci
-- **Web Vitals:** Lighthouse, lighthouse-ci
-- **Rust:** rustfmt, clippy, cargo-audit, cargo-deny
-- **Go:** golangci-lint, govulncheck, gosec
-- **Python:** ruff, bandit, mypy, pip-audit
-- **Java:** Spotless, ErrorProne, SpotBugs, PMD, dependency-check
-- **Kotlin:** ktlint, Detekt
-- **Swift:** SwiftLint, SwiftFormat
-- **C#:** Roslyn analyzers, SonarAnalyzer.CSharp, SecurityCodeScan
-- **Ruby:** RuboCop, brakeman, bundler-audit
-- **Elixir:** credo, dialyxir, sobelow
-- **Scala:** Scalafix, Scalafmt, scapegoat
-- **PHP:** PHPStan, psalm, phpcs-security-audit
-- **Solidity:** Slither, solhint, Mythril
-- **Shell:** ShellCheck, shfmt
-- **SQL:** SQLFluff, sqlfmt, sqlcheck
-- **GraphQL:** graphql-eslint, graphql-schema-linter
-- **Protobuf:** buf lint, protolint
+**Secrets:** gitleaks (MIT) • detect-secrets / Yelp (Apache-2.0) • trufflehog — live-credential verification (AGPL-3.0)
 
-### 5.3 IaC + structured-config tier
+**Policy / Rego:** conftest (Apache-2.0) • OPA / Open Policy Agent (Apache-2.0) • regal — Rego linter (Apache-2.0) • kyverno + kyverno-cli — K8s-native policy engine (Apache-2.0)
 
-- **General IaC:** Checkov, tfsec, terrascan, tflint
-- **Kubernetes:** Kubescape, kube-linter, kubeconform, polaris, kyverno + kyverno-cli
-- **OpenAPI:** Spectral + `@stoplight/spectral-owasp-ruleset`, vacuum, redocly-cli
-- **GitHub Actions:** zizmor, actionlint, pinact
-- **Dockerfile:** hadolint
-- **YAML:** yamllint
-- **JSON:** ajv-cli, jq
+**Supply-chain / Provenance:** OpenSSF Scorecard (Apache-2.0) • cosign (Apache-2.0) • slsa-verifier (Apache-2.0) • in-toto (Apache-2.0) • slsa-github-generator (Apache-2.0)
 
-### 5.4 Architectural-content bundle (fires on every ADR/design doc/RFC)
+**SARIF:** SARIF 2.1.0 / OASIS — universal output bus • `sarif-aggregate.sh` — GCTP-shipped, mirrored to CTP (Apache-2.0)
 
-- **Markdown structural:** markdownlint-cli2, remark-lint
-- **Prose style — corporate:** Vale + `errata-ai/Google` + `vale-cli/Microsoft` packs
-- **Prose style — general:** Vale + `errata-ai/write-good` + `errata-ai/proselint`
-- **Inclusive language:** Vale + `errata-ai/alex`; alex (standalone CLI)
-- **Additional prose CLIs:** textlint + `textlint-rule-no-todo` + `textlint-rule-common-misspellings` + `textlint-rule-max-number-of-lines`; write-good (standalone); mdformat (Python); vale-ls (language server)
-- **Spelling:** cspell (code-aware), codespell (dictionary)
-- **Links:** lychee, markdown-link-check
-- **License headers:** reuse-tool (REUSE 3.3 / SPDX)
-- **Diagram validation:** mmdc (mermaid-cli), plantuml
-- **Frontmatter schema:** ajv-cli against MADR / arc42 / RFC schemas
-- **Token-pattern checks:** Semgrep generic-mode rules under `composite/rulesets/semgrep/architectural-content/*.yml`
-- **RFC 2119 keyword discipline:** custom Vale rule or Semgrep pattern (BCP 14 invocation sentence presence)
-- **ADR lifecycle:** adr-tools (Nat Pryce), log4brains, adr-log, adr-manager
-- **TOC integrity:** doctoc, markdown-toc, markdown-it-toc-done-right
-- **Commit message hygiene:** commitlint + `@commitlint/config-conventional`
-- **Inline-table validation:** markdown-table-formatter, prettier (markdown parser)
-- **Kata/competition rendering:** gh markdown-render, markdownlint-cli2 `--fix` (dry-run)
-- **Semantic moat (CTP-owned):** **prose-judge.sh** (LLM-judge tier — projects every `applies_to_prose: true` rule onto the prose)
-- **Citation integrity (CTP-owned):** audit-source-citations.sh (every cited standard traces to an `active.json` provenance entry)
+### 5.2 JavaScript / TypeScript
+
+ESLint (MIT) + plugin family: `gts` / Google TS style (Apache-2.0) • `@typescript-eslint` (MIT) • `@microsoft/eslint-plugin-sdl` (MIT) • `eslint-plugin-n` / Node (MIT) • `eslint-plugin-react` (MIT) • `eslint-config-next` (MIT) • `eslint-plugin-jsx-a11y` (MIT) • `@angular-eslint/eslint-plugin` (MIT) • `eslint-plugin-security` (Apache-2.0); Biome — Rust-based fast (MIT) • oxlint (MIT) • Prettier (MIT)
+
+### 5.3 CSS
+
+stylelint (MIT) + configs: SCSS / Less / Tailwind / Standard (all MIT)
+
+### 5.4 HTML
+
+htmlhint (MIT) • html-validate (MIT)
+
+### 5.5 Accessibility (WCAG 2.2)
+
+axe-core (MPL-2.0) • pa11y (MIT) • pa11y-ci (MIT)
+
+### 5.6 Web Vitals
+
+Lighthouse (Apache-2.0) • lighthouse-ci (Apache-2.0) — LCP / CLS / INP, PWA, SEO, performance budgets
+
+### 5.7 IaC (general)
+
+Checkov — 1000+ policies with NIST 800-53 / FedRAMP / SOC2 / PCI / HIPAA / CIS mappings (Apache-2.0) • tfsec (MIT) • terrascan (Apache-2.0) • tflint (MPL-2.0)
+
+### 5.8 Kubernetes
+
+Kubescape — 260+ controls / NSA-CISA + CIS + MITRE ATT&CK + NIST SSDF + FedRAMP (Apache-2.0) • kube-linter (Apache-2.0) • kubeconform — schema validation (Apache-2.0) • polaris (Apache-2.0) • kyverno + kyverno-cli (Apache-2.0)
+
+### 5.9 OpenAPI / AsyncAPI
+
+Spectral + `@stoplight/spectral-owasp-ruleset` (Apache-2.0) • vacuum — fast Go alt (Apache-2.0) • redocly-cli (MIT)
+
+### 5.10 GitHub Actions
+
+zizmor (Apache-2.0) • actionlint (MIT) • pinact — SHA pinning (MIT)
+
+### 5.11 Dockerfile
+
+hadolint (GPL-3.0)
+
+### 5.12 YAML / JSON / Schema
+
+yamllint (GPL-3.0) • ajv-cli — JSON Schema (700+ SchemaStore) (MIT) • jq (MIT)
+
+### 5.13 Language-specific
+
+**Rust:** rustfmt, clippy, cargo-audit, cargo-deny (Apache-2.0 / MIT)
+**Go:** golangci-lint — wraps ~50 linters (MIT) • govulncheck (BSD) • gosec (Apache-2.0) • staticcheck (MIT)
+**Python:** ruff (MIT) • bandit (Apache-2.0) • mypy (MIT) • pip-audit (Apache-2.0)
+**Java / JVM:** Spotless (Apache-2.0) • ErrorProne (Apache-2.0) • SpotBugs (LGPL) • PMD (BSD)
+**Kotlin:** ktlint (MIT) • Detekt (Apache-2.0)
+**Swift:** SwiftLint (MIT) • SwiftFormat (MIT)
+**C# / .NET:** Roslyn analyzers (MIT) • SonarAnalyzer.CSharp (LGPL) • SecurityCodeScan (LGPL)
+**Ruby:** RuboCop, brakeman, bundler-audit (MIT)
+**Elixir:** credo (MIT) • dialyxir (Apache-2.0) • sobelow (Apache-2.0)
+**Scala:** Scalafix (BSD) • Scalafmt (Apache-2.0) • scapegoat (BSD)
+**PHP:** PHPStan (MIT) • psalm (MIT) • phpcs-security-audit (Apache-2.0)
+**Solidity:** Slither (AGPL-3.0) • solhint (MIT) • Mythril (MIT)
+**Shell:** ShellCheck (GPL-3.0) • shfmt (BSD)
+**SQL:** SQLFluff (MIT) • sqlfmt (Apache-2.0) • sqlcheck (Apache-2.0)
+**GraphQL:** graphql-eslint (MIT) • graphql-schema-linter (MIT)
+**Protobuf:** buf lint (Apache-2.0) • protolint (MIT)
+
+### 5.14 Architectural-content bundle (fires on every ADR / design doc / RFC)
+
+**Markdown structural:** markdownlint-cli2 (MIT) — MD001..MD060 • remark-lint + `remark-preset-lint-recommended` + `remark-preset-lint-markdown-style-guide` (MIT)
+
+**Prose style packs:** Vale engine (MIT) + `errata-ai/Google` (CC-BY) + `vale-cli/Microsoft` (CC-BY-4.0) + `errata-ai/write-good` (MIT) + `errata-ai/proselint` (BSD)
+
+**Inclusive language:** `errata-ai/alex` Vale pack (MIT) + `alex` standalone CLI (MIT)
+
+**Additional prose CLIs:** textlint + rule plugins (MIT) • write-good standalone (MIT) • mdformat / Python (MIT) • vale-ls / LSP (MIT)
+
+**Spelling:** cspell (MIT) — code-aware • codespell (GPL-2.0) — dictionary
+
+**Link integrity:** lychee (Apache-2.0 / MIT) • markdown-link-check (MIT)
+
+**License headers:** reuse-tool (GPL-3.0) — REUSE 3.3 / SPDX (FSFE)
+
+**Diagram validation:** mmdc / mermaid-cli (MIT) — validates `mermaid` fenced blocks (C4, sequence, flowchart) • plantuml (GPL)
+
+**Frontmatter schema:** ajv-cli (MIT) against MADR / arc42 / RFC schemas
+
+**Token-pattern checks in prose:** Semgrep generic-mode rules under `composite/rulesets/semgrep/architectural-content/*.yml`
+
+**RFC 2119 keyword discipline:** custom Vale rule or Semgrep pattern — checks BCP 14 invocation sentence presence
+
+**ADR lifecycle:** adr-tools / Nat Pryce (MIT) • log4brains (Apache-2.0) • adr-log (Apache-2.0) • adr-manager (Apache-2.0)
+
+**TOC integrity:** doctoc (MIT) • markdown-toc (MIT) • markdown-it-toc-done-right (MIT)
+
+**Commit message hygiene:** commitlint + `@commitlint/config-conventional` (MIT) — ADR ID → commit → PR traceability
+
+**Inline-table validation:** markdown-table-formatter (MIT) • prettier markdown parser (MIT)
+
+**Kata / competition rendering:** `gh markdown-render` (MIT) • markdownlint-cli2 `--fix` dry-run (MIT)
+
+**Semantic moat (CTP-owned, no FOSS equivalent):** `prose-judge.sh` — LLM-judge tier; projects every `applies_to_prose: true` rule onto prose
+
+**Citation integrity (CTP-owned):** `audit-source-citations.sh` — every cited standard traces to `active.json` provenance
+
+### 5.15 Industry-standard naming registries (mirrored under `vendor/canonical-vocabulary/`)
+
+- GitHub Linguist `aliases[0]` (MIT) — ~700 languages
+- IaC-scanner consensus (Apache-2.0) — Checkov + Trivy + Kubescape converge: kubernetes, terraform, dockerfile, openapi, helm, github_actions, cloudformation, compose, ansible, bicep, arm, kustomize, argo_workflows, etc.
+- PURL spec (MIT) — `pkg:<ecosystem>/<name>`
+- Kubernetes GVK (Apache-2.0) — `apps/v1/Deployment`-style identifiers
+
+### 5.16 License summary
+
+- MIT 55% • Apache-2.0 25% • BSD 5% • MPL 2% • GPL/AGPL 8% • LGPL 3% • CC-BY 2%
+- **GPL/AGPL tools** (all CLI-only — no derivative-work concern): hadolint, ShellCheck, codespell, reuse-tool, plantuml, Slither, trufflehog, yamllint
 
 ---
 
