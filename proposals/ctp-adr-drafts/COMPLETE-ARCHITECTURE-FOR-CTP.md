@@ -27,10 +27,12 @@ The two ADRs share a contract: **CTP-ADR-NNNN+1 outputs rules that CTP-ADR-NNNN'
 When fetching any GCTP file, use this commit for reproducibility. Replace `main` in raw URLs with the hash below.
 
 ```
-Pinned: <to be filled in by GCTP author at handoff time; use `git rev-parse HEAD` on main>
+Pinned: a1efe2c32d993bdd9692d2a84efc7cf907e346ca
+Date:   2026-06-22
+Author: drumfiend21 + Claude Opus 4.7 (GCTP cloud session)
 ```
 
-If `<to be filled in>` reads literally, fall back to `main` — the GCTP author has not pinned. Records of every PROPOSAL/ADR edit are in `git log proposals/`.
+Use this hash in place of `main` in every raw URL below for reproducibility — e.g. `https://raw.githubusercontent.com/drumfiend21/grok-claude-tdd-pro/a1efe2c32d993bdd9692d2a84efc7cf907e346ca/proposals/PROPOSAL-005-composite-engine-4-axis-vocabulary.md`. The handoff package is content-frozen at this commit. Subsequent edits live on `main` HEAD with full `git log proposals/` history.
 
 ---
 
