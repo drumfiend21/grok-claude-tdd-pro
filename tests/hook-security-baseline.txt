@@ -47,6 +47,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-consult.sh:43:trap 'rm -rf 
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:119:rm -f .harness/audit/TICKET-042.manifest.json .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-emit-manifest.sh:174:rm -f .harness/audit/TICKET-042.manifest.regenerated.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-enforce-standards.sh:23:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-add.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-review.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
 S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \

@@ -190,6 +190,54 @@ clear_h
 mkreq T25 '{"applies_to_floor_version":2,"applicable_rules":['"$UNIV"',"g-arch-no-tbd-placeholder","g-ts-noimplicit-any"],"file_scope":{"may_edit":["src/**/*.ts"]}}'
 run_4axis; assert_eq "$?" "0" "W-A marker on + legacy rule (no applies_to.*) not required by 4-axis floor → 0"
 
+# ---------- ADR-0069 W-I: namespaces.yaml validation ----------
+# Test 26: absent namespaces.yaml → vacuous (existing logic unaffected)
+clear_h
+mkreq T26 '{"applicable_rules":['"$UNIV"'],"file_scope":{"may_edit":["x/**"]}}'
+AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active.json" AAR_NAMESPACES="$TMP/nonexistent.yaml" "$SCRIPT" --quiet >/dev/null 2>&1
+assert_eq "$?" "0" "W-I absent namespaces.yaml → vacuous (0)"
+
+# Test 27: valid namespaces.yaml + valid handoff → 0
+cat > "$TMP/ns-good.yaml" <<'YAML'
+sources:
+  - id: google-ts
+    url: https://google.github.io/styleguide/tsguide.html
+    namespace: google
+  - id: owasp-asvs
+    url: https://owasp.org/asvs/
+    namespace: owasp
+YAML
+clear_h
+mkreq T27 '{"applicable_rules":['"$UNIV"'],"file_scope":{"may_edit":["x/**"]}}'
+AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active.json" AAR_NAMESPACES="$TMP/ns-good.yaml" "$SCRIPT" --quiet >/dev/null 2>&1
+assert_eq "$?" "0" "W-I valid namespaces.yaml → 0"
+
+# Test 28: malformed namespaces.yaml (missing url) → exit 1
+cat > "$TMP/ns-bad-url.yaml" <<'YAML'
+sources:
+  - id: missing-url-source
+    namespace: foo
+YAML
+clear_h
+AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active.json" AAR_NAMESPACES="$TMP/ns-bad-url.yaml" "$SCRIPT" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-I malformed namespaces.yaml (missing url) → 1"
+
+# Test 29: malformed namespaces.yaml (missing namespace) → exit 1
+cat > "$TMP/ns-bad-ns.yaml" <<'YAML'
+sources:
+  - id: missing-ns-source
+    url: https://example.com
+YAML
+clear_h
+AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active.json" AAR_NAMESPACES="$TMP/ns-bad-ns.yaml" "$SCRIPT" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-I malformed namespaces.yaml (missing namespace) → 1"
+
+# Test 30: malformed namespaces.yaml (no sources: block) → exit 1
+printf 'not-sources:\n  foo: bar\n' > "$TMP/ns-no-block.yaml"
+clear_h
+AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active.json" AAR_NAMESPACES="$TMP/ns-no-block.yaml" "$SCRIPT" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-I malformed namespaces.yaml (no sources: block) → 1"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-applicable-rules] OK — $passes/$total passed."; exit 0
 else log "[test-applicable-rules] FAIL — $failures/$total."; exit 1; fi

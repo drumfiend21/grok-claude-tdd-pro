@@ -59,16 +59,26 @@
 #   scripts/audit-applicable-rules.sh           # human-readable
 #   scripts/audit-applicable-rules.sh --quiet   # exit code only
 #
+# ADR-0069 W-I — namespaces.yaml validation (auto-classification pipeline gate):
+# When `.harness/operator-standards/namespaces.yaml` exists, this audit ALSO validates
+# it conforms to the minimal schema CTP-ADR-0009 / ADR-0069 D-A requires (sources:[]
+# with id + url + namespace per entry). Malformed shape = exit 1; missing file =
+# vacuous (operator hasn't started using the auto-classification pipeline yet).
+# Per ADR-0069: declared-source-only ingest — `gctp standards add` rejects
+# undeclared URLs before any LLM cost. This audit is the back-stop.
+#
 # Env overrides (testability):
 #   AAR_HANDOFFS_DIR  default .harness/handoffs
 #   AAR_ACTIVE        default .harness/rules/active.json
+#   AAR_NAMESPACES    default .harness/operator-standards/namespaces.yaml (W-I)
 #
 # Exit codes:
-#   0  every gated ticket carries the universal + language floors (incl. vacuous)
-#   1  one or more tickets under-scope a floor
+#   0  every gated ticket carries the universal + language floors (incl. vacuous);
+#      namespaces.yaml (if present) is well-formed
+#   1  one or more tickets under-scope a floor, OR namespaces.yaml is malformed
 #   2  error (bad invocation / node missing when a req is present)
 #
-# Portability: bash 3.2 + BSD coreutils; node used only when a req is present.
+# Portability: bash 3.2 + BSD coreutils; node used only when a req or namespaces.yaml is present.
 
 set -u
 
@@ -85,6 +95,51 @@ emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 
 HANDOFFS_DIR="${AAR_HANDOFFS_DIR:-.harness/handoffs}"
 ACTIVE="${AAR_ACTIVE:-.harness/rules/active.json}"
+NAMESPACES="${AAR_NAMESPACES:-.harness/operator-standards/namespaces.yaml}"
+
+# ADR-0069 W-I: validate namespaces.yaml shape if present (vacuous if absent).
+ns_violations=0
+if [ -f "$NAMESPACES" ]; then
+    command -v node >/dev/null 2>&1 || { printf 'audit-applicable-rules.sh: node required for namespaces.yaml validation\n' >&2; exit 2; }
+    ns_check=$(AAR_NS="$NAMESPACES" node -e '
+const fs=require("fs");
+const ns=fs.readFileSync(process.env.AAR_NS,"utf8");
+// Minimal YAML parse: walk "sources:" list, each entry must declare id + url + namespace.
+const lines=ns.split("\n");
+let inSources=false, curEntry=null, entries=[];
+for (const raw of lines) {
+  const l=raw.replace(/#.*$/,"");
+  if (/^sources\s*:\s*$/.test(l)) { inSources=true; continue; }
+  if (inSources) {
+    if (/^\S/.test(l) && l.trim().length > 0 && !/^\s*-/.test(l)) { inSources=false; continue; }
+    const m1=l.match(/^\s*-\s*id\s*:\s*([\w\-.]+)\s*$/);
+    if (m1) { if (curEntry) entries.push(curEntry); curEntry={id:m1[1]}; continue; }
+    if (curEntry) {
+      const mu=l.match(/^\s*url\s*:\s*(.+?)\s*$/);
+      const mn=l.match(/^\s*namespace\s*:\s*(.+?)\s*$/);
+      if (mu) curEntry.url=mu[1];
+      if (mn) curEntry.namespace=mn[1];
+    }
+  }
+}
+if (curEntry) entries.push(curEntry);
+if (!inSources && entries.length === 0) { console.log("ERR|namespaces.yaml: no `sources:` block found (CTP-ADR-0009 minimum schema)"); process.exit(0); }
+for (const e of entries) {
+  if (!e.url) { console.log("ERR|namespaces.yaml: source id="+e.id+" missing url"); }
+  if (!e.namespace) { console.log("ERR|namespaces.yaml: source id="+e.id+" missing namespace"); }
+}
+if (entries.every(e => e.url && e.namespace)) console.log("OK|"+entries.length+" sources declared");
+process.exit(0);
+' 2>&1)
+    if printf '%s' "$ns_check" | grep -q '^ERR|'; then
+        printf '%s\n' "$ns_check" | sed -n 's/^ERR|/  [VIOLATION] /p' | while IFS= read -r l; do emit "$l"; done
+        ns_violations=$(printf '%s\n' "$ns_check" | grep -c '^ERR|')
+        emit ""
+        emit "[applicable-rules] namespaces.yaml malformed — fix before running 'gctp standards add'."
+        exit 1
+    fi
+    [ -n "$ns_check" ] && emit "[applicable-rules] namespaces.yaml: $(printf '%s' "$ns_check" | sed -n 's/^OK|//p')."
+fi
 
 if [ ! -f "$ACTIVE" ]; then
     emit "[applicable-rules] no rule registry at $ACTIVE — vacuous pass (nothing to scope against)."

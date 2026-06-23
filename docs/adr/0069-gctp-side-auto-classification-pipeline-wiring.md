@@ -1,10 +1,14 @@
 # ADR-0069 — GCTP-side auto-classification pipeline wiring
 
-- **Status:** Proposed
-- **Date:** 2026-06-22
+- **Status:** Accepted (2026-06-23 — promoted from Proposed on CL-D wiring landing per ADR-0070)
+- **Date:** 2026-06-22 (drafted) / 2026-06-23 (W-F + W-G + W-I wired; promoted Accepted)
 - **Deciders:** drumfiend21 + Claude Opus 4.7 (GCTP cloud session).
-- **Pairs with:** **CTP-ADR-NNNN+1** (auto-classification + custom-rule drafting pipeline — landing in `claude-tdd-pro/docs/adr/`, source design at `proposals/PROPOSAL-006-auto-classification-and-rule-drafting-pipeline.md`).
-- **Composes on:** ADR-0064/0065 (standards refresh cadence), ADR-0066 (YAML/JSON/MD corpora + prose-as-code), ADR-0067 (pin bump to 39903da), ADR-0068 (this ADR's twin — composite engine wiring).
+- **Pairs with:** **CTP-ADR-0009** (auto-classification + custom-rule drafting pipeline) — lives at `.harness/plugin-cache/claude-tdd-pro/docs/adr/0009-auto-classification-and-rule-drafting-pipeline.md` at pin `230e99d`+.
+- **Composes on:** ADR-0064/0065 (standards refresh cadence), ADR-0066 (YAML/JSON/MD corpora + prose-as-code), ADR-0067 (pin bump to 39903da), ADR-0068 (this ADR's twin — composite engine wiring), **ADR-0070 (pin bump to 230e99d — activation event + no-rewrites discipline this ADR inherits).**
+
+## No-rewrites discipline (inherited from ADR-0070)
+
+Per ADR-0070 §No-rewrites: the wiring CLs (W-F through W-I) MUST NOT mass-modify any pre-existing `.harness/*` state to satisfy new gates. Operator-supplied data (`.harness/operator-standards/namespaces.yaml` + the auto-classification pipeline's cache + review-queue outputs) is operator-owned content created by the operator command surface; the harness's own pre-existing handoff state (`.harness/handoffs/*`) is never touched by these wiring CLs. Discipline is binding.
 
 ## Trigger
 
@@ -74,12 +78,12 @@ This is the key elegance: **the pipeline produces standard-shaped rules, the aud
 
 ## Wiring CLs
 
-| CL | Deliverable | Acceptance criteria |
-|---|---|---|
-| **W-F** | `gctp standards add` operator-facing CLI wrapper | Unit test: invoking against a mocked CTP pipeline succeeds; budget-overrun confirmation works |
-| **W-G** | `gctp standards review` operator-facing CLI wrapper | Unit test: list/review/accept/reject/batch-accept exit-code conformance |
-| **W-H** | `docs/operator-runbook.md` + `docs/first-time-guide.md` updates | Operator can follow the runbook end-to-end on a fresh repo without help |
-| **W-I** | Source-declaration schema validation for `namespaces.yaml` | `audit-applicable-rules.sh` validates `namespaces.yaml` at session start; unknown source URLs are rejected before the pipeline runs |
+| CL | Deliverable | Status | Acceptance criteria |
+|---|---|---|---|
+| **W-F** | `scripts/gctp-standards-add.sh` operator-facing CLI wrapper | ✅ **DONE 2026-06-23** (CL-D) | Wraps CTP pipeline (extract → classify → route → draft → review-queue) end-to-end; budget preview + confirmation; declared-source-only ingest (composes with W-I). +12 unit tests pass |
+| **W-G** | `scripts/gctp-standards-review.sh` operator-facing CLI wrapper | ✅ **DONE 2026-06-23** (CL-D) | --list / --review / --accept / --reject / --batch-accept --confidence high modes; wraps CTP `commands/review-queue.sh`. +13 unit tests pass |
+| **W-H** | `docs/operator-runbook.md` + `docs/first-time-guide.md` updates | ⏳ CL-E | Operator can follow the runbook end-to-end on a fresh repo without help |
+| **W-I** | Source-declaration schema validation for `namespaces.yaml` | ✅ **DONE 2026-06-23** (CL-D) | `audit-applicable-rules.sh` validates `namespaces.yaml` at session start; unknown source URLs are rejected before the pipeline runs. +5 unit tests cover absent / valid / malformed (3 shapes) scenarios |
 
 ## Consequences
 
@@ -97,7 +101,7 @@ This is the key elegance: **the pipeline produces standard-shaped rules, the aud
 
 ### Negative / cost
 
-- **Dependency on CTP-ADR-NNNN+1 landing.** Wraps an upstream pipeline; no value until CTP ships it. Mitigation: land proposed; advance to accepted on pin bump.
+- **Dependency on CTP-ADR-NNNN+1 landing.** ~~Wraps an upstream pipeline; no value until CTP ships it.~~ **Resolved 2026-06-23:** CTP-ADR-0009 shipped at pin `230e99d` (ADR-0070); ADR-0069 promoted Accepted on CL-D wiring landing.
 - **LLM cost is operator-borne.** ~$50 for a 500-rule catalog; ongoing prose-judge invocations bounded by hash cache. Cost surfaced in docs.
 
 ## Alternatives considered
