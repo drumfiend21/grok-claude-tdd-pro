@@ -122,7 +122,8 @@ external-working-tree model) — are NOT upstream items; they land in this repo 
 
 ## P-8 — `prose-judge.sh` tier-2 invocation contract-mismatch with `llm-judge.sh` (semantic tier non-functional)
 
-- **Status:** 🟥 OPEN — surfaced 2026-06-20 during GCTP architecture re-validation under the post-pin-bump 118-rule surface (ADR-0067 / CTP-ADR-0007). LLM_JUDGE=1 across 33 architectural docs yielded zero verdict changes; root cause is a flag-name mismatch in the CTP substrate, not an LLM problem.
+- **Status:** ✅ ADOPTED — fixed upstream at CTP pin `230e99d` (CL-A pin bump per ADR-0070). `llm-judge.sh` ships the `--text <prose>` flag the wrapper needs; semantic tier is now functional under `LLM_JUDGE=1`. Re-running the 2026-06-20 kata to convert the 28 stuck `not_enforced` verdicts into semantic verdicts is operator-driven going forward (no harness substrate work needed).
+- **Status (historical):** 🟥 OPEN — surfaced 2026-06-20 during GCTP architecture re-validation under the post-pin-bump 118-rule surface (ADR-0067 / CTP-ADR-0007). LLM_JUDGE=1 across 33 architectural docs yielded zero verdict changes; root cause was a flag-name mismatch in the CTP substrate, not an LLM problem.
 - **Found:** 2026-06-20, attempting to convert 28 `not_enforced` verdicts on the kata's architectural `.md` files into explicit semantic verdicts via `LLM_JUDGE=1 rubric/enforce-file.sh --file <doc>`.
 - **Symptom:** Every `not_enforced` verdict stayed `not_enforced` regardless of `LLM_JUDGE=1` + `claude` CLI on PATH + `--no-stream -p` working in isolation. Per-file runtime was ~1s (consistent with tier-2 skip, not a model call). Final tally with LLM_JUDGE=1: **3 green / 1 red / 29 incomplete** — identical to LLM_JUDGE=0.
 - **Cause:** `rubric/detectors/prose-judge.sh` tier-2 invokes the LLM judge with `--text <prose>` (line ~102):

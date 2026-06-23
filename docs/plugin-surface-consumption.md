@@ -23,6 +23,7 @@
 | `CONTRIBUTING.md` | DECLARED-NOT-CONSUMED | Plugin-internal contribution guide. ADR-0041. |
 | `Dockerfile` | DECLARED-NOT-CONSUMED | Plugin's Docker image definition; harness runs in the operator's shell environment, not a container. ADR-0041. |
 | `INSTALL.md` | DECLARED-NOT-CONSUMED | Plugin install procedure (irrelevant to harness consumption model). ADR-0037. |
+| `COMMERCIAL-USE.md` | DECLARED-NOT-CONSUMED | Plugin-internal commercial-use posture (CTP-ADR-0008 §"sellable by construction" notes ship in the plugin tree); harness consumes the operational guarantee via `rubric/detectors/audit-commercial-license.sh` (a CONSUMED entry below), not by reading this prose doc. ADR-0070 (pin bump introduced this entry). |
 | `LICENSE` | DECLARED-NOT-CONSUMED | Plugin license; harness carries its own license. ADR-0041. |
 | `MAINTAINERS.md` | DECLARED-NOT-CONSUMED | Plugin-internal maintainer roster. ADR-0041. |
 | `QUALITY-BAR.md` | CONSUMED via `docs/quality-gate.md` cross-reference | `docs/quality-gate.md` `lint_clean` sub-gate composes on §2.8 surface. |
@@ -70,6 +71,7 @@
 | `standards` | CONSUMED via `scripts/standards-sync.sh` (Batch 2) | `standards/sources.yaml` is the canonical authority inventory. |
 | `templates` | DECLARED-NOT-CONSUMED | Plugin's template scaffolding; harness uses its own. ADR-0037. |
 | `tui` | DECLARED-NOT-CONSUMED | Plugin's TUI; harness has no TUI. ADR-0037. |
+| `vendor` | DECLARED-NOT-CONSUMED | Plugin-internal vendored data (canonical-vocabulary mirrors at `vendor/canonical-vocabulary/{linguist-languages,purl-types,k8s-gvks,iac-dialects}.json` + `provenance.json` + `resolve.sh` + `refresh-vocabulary.sh`). Harness consumes these mirrors transitively via the composite engine entrypoints (`rubric/composite-dispatch.sh`, `rubric/enforce-file.sh`, etc.) per ADR-0068 — not by reading `vendor/` directly. ADR-0070 (pin bump introduced this entry). |
 | `vscode-tdd-pro` | DECLARED-NOT-CONSUMED | Plugin's VS Code extension; harness has no VS Code wire (operator uses Cursor / Claude Code editor surfaces). ADR-0041. |
 | `workflow` | DECLARED-NOT-CONSUMED | Plugin's workflow orchestration; harness's outer loop is Grok-driven per CLAUDE.md prime directive. ADR-0037. |
 
