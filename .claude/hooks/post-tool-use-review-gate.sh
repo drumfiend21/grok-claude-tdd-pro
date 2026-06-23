@@ -136,6 +136,45 @@ case "$REL_PATH" in
                 CLAUDE_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}" \
                 bash "$FORMATTER" --file "$REL_PATH" --apply 2>/dev/null || true
             fi
+
+            # ADR-0068 W-C: composite-engine dispatch on the touched file.
+            # Invokes CTP's rubric/composite-dispatch.sh (per-file SARIF aggregator),
+            # which resolves the file's 4-axis canonical kinds, routes each kind to
+            # its FOSS tool(s), and aggregates SARIF. For architectural .md files,
+            # detect-architectural-content (CTP-side) auto-attaches the
+            # architectural-content bundle (markdownlint + Vale + prose-judge + …).
+            #
+            # We block ONLY when dispatch produces a parseable summary line with
+            # `status=red`. Bare exit codes are not authoritative: a CTP-side script
+            # crash (e.g. bash 3.2 unbound-variable on missing routing entries) can
+            # surface as exit 1 without representing a real verdict. Parse-then-block
+            # avoids false-positive write-blocks from upstream script bugs while still
+            # honoring legitimate P0 verdicts. Missing dispatch entrypoint = silent
+            # no-op (pre-CL-A cache compat).
+            DISPATCH="$PLUGIN_ROOT/rubric/composite-dispatch.sh"
+            if [ -x "$DISPATCH" ] && [ -f "${CLAUDE_PROJECT_DIR:-$PWD}/$REL_PATH" ]; then
+                disp_out=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
+                           bash "$DISPATCH" --file "${CLAUDE_PROJECT_DIR:-$PWD}/$REL_PATH" 2>&1 >/dev/null)
+                disp_rc=$?
+                # Look for the authoritative summary line: `composite-dispatch ... status=red`
+                if printf '%s' "$disp_out" | grep -qE '^composite-dispatch[[:space:]]+.*\bstatus=red\b'; then
+                    printf 'PostToolUse review gate: composite-engine P0 violation in %s.\n' "$REL_PATH" >&2
+                    printf '  Tool: %s\n' "$TOOL_NAME" >&2
+                    printf '%s\n' "$disp_out" | grep -E '^composite-dispatch' | sed 's/^/  /' >&2
+                    printf '  Source: ADR-0068 W-C (composite-dispatch on write); CTP rubric/composite-dispatch.sh.\n' >&2
+                    printf '  Fix the violation or add a deviation row to <app_root>/docs/deviations.md (ADR-0066 D-F).\n' >&2
+                    exit 2
+                elif printf '%s' "$disp_out" | grep -qE '^composite-dispatch[[:space:]]+.*\bstatus=incomplete\b'; then
+                    # incomplete = optional tool absent; advisory per ADR-0068 D-B-1
+                    printf '[composite-dispatch] %s: incomplete (optional tool absent) — advisory only.\n' "$REL_PATH" >&2
+                elif [ "$disp_rc" -ne 0 ] && [ "$disp_rc" -ne 3 ]; then
+                    # No summary line + non-success exit: likely a CTP-side script
+                    # error. Log for diagnostics but DO NOT block — script errors are
+                    # not verdicts (no-rewrites-spirit: don't punish operators for
+                    # upstream bugs).
+                    printf '[composite-dispatch] %s: non-blocking exit=%s (no parseable verdict).\n' "$REL_PATH" "$disp_rc" >&2
+                fi
+            fi
         fi
         ;;
 esac

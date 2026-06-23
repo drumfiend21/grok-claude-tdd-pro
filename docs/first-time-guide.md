@@ -126,7 +126,23 @@ If the gate blocks dispatch, you have two paths:
 
 This is **never silent exclusion** — deviations are recorded, reviewable, and revisited on the re-eval condition you write into the row. Full operator workflow + worked example: [`docs/kata-runbook.md` PATH C](kata-runbook.md#path-c--fix-architectural-prose-under-enforcement-after-proposal-003-lands).
 
-The gate is vacuous-pass today (no `applies_to_prose: true` rules exist in `active.json` until PROPOSAL-003 lands). When it activates, you'll see it.
+The gate activated at the pin bump to `230e99d` (CL-A per ADR-0070): the composite engine + 4-axis vocabulary brings 9 `applies_to_prose: true` rules into `active.json` plus the architectural-content bundle (`prose-judge.sh` + Vale + markdownlint + …) routed through `rubric/composite-dispatch.sh`. After CL-C (ADR-0068 W-D wired), the gate ALSO invokes composite-dispatch.sh on every architectural .md in scope — exit 1 from dispatch (a P0 surfaced by any tool in the bundle) blocks `/dispatch` until the prose is rewritten or a deviation is filed.
+
+### What dispatch's stderr looks like (composite-engine SARIF, post-CL-C)
+
+When `/dispatch` blocks on a composite-engine P0, you'll see CTP-formatted stderr lines like:
+
+```
+composite-dispatch tool=markdownlint verdict=red
+composite-dispatch tool=vale verdict=red
+composite-dispatch file=/path/to/0015-dev-cluster.md status=red tools=8 red=2 not_enforced=0
+```
+
+The rule ID to put in your deviation row comes from the per-tool stderr line (or from the rubric runner's prior output, which preserves the originating `g-*` rule ID). For the example above, you'd likely deviate against `g-md-fenced-code-language-declared` (markdownlint) or `g-doc-active-voice` (Vale) — whichever the operator decides legitimately cannot apply in this design.
+
+### LLM_JUDGE for prose-as-code rules
+
+The 9 `applies_to_prose: true` rules use `prose-judge.sh` as the semantic moat. By default it runs the keyword tier (deterministic) and returns `not_enforced` when keywords don't conclusively match. To activate the LLM tier (which converts most `not_enforced` to a real semantic verdict), set `LLM_JUDGE=1` in your dispatch env. The P-8 fix at pin `230e99d` (ADR-0070 → ADOPTED) made this functional — semantic verdicts now return real `compatible`/`violates`/`abstain` rather than silently falling back to `not_enforced`.
 
 ## If you get stuck
 

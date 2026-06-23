@@ -55,3 +55,15 @@ COPYABLE TEMPLATE (one block per deviation):
 - The body fields below the heading are operator-facing documentation; the gate does not parse them but reviewers (and future-you) will.
 - When a rule's deviation is no longer needed (because the rule's domain genuinely changed, or the code was rewritten), strike-through the heading with `<del>...</del>` to preserve the audit trail.
 - Deviations are not a substitute for fixing the rule violation — they are an operator-acknowledged carve-out. The gate's purpose is to make sure the carve-out is deliberate and recorded.
+
+## Rule-ID surface after CL-A (composite engine adoption; ADR-0070 / ADR-0068 W-E)
+
+The pin bump to `230e99d` (CL-A) brought CTP's composite engine: each rule in `active.json` now carries `enforced_by[]` (entry 0 = original detector with `required: true` → parity; following entries route to FOSS tools — Semgrep, ESLint, Checkov, Kubescape, Trivy, etc.). The rule-ID surface that operators may need to deviate against grows accordingly. Examples of post-CL-A rule IDs the dispatch may surface as a violation needing a deviation:
+
+- `g-k8s-no-privileged-container` (`enforced_by: [kubescape, conftest]`) — kubescape's runtime check is the authoritative one; deviation row uses the bare rule ID.
+- `g-iam-no-wildcard-action` (`enforced_by: [checkov, semgrep]`) — checkov's IaC scan is the authoritative one.
+- `g-arch-no-tbd-placeholder` (`applies_to_prose: true`; routed via the architectural-content bundle) — semantic verdict via `prose-judge.sh`; deviation row uses the bare rule ID.
+
+The `## Deviation — <RULE-ID> on <TICKET-ID>` heading format is the SAME regardless of how many tools route to the rule — the bare rule ID identifies the deviation, not the tool. The dispatch's SARIF aggregator collapses per-tool findings under one rule.
+
+**Composite-engine SARIF findings in dispatch output:** `rubric/composite-dispatch.sh` (W-C / W-D wiring) emits stderr lines like `composite-dispatch tool=<t> verdict=<v>` per tool. When a P0 surfaces, the post-tool-use hook (W-C) blocks the write; the design-phase MD gate (W-D) blocks dispatch. To deviate, copy the surfaced rule ID (the part after `rule=` in the stderr message) into a new `## Deviation` row, fill in the body fields, and re-run. The gate then treats that rule as `deviated-as-green` for the named ticket.

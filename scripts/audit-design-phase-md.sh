@@ -98,6 +98,14 @@ command -v node >/dev/null 2>&1 || { printf 'audit-design-phase-md.sh: node requ
 PROSE_JUDGE="${ADPM_PLUGIN_ROOT:-.harness/plugin-cache/claude-tdd-pro}/rubric/detectors/prose-judge.sh"
 if [ -f "$PROSE_JUDGE" ]; then PROSE_JUDGE_PRESENT=1; else PROSE_JUDGE_PRESENT=0; fi
 
+# ADR-0068 W-D: composite-dispatch presence (architectural-content bundle activator).
+# When present and an architectural .md is in scope, dispatch is invoked per file —
+# CTP's auto-attached architectural-content bundle (markdownlint + Vale + remark +
+# prose-judge + …) runs against the file. exit 1 from dispatch = P0 → red the ticket.
+COMPOSITE_DISPATCH="${ADPM_PLUGIN_ROOT:-.harness/plugin-cache/claude-tdd-pro}/rubric/composite-dispatch.sh"
+if [ -x "$COMPOSITE_DISPATCH" ]; then COMPOSITE_PRESENT=1; else COMPOSITE_PRESENT=0; fi
+COMPOSITE_PLUGIN_ROOT="${ADPM_PLUGIN_ROOT:-.harness/plugin-cache/claude-tdd-pro}"
+
 DEVIATIONS_FILE="$APP_ROOT/docs/deviations.md"
 
 violations=0
@@ -107,6 +115,8 @@ for req in "$HANDOFFS_DIR"/*.req.json; do
     out=$(ADPM_REQ="$req" ADPM_ACTIVE="$ACTIVE" ADPM_APP_ROOT="$APP_ROOT" \
           ADPM_PJ_PRESENT="$PROSE_JUDGE_PRESENT" ADPM_TEST_VERDICT="$TEST_VERDICT" \
           ADPM_DEVIATIONS="$DEVIATIONS_FILE" ADPM_EXCLUDE_FILE="$EXCLUDE_FILE" \
+          ADPM_COMPOSITE="$COMPOSITE_DISPATCH" ADPM_COMPOSITE_PRESENT="$COMPOSITE_PRESENT" \
+          ADPM_PLUGIN_ROOT="$COMPOSITE_PLUGIN_ROOT" \
           node -e '
 const fs = require("fs");
 const path = require("path");
@@ -225,6 +235,39 @@ for (const rid of proseRules) {
   red++;
   console.log("VIOL|" + ticketId + "|" + rid + "|" + verdict + "|files=" + architecturalFiles.join(","));
 }
+
+// ADR-0068 W-D: invoke composite-dispatch.sh per architectural .md.
+// CTP-side detect-architectural-content auto-attaches the architectural-content
+// bundle (markdownlint + Vale + remark + prose-judge + …) for .md files. exit 1
+// from dispatch = P0 violation surfaced → red this ticket per file. Each P0 is
+// a separate violation row; matched-by-deviation is honored at the rule level.
+const compositePresent = process.env.ADPM_COMPOSITE_PRESENT === "1";
+const compositeBin = process.env.ADPM_COMPOSITE || "";
+const pluginRoot = process.env.ADPM_PLUGIN_ROOT || "";
+if (compositePresent && !testVerdict) {
+  const { spawnSync } = require("child_process");
+  for (const relFile of architecturalFiles) {
+    const absFile = path.join(appRoot, relFile);
+    const r = spawnSync("bash", [compositeBin, "--file", absFile], {
+      encoding: "utf8",
+      env: Object.assign({}, process.env, { CLAUDE_PLUGIN_ROOT: pluginRoot })
+    });
+    if (r.status === 1) {
+      // Parse stderr for the per-tool/per-rule verdict lines to attribute the P0.
+      const out = (r.stderr || "") + (r.stdout || "");
+      // Try to extract failing rule IDs from stderr; otherwise mark composite-engine
+      // P0 generically. The deviation check uses the extracted rule ID when possible.
+      const m = out.match(/\brule[\s=:]+([\w.\-]+)/);
+      const inferredRule = m ? m[1] : "composite-engine-p0";
+      if (isDeviated(inferredRule)) continue;
+      red++;
+      console.log("VIOL|" + ticketId + "|" + inferredRule + "|composite-dispatch-fail|file=" + relFile);
+    }
+    // exit 3 = incomplete (optional tool missing) — advisory per ADR-0068 D-B-1.
+    // Not red here; surfaces in the post-tool-use hook for write-time signal.
+  }
+}
+
 if (red === 0) console.log("OK|" + ticketId + "|all prose rules green or deviated across " + architecturalFiles.length + " architectural .md file(s)");
 process.exit(0);
 ' 2>&1)
