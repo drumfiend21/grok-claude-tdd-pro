@@ -145,6 +145,51 @@ mkreq T20 '{"applicable_rules":['"$UNIV"',"g-ts-001","g-ts-006","g-node-002"],"f
 # But active-prose.json doesn't include g-ts-* in the registry, so the .ts floor itself is vacuous.
 run_prose; assert_eq "$?" "0" "test_applies_to_prose_not_triggered_without_md_glob — .ts scope → 0"
 
+# ---------- ADR-0068 W-A: 4-axis applies_to floor (marker-gated) ----------
+# Per the no-rewrites discipline (ADR-0070): the floor is OPT-IN via the req's
+# `applies_to_floor_version >= 2` marker. Legacy handoffs (no marker) skip it —
+# this lets W-A apply to NEW tickets without rewriting historical handoff state.
+# A third fixture carries rules with applies_to.{linguist_aliases,iac_dialects}
+# (the CTP-ADR-0008 4-axis vocabulary shipped at pin 230e99d+).
+cat > "$TMP/active-4axis.json" <<'JSON'
+{ "rules": [
+  { "id": "g-universal-no-hardcoded-secrets", "source_namespace": "_universal" },
+  { "id": "g-universal-no-debug-output", "source_namespace": "_universal" },
+  { "id": "g-arch-no-tbd-placeholder", "source_namespace": "arch", "applies_to": { "linguist_aliases": ["typescript","javascript","yaml","hcl","markdown"] } },
+  { "id": "g-aws-no-unrestricted-ingress-iac", "source_namespace": "aws", "applies_to": { "linguist_aliases": ["hcl"], "iac_dialects": ["terraform"] } },
+  { "id": "g-ts-noimplicit-any", "source_namespace": "typescript", "applies_to": { "linguist_aliases": ["typescript"] } },
+  { "id": "g-legacy-no-applies-to", "source_namespace": "legacy" }
+] }
+JSON
+run_4axis() { AAR_HANDOFFS_DIR="$TMP/h" AAR_ACTIVE="$TMP/active-4axis.json" "$SCRIPT" --quiet >/dev/null 2>&1; }
+
+# Test 21: legacy ticket (no marker) is grandfathered — floor (4) skipped.
+# Use full language-floor union + extensionless scope so ONLY the 4-axis floor would
+# fire IF it were active. With no marker, it must NOT fire — result green.
+clear_h
+mkreq T21 '{"applicable_rules":['"$UNIV"',"g-ts-noimplicit-any"],"file_scope":{"may_edit":["src/seam/**"]}}'
+run_4axis; assert_eq "$?" "0" "W-A legacy req (no marker) grandfathered — 4-axis floor skipped → 0"
+
+# Test 22: marker present, .ts glob omits an applies_to.linguist:[typescript] rule → 1
+clear_h
+mkreq T22 '{"applies_to_floor_version":2,"applicable_rules":['"$UNIV"'],"file_scope":{"may_edit":["src/**/*.ts"]}}'
+run_4axis; assert_eq "$?" "1" "W-A marker on + .ts omits applies_to.linguist:[typescript] rule → 1"
+
+# Test 23: marker present, .tf glob omits applies_to.iac_dialects:[terraform] rule → 1
+clear_h
+mkreq T23 '{"applies_to_floor_version":2,"applicable_rules":['"$UNIV"',"g-arch-no-tbd-placeholder"],"file_scope":{"may_edit":["infra/main.tf"]}}'
+run_4axis; assert_eq "$?" "1" "W-A marker on + .tf omits applies_to.iac:[terraform] rule → 1"
+
+# Test 24: marker present + full 4-axis union for .ts → 0
+clear_h
+mkreq T24 '{"applies_to_floor_version":2,"applicable_rules":['"$UNIV"',"g-arch-no-tbd-placeholder","g-ts-noimplicit-any"],"file_scope":{"may_edit":["src/**/*.ts"]}}'
+run_4axis; assert_eq "$?" "0" "W-A marker on + full 4-axis union for .ts → 0"
+
+# Test 25: marker present + legacy rule (no applies_to.*) — not required by 4-axis floor (back-compat)
+clear_h
+mkreq T25 '{"applies_to_floor_version":2,"applicable_rules":['"$UNIV"',"g-arch-no-tbd-placeholder","g-ts-noimplicit-any"],"file_scope":{"may_edit":["src/**/*.ts"]}}'
+run_4axis; assert_eq "$?" "0" "W-A marker on + legacy rule (no applies_to.*) not required by 4-axis floor → 0"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-applicable-rules] OK — $passes/$total passed."; exit 0
 else log "[test-applicable-rules] FAIL — $failures/$total."; exit 1; fi

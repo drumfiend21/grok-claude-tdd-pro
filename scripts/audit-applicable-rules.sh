@@ -33,9 +33,25 @@
 #       semantic projection from ADR-0066 D-B: code rules promoted by CTP to prose
 #       enforcement bind on architectural MD by construction. Vacuous when no rule
 #       carries the flag (i.e. before PROPOSAL-003 lands).
+#   (4) 4-AXIS APPLIES-TO FLOOR (ADR-0068 W-A) — OPT-IN via `applies_to_floor_version`
+#       integer marker on the req.json (set by post-CL-B /decompose + smoke-e2e
+#       generators to >= 2). When opted in, every rule whose `applies_to.linguist_aliases`
+#       OR `applies_to.iac_dialects` intersects the file_scope's canonical kinds MUST
+#       be in applicable_rules. The ext→{linguist_alias, iac_dialect} map covers the
+#       canonical kinds the 4-axis vocabulary uses (CTP §28.28). Content-driven
+#       equivalent of (2): instead of joining by rule-id prefix convention (which can
+#       drift), join by the rule's declared `applies_to.*` (the schema CTP ships at
+#       pin 230e99d+). Composes with (2), never substitutes — a rule needed by either
+#       floor must be present.
+#
+#       LEGACY HANDOFFS (no marker, or marker < 2) skip floor (4): grandfathered as
+#       pre-CL-B-contract data per the no-rewrites discipline (ADR-0070 §No-rewrites).
+#       Operator re-runs of /decompose on those tickets naturally produce post-CL-B
+#       handoffs that carry the marker + the 4-axis rules. This preserves historical
+#       handoff state while letting new tickets get the more accurate floor.
 #
 # EO non-exemptibility is enforced separately by `scripts/audit-eo-governance.sh`;
-# this gate is the universal + language dimension of the same union.
+# this gate is the universal + language + 4-axis dimension of the same union.
 #
 # CONTENT-AGNOSTIC + VACUOUS when no req carries applicable_rules.
 #
@@ -112,6 +128,34 @@ for(const p of prefixes){ for(const id of ids.filter(x=>x.startsWith(p))) if(!ha
 if(extsSeen.has("md")){
   const rules=Array.isArray(active.rules)?active.rules:active;
   for(const r of rules){ if(r && r.applies_to_prose===true && r.id && !have.has(r.id)) errs.push("file_scope .md glob projects applies_to_prose rule: "+r.id); }
+}
+// (4) 4-axis applies_to floor — content-driven per ADR-0068 W-A.
+// Opt-in: only enforced when req.applies_to_floor_version >= 2. Legacy handoffs
+// (no marker, or marker < 2) skip this floor — grandfathered per the no-rewrites
+// discipline (ADR-0070). New /decompose + smoke-e2e generators set the marker AND
+// populate the 4-axis rules, so going-forward tickets get the more accurate floor
+// without rewriting old handoffs.
+const floorVer = (typeof req.applies_to_floor_version === "number") ? req.applies_to_floor_version : 1;
+if (floorVer >= 2) {
+  // ext → canonical linguist_alias + iac_dialect (covers the kinds CTP ships at pin 230e99d)
+  const EXT_TO_LINGUIST={ts:["typescript"],tsx:["tsx","typescript"],mts:["typescript"],cts:["typescript"],js:["javascript"],jsx:["jsx","javascript"],mjs:["javascript"],cjs:["javascript"],md:["markdown"],tf:["hcl"],tfvars:["hcl"],yaml:["yaml"],yml:["yaml"],json:["json"],dockerfile:["dockerfile"],py:["python"],rb:["ruby"],go:["go"],sh:["shell"],bash:["shell"]};
+  const EXT_TO_IAC={tf:["terraform"],tfvars:["terraform"]}; // .yaml dialects need content inspection; deferred to per-file kind detection (W-C)
+  const kindsLinguist=new Set(), kindsIac=new Set();
+  for(const e of extsSeen){
+    (EXT_TO_LINGUIST[e]||[]).forEach(k=>kindsLinguist.add(k));
+    (EXT_TO_IAC[e]||[]).forEach(k=>kindsIac.add(k));
+  }
+  if(kindsLinguist.size>0 || kindsIac.size>0){
+    const rules=Array.isArray(active.rules)?active.rules:active;
+    for(const r of rules){
+      if(!r || !r.id || !r.applies_to) continue;
+      const al=Array.isArray(r.applies_to.linguist_aliases)?r.applies_to.linguist_aliases:[];
+      const ai=Array.isArray(r.applies_to.iac_dialects)?r.applies_to.iac_dialects:[];
+      const hitsLinguist=al.some(a=>kindsLinguist.has(a));
+      const hitsIac=ai.some(d=>kindsIac.has(d));
+      if((hitsLinguist||hitsIac) && !have.has(r.id)) errs.push("file_scope kinds intersect rule applies_to.* but applicable_rules omits: "+r.id);
+    }
+  }
 }
 for(const e of errs) console.log("VIOL|"+e);
 process.exit(0);

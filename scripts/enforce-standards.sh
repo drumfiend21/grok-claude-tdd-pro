@@ -20,15 +20,25 @@
 #
 # Usage:
 #   scripts/enforce-standards.sh --ticket TICKET-NNN [--app-root <dir>] [--json] [--quiet]
-#     --ticket     read .harness/handoffs/<id>.req.json for applicable_rules (required)
-#     --app-root   override the app tree (else resolved via scripts/app-root.sh)
-#     --json       emit the rules_verified report JSON to stdout
-#     --quiet      exit code only
+#                                [--changed-files <csv>]
+#     --ticket          read .harness/handoffs/<id>.req.json for applicable_rules (required)
+#     --app-root        override the app tree (else resolved via scripts/app-root.sh)
+#     --json            emit the rules_verified report JSON to stdout
+#     --quiet           exit code only
+#     --changed-files   ADR-0068 W-B narrowing: CSV of paths (absolute, or relative to
+#                       app_root, or relative to pwd). When present, the live re-run
+#                       targets only those files via CTP's per-file rubric/enforce-file.sh
+#                       (instead of the whole-tree rubric/enforce.sh). Aggregates
+#                       per-rule worst verdict across the file set (fail > not_enforced
+#                       > pass); files_evaluated[rule] = count of changed files probed.
+#                       Scopes re-verification to the inner-loop's actual changes —
+#                       sidesteps contaminated-app-tree noise for smoke fixtures.
 #
 # Env overrides (testability):
 #   ES_HANDOFFS_DIR  default .harness/handoffs
 #   ES_PLUGIN_ROOT   default .harness/plugin-cache/claude-tdd-pro
 #   ES_ENFORCE       default $ES_PLUGIN_ROOT/rubric/enforce.sh
+#   ES_ENFORCE_FILE  default $ES_PLUGIN_ROOT/rubric/enforce-file.sh (W-B narrowing)
 #   ES_APP_ROOT      override app_root resolution (validated by app-root.sh --validate)
 #   ES_APP_ROOT_BIN  default ./scripts/app-root.sh
 #
@@ -43,14 +53,15 @@
 
 set -u
 
-QUIET=0; JSON=0; TICKET=""; APP_OVERRIDE=""
+QUIET=0; JSON=0; TICKET=""; APP_OVERRIDE=""; CHANGED_FILES=""
 while [ $# -gt 0 ]; do
     case "$1" in
-        --ticket)   TICKET="${2-}"; shift ;;
-        --app-root) APP_OVERRIDE="${2-}"; shift ;;
-        --json)     JSON=1 ;;
-        --quiet)    QUIET=1 ;;
-        -h|--help)  sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
+        --ticket)         TICKET="${2-}"; shift ;;
+        --app-root)       APP_OVERRIDE="${2-}"; shift ;;
+        --changed-files)  CHANGED_FILES="${2-}"; shift ;;
+        --json)           JSON=1 ;;
+        --quiet)          QUIET=1 ;;
+        -h|--help)        sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
         *) printf 'enforce-standards.sh: unknown arg: %s\n' "$1" >&2; exit 2 ;;
     esac
     shift
@@ -64,16 +75,22 @@ err()  { printf '%s\n' "$*" >&2; }
 HANDOFFS_DIR="${ES_HANDOFFS_DIR:-.harness/handoffs}"
 PLUGIN_ROOT="${ES_PLUGIN_ROOT:-.harness/plugin-cache/claude-tdd-pro}"
 ENFORCE="${ES_ENFORCE:-$PLUGIN_ROOT/rubric/enforce.sh}"
+ENFORCE_FILE="${ES_ENFORCE_FILE:-$PLUGIN_ROOT/rubric/enforce-file.sh}"
 APP_ROOT_BIN="${ES_APP_ROOT_BIN:-./scripts/app-root.sh}"
 
 REQ="$HANDOFFS_DIR/$TICKET.req.json"
 [ -f "$REQ" ] || { err "enforce-standards.sh: no request at $REQ"; exit 2; }
-[ -f "$ENFORCE" ] || { err "enforce-standards.sh: enforce.sh not found at $ENFORCE (run scripts/sync-plugin.sh --ensure)"; exit 2; }
+if [ -n "$CHANGED_FILES" ]; then
+    [ -f "$ENFORCE_FILE" ] || { err "enforce-standards.sh: enforce-file.sh not found at $ENFORCE_FILE (run scripts/sync-plugin.sh --ensure)"; exit 2; }
+else
+    [ -f "$ENFORCE" ] || { err "enforce-standards.sh: enforce.sh not found at $ENFORCE (run scripts/sync-plugin.sh --ensure)"; exit 2; }
+fi
 command -v node >/dev/null 2>&1 || { err "enforce-standards.sh: node required"; exit 2; }
-# Ruby is required only for the real (default) enforce.sh, which is Ruby-backed
-# (ADR-0056). When ES_ENFORCE is overridden (e.g. a test stub), Ruby is not needed.
-if [ -z "${ES_ENFORCE:-}" ]; then
-    command -v ruby >/dev/null 2>&1 || { err "enforce-standards.sh: ruby required (enforce.sh is Ruby-backed; ADR-0056)"; exit 2; }
+# Ruby is required only for the real (default) enforce.sh / enforce-file.sh — both
+# Ruby-backed (ADR-0056). When ES_ENFORCE/ES_ENFORCE_FILE is overridden (e.g. a
+# test stub), Ruby is not needed.
+if [ -z "${ES_ENFORCE:-}" ] && [ -z "${ES_ENFORCE_FILE:-}" ]; then
+    command -v ruby >/dev/null 2>&1 || { err "enforce-standards.sh: ruby required (enforce.sh/enforce-file.sh are Ruby-backed; ADR-0056)"; exit 2; }
 fi
 
 # Resolve + hard-guard the app_root (Fix D).
@@ -99,11 +116,75 @@ if [ -z "$RULES_CSV" ]; then
     exit 0
 fi
 
-# Run the frozen enforce.sh contract against the app tree.
-ENFORCE_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$ENFORCE" --root "$APP" --rules "$RULES_CSV" --json 2>/dev/null)
+if [ -n "$CHANGED_FILES" ]; then
+    # W-B narrowed mode: invoke CTP's per-file enforce-file.sh on each changed file
+    # and aggregate per-rule worst verdict (fail > not_enforced > pass). Each file is
+    # tried as: absolute (as-is), relative to app_root, or relative to pwd — the
+    # production case is app_root-relative; smoke fixtures (TICKET-042-style) are
+    # pwd-relative because they edit files inside the GCTP repo itself.
+    PER_FILE_STDERR=""
+    NUM_FILES=0
+    PWD_ABS=$(pwd -P)
+    OLDIFS="$IFS"; IFS=','
+    for f in $CHANGED_FILES; do
+        [ -n "$f" ] || continue
+        ABS=""
+        case "$f" in
+            /*) [ -f "$f" ] && ABS="$f" ;;
+            *)  if   [ -f "$APP/$f" ];     then ABS="$APP/$f"
+                elif [ -f "$PWD_ABS/$f" ]; then ABS="$PWD_ABS/$f"
+                fi ;;
+        esac
+        if [ -z "$ABS" ]; then
+            PER_FILE_STDERR="${PER_FILE_STDERR}enforce-file file=$f status=na rules_checked=0
+"
+            continue
+        fi
+        NUM_FILES=$((NUM_FILES + 1))
+        # --root passed for context; enforce-file.sh does its own per-file rule discovery.
+        FILE_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$ENFORCE_FILE" --file "$ABS" --root "$APP" 2>&1 >/dev/null) || true
+        PER_FILE_STDERR="${PER_FILE_STDERR}${FILE_OUT}
+"
+    done
+    IFS="$OLDIFS"
 
-# Map the 4-state output into rules_verified + an overall status.
-REPORT=$(ES_TICKET="$TICKET" ES_APP="$APP" ES_OUT="$ENFORCE_OUT" node -e '
+    # Aggregate to the same {rules_verified, files_evaluated, status} shape that
+    # tree-mode produces. For rules in the applicable_rules CSV:
+    #   * worst verdict wins across files (fail > not_enforced > pass)
+    #   * absence of per-rule signal = pass (rule was probed via enforce-file but
+    #     produced no fail/not_enforced output → clean)
+    #   * files_evaluated[rule] = NUM_FILES (every applicable rule was checked
+    #     against every changed file by the enforce-file pipeline)
+    REPORT=$(ES_TICKET="$TICKET" ES_APP="$APP" ES_RULES="$RULES_CSV" ES_NUM="$NUM_FILES" ES_PFSE="$PER_FILE_STDERR" node -e '
+const ticket=process.env.ES_TICKET, app=process.env.ES_APP;
+const rules=(process.env.ES_RULES||"").split(",").filter(Boolean);
+const numFiles=parseInt(process.env.ES_NUM||"0",10);
+const lines=(process.env.ES_PFSE||"").split("\n").filter(l=>l.indexOf("enforce-file ")===0);
+const ruleVerdict={};
+for (const id of rules) ruleVerdict[id]="pass";
+const rank={pass:0,not_enforced:1,fail:2};
+for (const l of lines) {
+  const m = l.match(/\brule=(\S+).*\bverdict=(\S+)/);
+  if (!m) continue;
+  const id=m[1]; const v=m[2];
+  if (!(id in ruleVerdict)) continue;
+  // "warn" stays pass (advisory at write-time per enforce-file.sh semantics)
+  const norm = (v==="fail"?"fail":(v==="not_enforced"?"not_enforced":(v==="warn"?"pass":"pass")));
+  if (rank[norm] > rank[ruleVerdict[id]]) ruleVerdict[id]=norm;
+}
+const rv={}, fe={};
+for (const id of rules) { rv[id]=ruleVerdict[id]; fe[id]=numFiles; }
+let red=0, incomplete=0;
+for (const v of Object.values(rv)) { if (v==="fail") red++; else if (v==="not_enforced") incomplete++; }
+const status = red>0 ? "red" : (incomplete>0 ? "incomplete" : "green");
+console.log(JSON.stringify({ticket_id:ticket, app_root:app, rules_verified:rv, files_evaluated:fe, status}));
+')
+else
+    # Tree-mode (Fix B / ADR-0062 default). Frozen enforce.sh against whole app_root.
+    ENFORCE_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$ENFORCE" --root "$APP" --rules "$RULES_CSV" --json 2>/dev/null)
+
+    # Map the 4-state output into rules_verified + an overall status.
+    REPORT=$(ES_TICKET="$TICKET" ES_APP="$APP" ES_OUT="$ENFORCE_OUT" node -e '
 const out=process.env.ES_OUT;
 let j; try{ j=JSON.parse(out); }catch(e){ console.log("PARSE_ERR"); process.exit(0); }
 const rv={}, fe={};
@@ -117,6 +198,7 @@ for(const r of (j.results||[])){
 const status = red>0 ? "red" : (incomplete>0 ? "incomplete" : "green");
 console.log(JSON.stringify({ticket_id:process.env.ES_TICKET, app_root:process.env.ES_APP, rules_verified:rv, files_evaluated:fe, status}));
 ')
+fi
 
 if [ "$REPORT" = "PARSE_ERR" ] || [ -z "$REPORT" ]; then
     err "enforce-standards.sh: enforce.sh produced no parseable JSON (root=$APP rules=$RULES_CSV)"

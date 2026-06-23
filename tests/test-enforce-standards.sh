@@ -94,6 +94,68 @@ mkreq T8 '{"applicable_rules":["g-ts-001"]}'
 ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE="$TMP/nope.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket T8 --quiet >/dev/null 2>&1
 assert_eq "$?" "2" "missing enforce.sh → error (2)"
 
+# ---------- ADR-0068 W-B: --changed-files narrowed mode ----------
+# Stub enforce-file.sh: emits CTP-style stderr (`enforce-file file=<f> rule=<id> verdict=<v>`).
+# Verdict by filename pattern — drives failure scenarios deterministically.
+cat > "$TMP/enforce-file.sh" <<'STUB'
+#!/usr/bin/env bash
+file=""
+while [ $# -gt 0 ]; do case "$1" in --file) file="$2"; shift 2;; --root|--quiet) [ "$1" = "--root" ] && shift 2 || shift;; *) shift;; esac; done
+base=$(basename "$file")
+case "$base" in
+    *.fail.*) printf 'enforce-file file=%s rule=g-x-fail severity=P0 detector=stub verdict=fail\n' "$file" >&2 ;;
+    *.ne.*)   printf 'enforce-file file=%s rule=g-y-ne detector=stub verdict=not_enforced\n' "$file" >&2 ;;
+esac
+printf 'enforce-file file=%s status=na rules_checked=0\n' "$file" >&2
+exit 0
+STUB
+chmod +x "$TMP/enforce-file.sh"
+mkdir -p "$TMP/app/src"
+printf 'clean\n' > "$TMP/app/src/clean.ts"
+printf 'leaky\n' > "$TMP/app/src/secret.fail.ts"
+printf 'maybe\n' > "$TMP/app/src/probe.ne.ts"
+
+# Test 14: W-B all-clean changed-files → green (0)
+mkreq TC1 '{"applicable_rules":["g-universal-x","g-ts-clean"]}'
+out=$(ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC1 --changed-files "src/clean.ts" --json --quiet 2>/dev/null)
+rc=$?
+assert_eq "$rc" "0" "W-B all-clean changed-files → green (0)"
+fe=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const j=JSON.parse(s);process.stdout.write(String(j.files_evaluated["g-universal-x"]));});')
+assert_eq "$fe" "1" "W-B files_evaluated = number of changed_files (1)"
+
+# Test 15: W-B with fail signal → red (1)
+mkreq TC2 '{"applicable_rules":["g-universal-x","g-x-fail"]}'
+ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC2 --changed-files "src/secret.fail.ts" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-B changed-files with fail signal → red (1)"
+
+# Test 16: W-B with not_enforced signal → incomplete (3)
+mkreq TC3 '{"applicable_rules":["g-universal-x","g-y-ne"]}'
+ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC3 --changed-files "src/probe.ne.ts" --quiet >/dev/null 2>&1
+assert_eq "$?" "3" "W-B changed-files with not_enforced signal → incomplete (3)"
+
+# Test 17: W-B multi-file, worst verdict wins (fail in one)
+mkreq TC4 '{"applicable_rules":["g-universal-x","g-x-fail","g-y-ne"]}'
+ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC4 --changed-files "src/clean.ts,src/secret.fail.ts,src/probe.ne.ts" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-B multi-file, fail in one → red (1)"
+
+# Test 18: W-B missing file skipped, others processed
+mkreq TC5 '{"applicable_rules":["g-universal-x"]}'
+out=$(ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC5 --changed-files "src/clean.ts,src/nonexistent.ts" --json --quiet 2>/dev/null)
+rc=$?
+assert_eq "$rc" "0" "W-B missing file skipped, others processed → green (0)"
+fe=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{const j=JSON.parse(s);process.stdout.write(String(j.files_evaluated["g-universal-x"]));});')
+assert_eq "$fe" "1" "W-B files_evaluated = files actually found (1, not 2)"
+
+# Test 19: W-B absolute changed_files path resolves
+mkreq TC6 '{"applicable_rules":["g-universal-x","g-x-fail"]}'
+ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/enforce-file.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC6 --changed-files "$TMP/app/src/secret.fail.ts" --quiet >/dev/null 2>&1
+assert_eq "$?" "1" "W-B absolute changed_files path resolves → red (1)"
+
+# Test 20: W-B missing enforce-file.sh → error (2)
+mkreq TC7 '{"applicable_rules":["g-x"]}'
+ES_HANDOFFS_DIR="$TMP/h" ES_ENFORCE_FILE="$TMP/nope.sh" ES_APP_ROOT="$TMP/app" "$SCRIPT" --ticket TC7 --changed-files "src/clean.ts" --quiet >/dev/null 2>&1
+assert_eq "$?" "2" "W-B missing enforce-file.sh → error (2)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-enforce-standards] OK — $passes/$total passed."; exit 0
 else log "[test-enforce-standards] FAIL — $failures/$total."; exit 1; fi

@@ -83,18 +83,33 @@ for res in "$HANDOFFS_DIR"/*.res.json; do
     req="$HANDOFFS_DIR/$base.req.json"
     [ -f "$req" ] || continue
 
-    # Only green responses whose request carries applicable_rules are gated.
-    gate=$(AE_RES="$res" AE_REQ="$req" node -e '
+    # Only green responses whose request carries applicable_rules are gated. Also
+    # extract res.changed_files for ADR-0068 W-B narrowed re-run: when the response
+    # names the files the inner loop touched, the live re-run scopes to those files
+    # via enforce-file.sh (per CL-B W-B), instead of scanning the whole app_root.
+    # Sidesteps smoke-fixture / contaminated-app-tree mismatch.
+    gate_out=$(AE_RES="$res" AE_REQ="$req" node -e '
 const fs=require("fs");
 let res,req; try{res=JSON.parse(fs.readFileSync(process.env.AE_RES,"utf8"));req=JSON.parse(fs.readFileSync(process.env.AE_REQ,"utf8"));}catch(e){console.log("SKIP");process.exit(0);}
 if(res.status!=="green"){console.log("SKIP");process.exit(0);}
 if(!Array.isArray(req.applicable_rules)||req.applicable_rules.length===0){console.log("SKIP");process.exit(0);}
-console.log("GATE");
+const cf=Array.isArray(res.changed_files)?res.changed_files.map(x=>(x&&typeof x==="object"&&x.path)?x.path:(typeof x==="string"?x:null)).filter(Boolean):[];
+console.log("GATE|"+cf.join(","));
 ' 2>/dev/null)
-    [ "$gate" = "GATE" ] || continue
+    case "$gate_out" in
+        GATE|GATE\|*) ;;
+        *) continue ;;
+    esac
+    CHANGED_FILES_CSV="${gate_out#GATE|}"
+    [ "$CHANGED_FILES_CSV" = "GATE" ] && CHANGED_FILES_CSV=""
 
-    # Re-run the detectors via the same spine the inner loop uses.
-    live=$(ES_HANDOFFS_DIR="$HANDOFFS_DIR" ES_APP_ROOT="$APP" "$ES_BIN" --ticket "$base" --app-root "$APP" --json --quiet 2>/dev/null)
+    # Re-run via the same spine the inner loop uses. Narrow to changed_files when
+    # present (W-B); tree-mode fallback when absent (Fix B parity preserved).
+    if [ -n "$CHANGED_FILES_CSV" ]; then
+        live=$(ES_HANDOFFS_DIR="$HANDOFFS_DIR" ES_APP_ROOT="$APP" "$ES_BIN" --ticket "$base" --app-root "$APP" --changed-files "$CHANGED_FILES_CSV" --json --quiet 2>/dev/null)
+    else
+        live=$(ES_HANDOFFS_DIR="$HANDOFFS_DIR" ES_APP_ROOT="$APP" "$ES_BIN" --ticket "$base" --app-root "$APP" --json --quiet 2>/dev/null)
+    fi
     if [ -z "$live" ]; then
         emit "  [VIOLATION] $base: could not re-run enforcement (no live report)"
         violations=$((violations + 1)); continue
