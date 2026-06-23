@@ -88,6 +88,17 @@ jobs:
       - name: smoke-e2e (4-artifact end-to-end + AIBOM emit)
         run: ./scripts/smoke-e2e.sh
 
+      - name: composite-engine smoke 1 — applies-to-parity (handoff §6.1)
+        run: |
+          bash .harness/plugin-cache/claude-tdd-pro/rubric/detectors/audit-applies-to-parity.sh
+
+      - name: commercial-license gate — sellable-by-construction (handoff §5.6 / §6.2; ADR-0069 W-H CL-E)
+        # Verifies the bundled FOSS toolchain has zero copyleft/AGPL/etc. obligations
+        # that would conflict with GCTP being commercially sellable. REQUIRED CI step
+        # per the handoff: keeps the product distributable without legal review.
+        run: |
+          bash .harness/plugin-cache/claude-tdd-pro/rubric/detectors/audit-commercial-license.sh
+
       - name: D-6 verification (founder-directives must be byte-identical)
         run: |
           if [ "$(git diff origin/main -- docs/founder-directives.md 2>/dev/null | wc -l)" != "0" ]; then

@@ -144,6 +144,45 @@ The rule ID to put in your deviation row comes from the per-tool stderr line (or
 
 The 9 `applies_to_prose: true` rules use `prose-judge.sh` as the semantic moat. By default it runs the keyword tier (deterministic) and returns `not_enforced` when keywords don't conclusively match. To activate the LLM tier (which converts most `not_enforced` to a real semantic verdict), set `LLM_JUDGE=1` in your dispatch env. The P-8 fix at pin `230e99d` (ADR-0070 → ADOPTED) made this functional — semantic verdicts now return real `compatible`/`violates`/`abstain` rather than silently falling back to `not_enforced`.
 
+## Onboarding a new standards source — worked example (post-CL-A, per ADR-0069 W-H)
+
+The composite-engine activation (pin `230e99d`+) plus the auto-classification pipeline (CTP-ADR-0009) means you can ingest any world-class standard from a URL and have it enforced as detector rules within minutes. Example: **onboard the Google TypeScript style guide → 47 rules in 12 minutes for $4.50**.
+
+```bash
+# Step 1 — declare the source
+mkdir -p .harness/operator-standards
+cat >> .harness/operator-standards/namespaces.yaml <<'YAML'
+sources:
+  - id: google-ts
+    url: https://google.github.io/styleguide/tsguide.html
+    namespace: google
+YAML
+
+# Step 2 — ingest with cost cap
+bash scripts/gctp-standards-add.sh \
+    --source-id google-ts \
+    --url https://google.github.io/styleguide/tsguide.html \
+    --budget-usd 10
+# → [gctp-standards-add] extracted 47 candidate rule(s) from google-ts.
+# → [gctp-standards-add] estimated LLM cost: $4.70 (at $0.10/rule × 47 rules)
+# → [gctp-standards-add] classifying 47 candidate rule(s)...
+# → [gctp-standards-add] routing classified rules to FOSS tools...
+# → [gctp-standards-add] drafting custom rules (LLM)...
+# → [gctp-standards-add] routing to review queue...
+# → [gctp-standards-add] OK — pipeline completed for google-ts.
+
+# Step 3 — review + accept high-confidence batch
+bash scripts/gctp-standards-review.sh --list
+bash scripts/gctp-standards-review.sh --batch-accept --confidence high
+
+# Step 4 — regenerate active.json + verify
+bash scripts/standards-sync.sh
+# → [standards-sync] wrote .harness/rules/active.json (rules: 165, namespaces: 45)
+#   (118 baseline + 47 new google rules)
+```
+
+Full operator workflow with all 10 steps (cost bands, queue routing, coverage reports, validating fresh rules, rejecting/hand-editing): [`docs/operator-runbook.md` §Adding standards from a URL](operator-runbook.md#adding-standards-from-a-url-per-adr-0069-w-h).
+
 ## If you get stuck
 
 - In **Cursor**: run **`/doctor`** (CTP). In **GCTP**: run **`./install.sh`** again — both are safe to re-run.
