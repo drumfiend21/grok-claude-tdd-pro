@@ -1,6 +1,7 @@
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:108:        base_sorted=$(mktemp -t epoch-base.XXXXXX) || { rm -f "$cur_sorted"; return 2; }
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:111:        rm -f "$base_sorted"
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:115:    rm -f "$cur_sorted"
+S-3|rm -rf usage (verify path is bounded)|scripts/_lib/test-cache.sh:116:    rm -f "$TC_CACHE_DIR"/*.hash 2>/dev/null
 S-3|rm -rf usage (verify path is bounded)|scripts/audit-cross-references.sh:144:rm -f "$current_sorted"
 S-3|rm -rf usage (verify path is bounded)|scripts/audit-cross-references.sh:59:trap 'rm -f -- "$findings_file"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/audit-doc-drift.sh:59:trap 'rm -f -- "$FINDINGS_FILE"' EXIT INT TERM
@@ -18,6 +19,7 @@ S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:208:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/integration/test-generative-integration.sh:52:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-all.sh:75:        [ "$CACHE" -eq 1 ] && rm -f "$(tc_cache_dir)/$suite_name.hash" 2>/dev/null
 S-3|rm -rf usage (verify path is bounded)|tests/test-app-root.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-app-root.sh:35:rm -f "$CFG"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:28:trap 'rm -rf -- "$TMP"' EXIT INT TERM
@@ -65,3 +67,4 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:61:rm 
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:65:rm -f "$CTPFF"; run --configure bogus >/dev/null 2>&1; rc=$?
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:76:rm -f "$C" "$TMP/refresh.log"
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:96:rm -f "$C" "$TMP/refresh.log"; run --configure on-demand >/dev/null 2>&1
+S-3|rm -rf usage (verify path is bounded)|tests/test-test-cache.sh:27:trap 'rm -rf -- "$TMP"' EXIT INT TERM

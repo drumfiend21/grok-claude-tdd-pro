@@ -30,6 +30,10 @@
 # artifacts (if any) remain ignored. New work uses static context injection.
 .harness/cache/
 
+# Dependency-closure test-result cache (TICKET-099 / ADR-0073). Operator-local
+# passing-suite hashes; environment-specific, never committed to the harness tree.
+.harness/test-cache/
+
 # Static planner-context (TICKET-035 / ADR-0040). Derived artifact copied from
 # the pinned plugin's docs/PROJECT_CONTEXT_FOR_PLANNER.md by sync-plugin.sh
 # --ensure. Plugin pin bumps refresh it; never committed to the harness tree
