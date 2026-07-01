@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   4668c2ed0e3133faa1898f00dbf7b234452088b7
-pinned_at:       2026-07-01T00:08:06+00:00
-pinned_message:  "v1.18 §28.40-28.69 -- Consumer Compatibility Contract (CTP side of P-9) + 80-tool composite engine + single-config surface + native fallback/universal enforcer + govern-before-write + both-paths pre-write + co-design/path-tagging/agnosticism + EO-security build-out (58 commits ahead of 230e99d; ADR-0072)"
+pinned_commit:   127804ba7874d92edd5b1274b6ff2215936ae694
+pinned_at:       2026-07-01T22:13:49+00:00
+pinned_message:  "§28.70 (CL-538) bash-3.2 composite-dispatch empty-array fix -- resolves GCTP P-10; activates the routed-FOSS-tool paths on macOS bash 3.2 (verified live: crash gone, clean=green, bad=red). Additive over 4668c2e; ADR-0079"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -29,7 +29,7 @@ contract_surface_files:
   - path:   CLAUDE.md
     sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: a2c34ace22f0057df27de56e530b2dc85856fc65e130f72733da43f005decd63
+    sha256: efdd38057b4f97d5cee79eb16adc53d38e8d5a805119858152a8f50322293155
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-06-30T00:00:00Z
-last_synced_session: "TICKET-098 pin bump 230e99d→4668c2e (v1.18 §28.40-28.69 Consumer Compatibility Contract + 80-tool composite engine + single-config surface + native/universal enforcement + govern-before-write + EO-security build-out) per ADR-0072"
+last_synced_at:      2026-07-01T00:00:00Z
+last_synced_session: "TICKET-107 pin bump 4668c2e→127804b (§28.70 CL-538 bash-3.2 composite-dispatch empty-array fix; resolves P-10; activates routed-tool paths on bash 3.2) per ADR-0079"

@@ -206,7 +206,7 @@ external-working-tree model) — are NOT upstream items; they land in this repo 
 
 ## P-10 — `composite-dispatch.sh` bash 3.2 empty-array crash (`ra[@]` / `toa[@]`) on any `--file` dispatch
 
-- **Status:** 🟥 OPEN — filed 2026-06-30, surfaced adopting pin `4668c2e` (GCTP ADR-0072 / CL-B TICKET-100).
+- **Status:** ✅ ADOPTED — fixed in CTP **CL-538 (§28.70)** with the standard empty-array guard `${ra[@]+"${ra[@]}"}` `${toa[@]+"${toa[@]}"}`; adopted at GCTP pin `127804b` (ADR-0079 / TICKET-107). **Verified live on this machine's `/bin/bash` 3.2.57** (the definitive check CTP CI could not run): `composite-dispatch --file` now emits a real `status=` verdict (clean → green, violating → red) with no `unbound variable`. The routed-FOSS-tool paths (pre-write ADR-0075, on-save ADR-0076, audit-time ADR-0077) are now **active** on bash 3.2. Filed 2026-06-30 (GCTP CL-B TICKET-100), handed off to CTP (TICKET-106), fixed + re-pinned 2026-07-01.
 - **Found:** 2026-06-30, GCTP CL-B design-phase-md wiring — invoking the cache's `rubric/composite-dispatch.sh --file <any-file>` at pin `4668c2e`.
 - **Symptom:** every `--file` dispatch prints `composite-dispatch.sh: line 119: ra[@]: unbound variable` (to stderr) and exits 1 **without producing a verdict** — no `composite-dispatch … status=red|green` summary line.
 - **Cause:** `rubric/composite-dispatch.sh` line 116 `ra=(); is_required "$t" && ra=(--required)` and line 117 `toa=()`, then line 119 `bash "$RUNNER" … "${ra[@]}" "${toa[@]}" …` — expanding an EMPTY array under `set -u` on macOS's default **bash 3.2**. The classic empty-array gotcha, identical in class to **P-1** (`conflicts[@]`). Fires whenever a routed tool is not `required` and carries no tool-options (the common case).
