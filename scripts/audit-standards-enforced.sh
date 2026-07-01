@@ -83,7 +83,12 @@ if [ "$have" -eq 0 ]; then
     exit 0
 fi
 
-violations=0
+# Epoch-aware enforcement (ADR-0071): collect divergences, then grandfather any
+# recorded in the baseline (pin-keyed, legacy-flat fallback) as pre-epoch legacy
+# claims. NEW divergences (not baselined) still fail. No baseline => every
+# divergence is new (behavior identical to pre-ADR-0071).
+div_file=$(mktemp -t std-enf-div.XXXXXX) || { printf 'audit-standards-enforced.sh: mktemp failed\n' >&2; exit 2; }
+trap 'rm -f -- "$div_file"' EXIT INT TERM
 checked=0
 for res in "$HANDOFFS_DIR"/*.res.json; do
     [ -e "$res" ] || continue
@@ -119,8 +124,8 @@ console.log("GATE|"+cf.join(","));
         live=$(ES_HANDOFFS_DIR="$HANDOFFS_DIR" ES_APP_ROOT="$APP" "$ES_BIN" --ticket "$base" --app-root "$APP" --json --quiet 2>/dev/null)
     fi
     if [ -z "$live" ]; then
-        emit "  [VIOLATION] $base: could not re-run enforcement (no live report)"
-        violations=$((violations + 1)); continue
+        printf '%s\n' "$base: could not re-run enforcement (no live report)" >> "$div_file"
+        continue
     fi
     checked=$((checked + 1))
 
@@ -138,18 +143,34 @@ for(const rule of Object.keys(claimed)){
 ' 2>&1)
     nviol=$(printf '%s\n' "$out" | grep -c '^VIOL|' || true)
     if [ "$nviol" -gt 0 ]; then
-        printf '%s\n' "$out" | sed -n 's/^VIOL|/  [VIOLATION] '"$base"': /p' | while IFS= read -r l; do emit "$l"; done
-        violations=$((violations + nviol))
+        printf '%s\n' "$out" | sed -n 's/^VIOL|/'"$base"': /p' >> "$div_file"
     else
         emit "  [ok] $base: green claims match live detector verdicts ($APP)."
     fi
 done
 
-if [ "$violations" -gt 0 ]; then
-    emit ""
-    emit "[standards-enforced] $violations divergence(s). A green response's rules_verified MUST match a"
-    emit "  live detector re-run against the app_root — no asserted passes, no vacuous (0-file) passes."
-    exit 1
+# Grandfather divergences recorded in the epoch baseline (pre-epoch legacy claims,
+# ADR-0071); only NEW divergences fail the gate.
+total_div=$(wc -l < "$div_file" | tr -d ' ')
+if [ "$total_div" -gt 0 ]; then
+    BASELINE=$(epoch_resolve_baseline standards-enforced)
+    div_sorted=$(mktemp -t std-enf-cur.XXXXXX) || { printf 'audit-standards-enforced.sh: mktemp failed\n' >&2; exit 2; }
+    sort "$div_file" > "$div_sorted"
+    new_div=$(epoch_filter_new "$BASELINE" "$div_sorted")
+    rm -f "$div_sorted"
+    new_count=0
+    [ -n "$new_div" ] && new_count=$(printf '%s\n' "$new_div" | grep -c . || true)
+    grandfathered=$((total_div - new_count))
+    if [ "$new_count" -gt 0 ]; then
+        emit ""
+        printf '%s\n' "$new_div" | sed 's/^/  [VIOLATION] /' | while IFS= read -r l; do emit "$l"; done
+        emit ""
+        emit "[standards-enforced] $new_count NEW divergence(s); $grandfathered grandfathered as pre-epoch (ADR-0071)."
+        emit "  A green response's rules_verified MUST match a live detector re-run — no asserted/vacuous passes."
+        exit 1
+    fi
+    emit "[standards-enforced] OK — $total_div divergence(s), all grandfathered as pre-epoch in the baseline (ADR-0071)."
+    exit 0
 fi
 if [ "$checked" -eq 0 ]; then
     emit "[standards-enforced] no green response with applicable_rules to re-verify — vacuous pass."

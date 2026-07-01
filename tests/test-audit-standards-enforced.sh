@@ -95,6 +95,22 @@ mkreq T1 '{"applicable_rules":["g-a"]}'
 mkres T1 '{"status":"green","rules_verified":{"g-a":"not_applicable"}}'
 run; assert_eq "$?" "1" "claimed not_applicable but live pass → divergence (1)"
 
+# Epoch-baseline grandfathering (ADR-0071). run_base points EPOCH_BASELINE_DIR at
+# a fixture dir so the pre-epoch baseline is hermetic (not the real repo baseline).
+run_base() { ASE_HANDOFFS_DIR="$TMP/h" ASE_APP_ROOT="$TMP/app" ES_ENFORCE="$TMP/enforce.sh" EPOCH_BASELINE_DIR="$TMP/base" "$SCRIPT" --quiet >/dev/null 2>&1; }
+mkdir -p "$TMP/base"
+
+# Test 11: a divergence recorded in the epoch baseline is grandfathered → 0
+clear_h
+mkreq T1 '{"applicable_rules":["g-a","g-x-fail"]}'
+mkres T1 '{"status":"green","rules_verified":{"g-a":"pass","g-x-fail":"pass"}}'
+printf '%s\n' "T1: claims g-x-fail=pass but live verdict is fail" > "$TMP/base/standards-enforced-baseline.txt"
+run_base; assert_eq "$?" "0" "divergence grandfathered in epoch baseline → 0 (ADR-0071)"
+
+# Test 12: a divergence NOT in the baseline still fails → 1 (grandfathering must not mask)
+printf '%s\n' "T1: claims g-other=pass but live verdict is fail" > "$TMP/base/standards-enforced-baseline.txt"
+run_base; assert_eq "$?" "1" "divergence absent from baseline still fails → 1 (no masking)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-standards-enforced] OK — $passes/$total passed."; exit 0
 else log "[test-standards-enforced] FAIL — $failures/$total."; exit 1; fi
