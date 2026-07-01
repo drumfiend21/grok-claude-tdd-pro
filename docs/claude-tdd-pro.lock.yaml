@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   230e99d864bfba0b54ea9168ecc825a65bbecf70
-pinned_at:       2026-06-23T01:05:11+00:00
-pinned_message:  "CL-488..499 (§28.28-28.39) -- ADR-0008 composite engine + 4-axis canonical vocabulary + ADR-0009 auto-classification pipeline + commercial-license gate + P-8 fix (4407->4510)"
+pinned_commit:   4668c2ed0e3133faa1898f00dbf7b234452088b7
+pinned_at:       2026-07-01T00:08:06+00:00
+pinned_message:  "v1.18 §28.40-28.69 -- Consumer Compatibility Contract (CTP side of P-9) + 80-tool composite engine + single-config surface + native fallback/universal enforcer + govern-before-write + both-paths pre-write + co-design/path-tagging/agnosticism + EO-security build-out (58 commits ahead of 230e99d; ADR-0072)"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -29,7 +29,7 @@ contract_surface_files:
   - path:   CLAUDE.md
     sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: b9051de83bf5a0731a99866e7a15c444e852e2abd070463dafc8b059a8aaf941
+    sha256: a2c34ace22f0057df27de56e530b2dc85856fc65e130f72733da43f005decd63
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-06-23T00:00:00Z
-last_synced_session: "TICKET-087 pin bump 39903da→230e99d (CL-488..499 ADR-0008 composite engine + ADR-0009 auto-classification adoption) per ADR-0070"
+last_synced_at:      2026-06-30T00:00:00Z
+last_synced_session: "TICKET-098 pin bump 230e99d→4668c2e (v1.18 §28.40-28.69 Consumer Compatibility Contract + 80-tool composite engine + single-config surface + native/universal enforcement + govern-before-write + EO-security build-out) per ADR-0072"
