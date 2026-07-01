@@ -172,4 +172,11 @@ if [ -x scripts/audit-development-paths.sh ]; then
     scripts/audit-development-paths.sh || true
 fi
 
+# Single-config OPTIONS-surface completeness (CL-H / ADR-0078): every active rule must
+# carry projectable tool options in the single config (config-sync --check nothing-missing).
+# Vacuous on a pre-§28.58 cache / missing Ruby. Fast (~0.2s). WARN at session start.
+if [ -x scripts/audit-config-surface.sh ]; then
+    scripts/audit-config-surface.sh || true
+fi
+
 exit 0
