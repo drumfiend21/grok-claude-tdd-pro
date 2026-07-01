@@ -165,4 +165,11 @@ if [ -x scripts/audit-standards-enforced.sh ]; then
     scripts/audit-standards-enforced.sh || true
 fi
 
+# Development-path coverage (CL-I / ADR-0074): every corpus rule must resolve to a
+# development path (iac/fullstack/both) — the partition behind both-paths pre-write
+# enforcement (§28.63/§28.68). Vacuous on a pre-§28.63 cache. WARN at session start.
+if [ -x scripts/audit-development-paths.sh ]; then
+    scripts/audit-development-paths.sh || true
+fi
+
 exit 0
