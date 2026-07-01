@@ -147,6 +147,28 @@ clear_h
 mkreq TICKET-DEV '{"ticket_id":"TICKET-DEV","file_scope":{"may_edit":["docs/architecture/adr/**/*.md"]}}'
 run_prose; assert_eq "$?" "0" "test_dispatch_md_design_deviated_proceeds — both rules deviated for TICKET-DEV → 0"
 
+# ---------- parse-then-block (ADR-0068 W-D, CL-B / TICKET-100) ----------
+# A stub composite-dispatch isolates the W-D path: the gate must red on an
+# AUTHORITATIVE `composite-dispatch … status=red` line, but NOT on a bare crash
+# exit (the 4668c2e `ra[@]: unbound variable` bug, filed upstream as P-10).
+# TICKET-DEV's prose rules are all deviated → the prose-loop contributes 0 red, so
+# the composite path is the only possible red source (clean isolation).
+mkdir -p "$TMP/stubplugin/rubric" "$TMP/app/docs/architecture/adr"
+printf -- '---\nkind: architecture\n---\n# design\n' > "$TMP/app/docs/architecture/adr/0099-stub.md"
+run_stub() { ADPM_HANDOFFS_DIR="$TMP/h" ADPM_ACTIVE="$TMP/active-prose.json" ADPM_APP_ROOT="$TMP/app" ADPM_PLUGIN_ROOT="$TMP/stubplugin" "$SCRIPT" --quiet >/dev/null 2>&1; }
+clear_h
+mkreq TICKET-DEV '{"ticket_id":"TICKET-DEV","file_scope":{"may_edit":["docs/architecture/adr/**/*.md"]}}'
+
+# Authoritative status=red on an undeviated rule → gate reds (1)
+printf '#!/usr/bin/env bash\necho "composite-dispatch file=$2 status=red rule=g-fake-undeviated"\nexit 1\n' > "$TMP/stubplugin/rubric/composite-dispatch.sh"
+chmod +x "$TMP/stubplugin/rubric/composite-dispatch.sh"
+run_stub; assert_eq "$?" "1" "parse-then-block — authoritative status=red on an undeviated rule → 1"
+
+# Bare crash (exit 1, no status=red line) → NOT authoritative → ignored → 0
+printf '#!/usr/bin/env bash\necho "composite-dispatch.sh: line 119: ra[@]: unbound variable" >&2\nexit 1\n' > "$TMP/stubplugin/rubric/composite-dispatch.sh"
+chmod +x "$TMP/stubplugin/rubric/composite-dispatch.sh"
+run_stub; assert_eq "$?" "0" "parse-then-block — bare crash exit (no status=red) → NOT red → 0"
+
 # ---------- test_dispatch_frontmatter_kind_detection ----------
 # A req touching docs/notes/secret-arch.md whose frontmatter is kind: architecture
 clear_h

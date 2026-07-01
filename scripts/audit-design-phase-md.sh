@@ -260,17 +260,20 @@ if (compositePresent && !testVerdict) {
       encoding: "utf8",
       env: Object.assign({}, process.env, { CLAUDE_PLUGIN_ROOT: pluginRoot })
     });
-    if (r.status === 1) {
-      // Parse stderr for the per-tool/per-rule verdict lines to attribute the P0.
-      const out = (r.stderr || "") + (r.stdout || "");
-      // Try to extract failing rule IDs from stderr; otherwise mark composite-engine
-      // P0 generically. The deviation check uses the extracted rule ID when possible.
-      const m = out.match(/\brule[\s=:]+([\w.\-]+)/);
-      const inferredRule = m ? m[1] : "composite-engine-p0";
-      if (isDeviated(inferredRule)) continue;
-      red++;
-      console.log("VIOL|" + ticketId + "|" + inferredRule + "|composite-dispatch-fail|file=" + relFile);
-    }
+    // Parse-then-block — mirrors ADR-0068 W-C (post-tool-use-review-gate.sh). A real
+    // verdict is an AUTHORITATIVE `composite-dispatch … status=red` summary line. A
+    // bare non-zero exit is NOT authoritative: a CTP-side bash 3.2 crash (observed at
+    // pin 4668c2e — `composite-dispatch.sh: ra[@]: unbound variable`; filed upstream
+    // as P-10) surfaces as exit 1 without representing a design violation and MUST NOT
+    // red the gate. The applies_to_prose semantic verdict is already covered by the
+    // prose-rule loop above; this path only surfaces authoritative composite P0s.
+    const out = (r.stderr || "") + (r.stdout || "");
+    if (!/^composite-dispatch\s+.*\bstatus=red\b/m.test(out)) continue;
+    const m = out.match(/\brule[\s=:]+([\w.\-]+)/);
+    const inferredRule = m ? m[1] : "composite-engine-p0";
+    if (isDeviated(inferredRule)) continue;
+    red++;
+    console.log("VIOL|" + ticketId + "|" + inferredRule + "|composite-dispatch-fail|file=" + relFile);
     // exit 3 = incomplete (optional tool missing) — advisory per ADR-0068 D-B-1.
     // Not red here; surfaces in the post-tool-use hook for write-time signal.
   }
