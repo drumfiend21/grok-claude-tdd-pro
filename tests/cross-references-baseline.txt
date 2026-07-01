@@ -57,6 +57,7 @@ docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: doc
 docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: scripts/classify-from-url.sh
 docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: scripts/review-queue.sh
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
+docs/architecture-v1.9-drift-review-230e99d-to-4668c2e.md references missing path: docs/architecture-v1.9.md
 docs/deviations-template.md references missing path: docs/architecture/adr/0010-data-residency-region-extensible-iac.md
 docs/eo-2026-ai-innovation-security-alignment.md references missing path: docs/compliance-profiles/eo-2026.md
 docs/eo-2026-ai-innovation-security-alignment.md references missing path: docs/frontier-model-readiness.md
