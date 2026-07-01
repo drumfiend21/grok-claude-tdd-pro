@@ -26,6 +26,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-app-root.sh:35:rm -f "$CFG"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:28:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:59:rm -f "$COMPACT"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-agent-compact.sh:75:rm -f "$ACK"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:36:rm -f "$CA"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:39:clear_h() { rm -f "$TMP/h"/*.json; }
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM

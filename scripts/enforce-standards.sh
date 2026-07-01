@@ -125,6 +125,11 @@ if [ -n "$CHANGED_FILES" ]; then
     PER_FILE_STDERR=""
     NUM_FILES=0
     PWD_ABS=$(pwd -P)
+    # CL-E / ADR-0077: per-file re-verification is a SINGLE-FILE gate — skip tree-context
+    # rules (coverage, etc.) that only make sense whole-tree. --single-file-gate is a
+    # 4668c2e enforce-file.sh flag; guard on support so an older cache still works.
+    SFG=""
+    grep -q -- "--single-file-gate" "$ENFORCE_FILE" 2>/dev/null && SFG="--single-file-gate"
     OLDIFS="$IFS"; IFS=','
     for f in $CHANGED_FILES; do
         [ -n "$f" ] || continue
@@ -142,7 +147,7 @@ if [ -n "$CHANGED_FILES" ]; then
         fi
         NUM_FILES=$((NUM_FILES + 1))
         # --root passed for context; enforce-file.sh does its own per-file rule discovery.
-        FILE_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$ENFORCE_FILE" --file "$ABS" --root "$APP" 2>&1 >/dev/null) || true
+        FILE_OUT=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" bash "$ENFORCE_FILE" --file "$ABS" --root "$APP" $SFG 2>&1 >/dev/null) || true
         PER_FILE_STDERR="${PER_FILE_STDERR}${FILE_OUT}
 "
     done
