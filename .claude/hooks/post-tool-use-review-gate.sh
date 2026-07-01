@@ -106,7 +106,7 @@ case "$REL_PATH" in
         # g-iam-* + g-jwt-* + g-sbom-* + g-sarif-*). Vacuous-pass today (runner has no
         # detectors for these extensions); activates automatically on the CTP pin bump that
         # adopts PROPOSAL-003 — write-time enforcement on every file the harness writes.
-        PLUGIN_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}/.harness/plugin-cache/claude-tdd-pro"
+        PLUGIN_ROOT="${PTU_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}/.harness/plugin-cache/claude-tdd-pro}"
         RUNNER="$PLUGIN_ROOT/rubric/runner.sh"
         if [ -x "$RUNNER" ]; then
             findings=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
@@ -151,10 +151,31 @@ case "$REL_PATH" in
             # avoids false-positive write-blocks from upstream script bugs while still
             # honoring legitimate P0 verdicts. Missing dispatch entrypoint = silent
             # no-op (pre-CL-A cache compat).
+            # CL-D / ADR-0076: composite-dispatch below runs the CTP APP-ARCHITECTURE
+            # corpus (g-aws/g-k8s/g-iam/…). Per the agent-operating-compact it governs the
+            # external product, NOT harness self-maintenance, so it is scoped to app_root —
+            # consistent with the CL-C pre-write governor. rubric/runner above stays
+            # harness-wide (code-quality/TDD plane; ADR-0037 preserved). No app_root ⇒ no-op.
+            # Fails toward NOT firing (a missed composite-dispatch never breaks a write).
+            # Absolute REL_PATH (e.g. a sibling app_root tree) must not be reparented under WORKDIR.
+            case "$REL_PATH" in
+                /*) ABS_FILE="$REL_PATH" ;;
+                *)  ABS_FILE="$WORKDIR/$REL_PATH" ;;
+            esac
+            APP_ROOT_BIN="${PTU_APP_ROOT_BIN:-$WORKDIR/scripts/app-root.sh}"
+            APP_ROOT=""
+            if [ -n "${PTU_APP_ROOT:-}" ]; then APP_ROOT="$PTU_APP_ROOT"
+            elif [ -x "$APP_ROOT_BIN" ]; then APP_ROOT=$("$APP_ROOT_BIN" 2>/dev/null) || APP_ROOT=""; fi
+            in_app_root=0
+            if [ -n "$APP_ROOT" ]; then
+                absroot=$(cd "$APP_ROOT" 2>/dev/null && pwd -P) || absroot=""
+                absf=$(cd "$(dirname "$ABS_FILE")" 2>/dev/null && printf '%s/%s' "$(pwd -P)" "$(basename "$ABS_FILE")") || absf="$ABS_FILE"
+                [ -n "$absroot" ] && case "$absf" in "$absroot"/*) in_app_root=1 ;; esac
+            fi
             DISPATCH="$PLUGIN_ROOT/rubric/composite-dispatch.sh"
-            if [ -x "$DISPATCH" ] && [ -f "${CLAUDE_PROJECT_DIR:-$PWD}/$REL_PATH" ]; then
+            if [ "$in_app_root" -eq 1 ] && [ -x "$DISPATCH" ] && [ -f "$ABS_FILE" ]; then
                 disp_out=$(CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT" \
-                           bash "$DISPATCH" --file "${CLAUDE_PROJECT_DIR:-$PWD}/$REL_PATH" 2>&1 >/dev/null)
+                           bash "$DISPATCH" --file "$ABS_FILE" 2>&1 >/dev/null)
                 disp_rc=$?
                 # Look for the authoritative summary line: `composite-dispatch ... status=red`
                 if printf '%s' "$disp_out" | grep -qE '^composite-dispatch[[:space:]]+.*\bstatus=red\b'; then
