@@ -69,6 +69,17 @@ The script will refuse to bump if contract-surface drift is detected — that's 
 
 The script enforces step 3 by refusing `--update` when contract-surface hashes differ, so the human pause for the ADR is structural, not procedural.
 
+## Re-baseline step (epoch-aware enforcement, ADR-0071)
+
+A pin bump can introduce new rules/floors that harness audits derive requirements from — which would otherwise retroactively flag legacy tickets/data (the 205/57/5 cascade from ADR-0070). [ADR-0071](./adr/0071-epoch-aware-enforcement.md) makes audit baselines **pin-keyed** (`tests/<stem>-baseline.<pin>.txt`) so pre-epoch findings are grandfathered. Re-baselining is an **explicit step of every bump**, never a silent per-run rewrite:
+
+1. After `--update` + `sync-plugin.sh --ensure` + `standards-sync.sh`, run the full audit chain at the **new** pin.
+2. For each baseline-backed audit (`cross-references`, `hook-security`, and any Tier-2 audit that has grown a baseline) whose findings changed, snapshot the accepted set into `tests/<stem>-baseline.<new-pin>.txt`. **Review each new line** — a genuine regression must NOT be baselined, only pre-epoch grandfathered findings.
+3. Record the re-baseline in the pin-bump ADR (mirror ADR-0070's "Known follow-up" structure): list every newly-baselined line with justification.
+4. Retain the old pin-keyed (or legacy flat) baseline for history; `scripts/_lib/epoch-gate.sh` resolves the pin-keyed file first, falling back to the legacy flat `tests/<stem>-baseline.txt`.
+
+The short pin (`epoch_current_pin`) is read from `docs/claude-tdd-pro.lock.yaml`; the shared library `scripts/_lib/epoch-gate.sh` centralizes resolution + the new-vs-baseline diff for all 17 `audit-*.sh`.
+
 ## When to add a file to the contract surface
 
 The contract surface is the set of upstream files this repo's architecture genuinely depends on. Today: `CLAUDE.md`, `docs/architecture-v1.9.md`, and the three `tdd-pro-*` `SKILL.md` files.

@@ -46,6 +46,13 @@ done
 
 emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 
+# Epoch-aware enforcement (ADR-0071): pin-keyed baseline resolution + new-vs-baseline
+# diff route through the shared library. Behavior is identical today (legacy flat
+# baseline fallback); the baseline becomes pin-keyed at the next pin bump.
+_XREF_DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)
+# shellcheck disable=SC1090
+. "$_XREF_DIR/_lib/epoch-gate.sh"
+
 emit "[cross-ref-audit] walking TIER-1/TIER-2 surfaces..."
 
 findings_file=$(mktemp -t cross-ref-audit.XXXXXX) || { printf '[cross-ref-audit] mktemp failed\n' >&2; exit 2; }
@@ -115,15 +122,15 @@ emit "[cross-ref-audit] checked $check_count distinct (file, reference) pairs."
 # (within already-shipped ADRs per Nygard append-only) or §Alternatives-block
 # items naming REJECTED/DEFERRED targets. The audit exits 0 when findings
 # match the baseline; 1 only when NEW broken refs are introduced.
-BASELINE=tests/cross-references-baseline.txt
+BASELINE=$(epoch_resolve_baseline cross-references)
 
 if [ "$findings" -eq 0 ]; then
     emit "[cross-ref-audit] OK — no broken cross-references detected."
-    [ -s "$BASELINE" ] && emit "  (baseline file $BASELINE has $(wc -l < "$BASELINE" | tr -d ' ') entries; consider archiving)"
+    [ -n "$BASELINE" ] && [ -s "$BASELINE" ] && emit "  (baseline file $BASELINE has $(wc -l < "$BASELINE" | tr -d ' ') entries; consider archiving)"
     exit 0
 fi
 
-if [ ! -f "$BASELINE" ]; then
+if [ -z "$BASELINE" ] || [ ! -f "$BASELINE" ]; then
     if [ "$QUIET" -eq 0 ]; then cat -- "$findings_file"; fi
     emit "[cross-ref-audit] $findings broken reference(s) found; no baseline file present."
     exit 1
@@ -132,7 +139,7 @@ fi
 # Compute new findings = (current findings) - (baseline)
 current_sorted=$(mktemp -t cross-ref-current.XXXXXX) || { printf '[cross-ref-audit] mktemp failed\n' >&2; exit 2; }
 sed 's/^  \[BROKEN\] //' "$findings_file" | sort > "$current_sorted"
-new_findings=$(comm -23 "$current_sorted" "$BASELINE" 2>/dev/null || true)
+new_findings=$(epoch_filter_new "$BASELINE" "$current_sorted")
 fixed_findings=$(comm -13 "$current_sorted" "$BASELINE" 2>/dev/null || true)
 rm -f "$current_sorted"
 

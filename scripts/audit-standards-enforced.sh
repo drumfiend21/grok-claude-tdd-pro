@@ -39,6 +39,14 @@
 
 set -u
 
+# Epoch-aware enforcement (ADR-0071): source the shared epoch library so this audit
+# participates in the uniform epoch-gate surface (operator directive: all 17 audits).
+# Exposes epoch_current_pin / epoch_resolve_baseline / epoch_filter_new /
+# epoch_req_gated; sourcing is side-effect-free (functions only).
+_EPOCH_AUDIT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)
+# shellcheck disable=SC1090
+. "$_EPOCH_AUDIT_DIR/_lib/epoch-gate.sh"
+
 QUIET=0
 for arg in "$@"; do
     case "$arg" in

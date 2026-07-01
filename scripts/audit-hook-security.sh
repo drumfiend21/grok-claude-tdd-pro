@@ -46,6 +46,12 @@ done
 
 emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 
+# Epoch-aware enforcement (ADR-0071): pin-keyed baseline resolution via the shared
+# library. Behavior identical today (legacy flat baseline fallback).
+_HSEC_DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)
+# shellcheck disable=SC1090
+. "$_HSEC_DIR/_lib/epoch-gate.sh"
+
 emit "[hook-security-audit] scanning hooks + scripts + skills + templates..."
 
 findings_file=$(mktemp -t hook-sec.XXXXXX) || { printf 'mktemp failed\n' >&2; exit 2; }
@@ -88,17 +94,17 @@ scan_pattern "S-5" '\bsudo\b' "sudo invocation"
 # S-6: bash -c with unquoted variable expansion
 scan_pattern "S-6" 'bash[[:space:]]+-c[[:space:]]+[^"\047]*\$' "bash -c with unquoted variable"
 
-# --- Compare against baseline ---
-BASELINE=tests/hook-security-baseline.txt
+# --- Compare against baseline (epoch-aware resolution, ADR-0071) ---
+BASELINE=$(epoch_resolve_baseline hook-security)
 total_findings=$(wc -l < "$findings_file" | tr -d ' ')
 
 if [ "$total_findings" -eq 0 ]; then
     emit "[hook-security-audit] OK — no findings in harness substrate."
-    [ -s "$BASELINE" ] && emit "  (baseline file $BASELINE has $(wc -l < "$BASELINE" | tr -d ' ') entries; consider archiving)"
+    [ -n "$BASELINE" ] && [ -s "$BASELINE" ] && emit "  (baseline file $BASELINE has $(wc -l < "$BASELINE" | tr -d ' ') entries; consider archiving)"
     exit 0
 fi
 
-if [ ! -f "$BASELINE" ]; then
+if [ -z "$BASELINE" ] || [ ! -f "$BASELINE" ]; then
     if [ "$QUIET" -eq 0 ]; then
         cat -- "$findings_file" | sed 's/^/  [FINDING] /' | awk -F'|' '{print $0}'
     fi
@@ -109,7 +115,7 @@ fi
 # Diff findings against baseline (lines normalize to "S-X|description|file:line:content")
 current_sorted=$(mktemp -t hook-sec-cur.XXXXXX) || { printf 'mktemp failed\n' >&2; exit 2; }
 sort "$findings_file" > "$current_sorted"
-new_findings=$(comm -23 "$current_sorted" "$BASELINE" 2>/dev/null || true)
+new_findings=$(epoch_filter_new "$BASELINE" "$current_sorted")
 rm -f "$current_sorted"
 
 if [ -n "$new_findings" ]; then
