@@ -1,3 +1,4 @@
+S-3|rm -rf usage (verify path is bounded)|.claude/hooks/pre-tool-use-govern.sh:64:    trap 'rm -rf "$scratch" 2>/dev/null' EXIT
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:108:        base_sorted=$(mktemp -t epoch-base.XXXXXX) || { rm -f "$cur_sorted"; return 2; }
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:111:        rm -f "$base_sorted"
 S-3|rm -rf usage (verify path is bounded)|scripts/_lib/epoch-gate.sh:115:    rm -f "$cur_sorted"
@@ -59,6 +60,7 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-review.sh:20
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
 S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
+S-3|rm -rf usage (verify path is bounded)|tests/test-pre-tool-use-govern.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-sarif-aggregate.sh:115:rm -rf ".harness/audit/sarif/raw/$DEFAULT_TICKET" ".harness/audit/sarif/$DEFAULT_TICKET.sarif.json" ".harness/audit/sarif/$DEFAULT_TICKET.summary.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-sarif-aggregate.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-source-citations.sh:31:trap 'rm -rf -- "$TMP"' EXIT INT TERM
