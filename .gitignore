@@ -34,6 +34,10 @@
 # passing-suite hashes; environment-specific, never committed to the harness tree.
 .harness/test-cache/
 
+# Grok outer-loop run logs (TICKET-108 / ADR-0080). Operator-local audit trail written by
+# scripts/grok-run.sh (G-15: run-id / prompt-hash / cost per invocation). Never committed.
+.harness/runs/
+
 # Static planner-context (TICKET-035 / ADR-0040). Derived artifact copied from
 # the pinned plugin's docs/PROJECT_CONTEXT_FOR_PLANNER.md by sync-plugin.sh
 # --ensure. Plugin pin bumps refresh it; never committed to the harness tree

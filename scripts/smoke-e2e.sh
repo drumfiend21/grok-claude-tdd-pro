@@ -110,8 +110,10 @@ for(const id of eo.concat(ids.filter(x=>x.startsWith("g-universal-")))) if(!seen
 process.stdout.write(JSON.stringify(out));
 ')"
 
-# In a live run this would be `grok -p < .grok/templates/dispatch.md`.
-# Here we build the same document directly from the contract example.
+# In a live run this is `scripts/grok-run.sh dispatch ...` (the G-2 headless runner, TICKET-108 /
+# ADR-0080), which invokes `grok -p` with Structured Output when the grok CLI + XAI_API_KEY are
+# present and returns a contract-valid STUB otherwise. This smoke test builds the same document
+# directly from the contract example (stub-mode default, per TICKET-006 / ADR-0008).
 env TICKET_ID="$TICKET_ID" ISSUED_AT="$ISSUED_AT" REQ_PATH="$REQ_PATH" APPLICABLE_RULES_JSON="$APPLICABLE_RULES_JSON" node -e '
 const fs = require("fs");
 const req = {
