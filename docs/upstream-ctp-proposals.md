@@ -138,3 +138,68 @@ external-working-tree model) — are NOT upstream items; they land in this repo 
   2. **Deviation rows** for any rule the operator decides genuinely cannot apply to a given ticket.
   3. **Accept `not_enforced`-as-RED** per ADR-0066 D-C until tier-2 ships fixed — the gate is honest (no silent green), just over-broad.
 - **Impact on GCTP work:** ADR-0066 wiring (CL-A through CL-E) and ADR-0067 (pin bump) are unaffected — the gates correctly surface `not_enforced` per the no-silent-green invariant. The operator's expectation that LLM_JUDGE=1 would clear the 28 incompletes (recorded in `docs/kata-architecture-revalidation-2026-06-20.md`) cannot be satisfied until this fix lands upstream.
+
+## P-9 — Consumer-compatibility contract on rule-schema-touching CTP ADRs (close the schema-additive ≠ state-additive gap)
+
+- **Status:** 🟥 OPEN — filed 2026-06-25, retrospective on the `39903da → 230e99d` pin bump (ADR-0070 + CL-B..CL-E).
+- **Found:** 2026-06-25, post-mortem on ADR-0070's three documented deferred reds at CL-A close:
+  1. `audit-applicable-rules.sh` — 205 violations on TICKETS 001..014 (new `applies_to_prose: true` floor on 9 rules silently retro-required every legacy `.md`-scoped req.json to carry them);
+  2. `audit-cross-references.sh` — 57 NEW broken refs / 35 baseline rows obsoleted (new top-level plugin entries + ADR-0068/0069 references to plugin-internal scripts);
+  3. `audit-standards-enforced.sh` — TICKET-042 divergence (smoke fixture asserts `pass` blindly; the post-bump composite-engine detectors actually find things on the contaminated `app_root`).
+- **Symptom:** every red after CL-A traces to one missing concept in the handoff. The handoff was **"consumer-compatible at the CLI signature layer"** (handoff §3.5: `enforce.sh` 4-state contract preserved byte-identically) but **NOT "consumer-compatible at the enforcement-state layer"** (the consumer's `active.json`-driven floor logic implicitly versioned against the pre-bump rule shape). These are different things and CTP-ADR-0008's design doc didn't separate them.
+- **Cause (analytic — what's "additive" on CTP side vs. "breaking" on GCTP side):**
+
+  | CTP-side change | GCTP-side breakage |
+  |---|---|
+  | Add 9 rules with `applies_to_prose: true` | Prose-projection floor in `audit-applicable-rules.sh` instantly demands all `.md`-scoped tickets carry these 9 → 205 retroactive reds on legacy req.json |
+  | Add rules whose prose-judge tier-2 falls back to `not_enforced` | `audit-standards-enforced.sh` treats `not_enforced` as red (ADR-0066 D-C, no-silent-green) → previously honest greens now divergent |
+  | Add new top-level plugin entries (`vendor/`, `COMMERCIAL-USE.md`) | `audit-plugin-surface.sh` reds until each is declared in `docs/plugin-surface-consumption.md` |
+  | Re-route detector verdicts (composite engine) | Smoke fixtures (TICKET-042 stub) assert `pass` blindly; new detectors find things → divergence |
+  | New CTP ADRs reference CTP-internal scripts | `audit-cross-references.sh` flags those refs as broken paths against the harness tree |
+
+  Each row is "additive on the rule body" but "breaking on the consumer's enforcement-state derivations." CTP-ADR-0008's design contract has no field to surface this asymmetry at design time.
+
+- **Proposed fix (CTP-side):** new **§"Consumer compatibility contract"** section in CTP-ADR-0008's design template — and required for any future composite-engine ADR or rule-schema-touching ADR — declaring four things up-front. Suggested YAML schema (concrete enough to template, loose enough to evolve):
+
+  ```yaml
+  consumer_compatibility:
+    new_rule_classes:
+      - field_name: applies_to_prose
+        introduced_in: pin-230e99d           # epoch tag per CTP-side invariant below
+        absent_default: false                # consumer dual-read shim unambiguous
+        enforcement_impact: |
+          Consumer prose-projection floors demand every .md-scoped ticket carry
+          every rule with this flag. 9 rules introduced. Existing .md-scoped
+          tickets produce N×T retroactive violations until /decompose is re-run
+          (N = rules carrying the flag, T = pre-epoch tickets).
+        grandfathering_required: yes
+        grandfather_mechanism_proposed: |
+          Consumer adds `applies_to_floor_version` marker on req.json; floor only
+          enforces on marker >= 2. Prototype already shipped in GCTP CL-B (W-A).
+    detector_behavior_changes:
+      - script: composite-dispatch.sh
+        change: "now routes by 4-axis applies_to instead of bare language string"
+        smoke_fixture_impact: "TICKET-042 stub asserts pass blindly; live re-run on the kata tree finds hardcoded secrets — divergence is the gate working as designed"
+        deprecation_window: none             # alternative: 1 pin / 2 pins
+    plugin_tree_additions:
+      - path: COMMERCIAL-USE.md
+        consume_in_harness: no
+        declare_in_registry: yes             # consumer must add a DECLARED-NOT-CONSUMED row
+      - path: vendor/
+        consume_in_harness: indirectly       # via composite-dispatch
+        declare_in_registry: yes
+  ```
+
+  This makes the asymmetry visible at design time, before CTP writes any code, and gives the consumer a checklist to verify against before adopting.
+
+- **CTP-side invariant (proposed): "schema-additive with epoch + default."** Every new feature is allowed to add to the schema (new rule fields, new rule classes, new detectors) provided:
+  - Every new rule body carries an `introduced_in: <pin-or-version>` epoch tag.
+  - Every new optional field declares its `absent_default` (so consumers reading old data get a defined answer).
+  - No existing detector tightens behavior on inputs that previously passed without a `since: <version>` marker + deprecation window.
+  - Top-level plugin tree additions are enumerated in the handoff (no surprise files).
+
+- **Pairs with (GCTP-side, NOT an upstream item):** a forthcoming GCTP ADR codifying the **consumer-side dual invariant: "epoch-aware enforcement."** Every harness audit gate that derives requirements from `active.json` gates enforcement by the floor's `introduced_in` epoch vs. the ticket's issue-epoch; baselines are pin-keyed and re-baselined as part of the pin-bump CL; smoke fixtures opt into new contracts explicitly (W-A's `applies_to_floor_version: 2` marker generalized across all 14 gates). That ADR is harness-only and lands separately under the §15 ADR process.
+
+- **Evidence:** ADR-0070 "Known follow-up surfaced by this CL" sections 1–3 enumerate exactly the three categories above with their precise counts. The W-A marker-gated floor (`applies_to_floor_version >= 2`) shipped in CL-B/TICKET-088 is empirical proof the grandfather mechanism in the YAML above is implementable and effective.
+
+- **Why this matters going forward:** without this contract, every pin bump that touches enforcement-relevant schema reproduces the same pattern — three categories of red, the consumer-side agent is tempted toward the mass-rewrite shortcut, and the no-rewrites discipline (ADR-0070 §"No-rewrites discipline") has to fight that temptation case by case. The contract makes the cost visible at design time so CTP can choose between "ship with grandfather mechanism" vs. "ship as hard cutover with explicit pin-bump CL scope" with eyes open.
