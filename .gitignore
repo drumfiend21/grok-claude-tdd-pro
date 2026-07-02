@@ -38,6 +38,12 @@
 # scripts/grok-run.sh (G-15: run-id / prompt-hash / cost per invocation). Never committed.
 .harness/runs/
 
+# Repo-local Grok credentials (TICKET-109 / ADR-0081). Optional XAI_API_KEY override, read
+# (parsed, never sourced) by scripts/grok-run.sh + install.sh. The default key location is
+# out-of-tree (~/.config/gctp/xai_key, chmod 600); this entry guards the repo-local option.
+# A key MUST never be committed (G-2).
+.grok/.env
+
 # Static planner-context (TICKET-035 / ADR-0040). Derived artifact copied from
 # the pinned plugin's docs/PROJECT_CONTEXT_FOR_PLANNER.md by sync-plugin.sh
 # --ensure. Plugin pin bumps refresh it; never committed to the harness tree

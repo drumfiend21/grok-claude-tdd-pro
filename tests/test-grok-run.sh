@@ -50,8 +50,8 @@ out=$(GROK_BIN="$TMP/no-such-grok" GROK_RUNS_DIR="$RUNS" "$SCRIPT" dispatch 2>/d
 assert_eq "$rc" "0" "grok absent → stub (0)"
 assert_contains "$out" '"stub":true' "grok absent → stub output"
 
-# --- stub path: grok present but XAI_API_KEY unset → stub (G-2) ---
-out=$(env -u XAI_API_KEY GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS" "$SCRIPT" dispatch 2>/dev/null); rc=$?
+# --- stub path: grok present but XAI_API_KEY unset (and no key files) → stub (G-2) ---
+out=$(env -u XAI_API_KEY GCTP_KEY_FILE="$TMP/no-keyfile" GROK_ENV_FILE="$TMP/no-env" GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS" "$SCRIPT" dispatch 2>/dev/null); rc=$?
 assert_eq "$rc" "0" "grok present, no key → stub (0)"
 assert_contains "$out" '"stub":true' "no key → stub output"
 
@@ -78,6 +78,46 @@ GROK
 chmod +x "$STUBGROK"
 XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS" "$SCRIPT" research >/dev/null 2>&1
 assert_eq "$?" "4" "live path + grok failure → 4"
+
+# --- key discovery (TICKET-109): install.sh-persisted key file → live ---
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '{"phase":"stub-live","status":"green","tickets":[]}\n'
+exit 0
+GROK
+chmod +x "$STUBGROK"
+printf 'xai-testkey-from-file\n' > "$TMP/keyfile"
+out=$(env -u XAI_API_KEY GCTP_KEY_FILE="$TMP/keyfile" GROK_ENV_FILE="$TMP/no-env" GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS" "$SCRIPT" research 2>&1); rc=$?
+assert_eq "$rc" "0" "key from GCTP_KEY_FILE → live (0)"
+case "$out" in *'"stub":true'*) log "  ✗ key-file path wrongly stubbed"; failures=$((failures+1)) ;; *) log "  ✓ key-file path is NOT stubbed"; passes=$((passes+1)) ;; esac
+case "$out" in *xai-testkey-from-file*) log "  ✗ key leaked into output (G-2)"; failures=$((failures+1)) ;; *) log "  ✓ key never printed (G-2)"; passes=$((passes+1)) ;; esac
+
+# --- key discovery (TICKET-109): repo-local .grok/.env → live; parsed, not sourced ---
+printf 'XAI_API_KEY="xai-testkey-from-env-file"\n' > "$TMP/dotenv"
+out=$(env -u XAI_API_KEY GCTP_KEY_FILE="$TMP/no-keyfile" GROK_ENV_FILE="$TMP/dotenv" GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS" "$SCRIPT" research 2>/dev/null); rc=$?
+assert_eq "$rc" "0" "key from .grok/.env → live (0)"
+case "$out" in *'"stub":true'*) log "  ✗ .env path wrongly stubbed"; failures=$((failures+1)) ;; *) log "  ✓ .env path is NOT stubbed"; passes=$((passes+1)) ;; esac
+
+# --- key discovery precedence: env var wins over key files ---
+KEYPROBE="$TMP/keyprobe"    # fake grok that records which key it saw
+cat > "$KEYPROBE" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '{"status":"green","saw":"%s"}\n' "${XAI_API_KEY:-none}"
+exit 0
+GROK
+chmod +x "$KEYPROBE"
+out=$(XAI_API_KEY=xai-env-wins GCTP_KEY_FILE="$TMP/keyfile" GROK_ENV_FILE="$TMP/dotenv" GROK_BIN="$KEYPROBE" GROK_RUNS_DIR="$RUNS" "$SCRIPT" research 2>/dev/null)
+assert_contains "$out" '"saw":"xai-env-wins"' "env XAI_API_KEY wins over key files"
+
+# --- --preflight (TICKET-109): not live-ready → 3; live-ready → 0; never prints the key ---
+env -u XAI_API_KEY GCTP_KEY_FILE="$TMP/no-keyfile" GROK_ENV_FILE="$TMP/no-env" GROK_BIN="$TMP/no-such-grok" "$SCRIPT" --preflight >/dev/null 2>&1
+assert_eq "$?" "3" "--preflight, nothing wired → 3"
+out=$(env -u XAI_API_KEY GCTP_KEY_FILE="$TMP/keyfile" GROK_ENV_FILE="$TMP/no-env" GROK_BIN="$STUBGROK" "$SCRIPT" --preflight 2>&1); rc=$?
+assert_eq "$rc" "0" "--preflight, CLI + key present → 0 (LIVE-ready)"
+assert_contains "$out" "LIVE" "--preflight reports LIVE readiness"
+case "$out" in *xai-testkey-from-file*) log "  ✗ --preflight leaked the key"; failures=$((failures+1)) ;; *) log "  ✓ --preflight never prints the key"; passes=$((passes+1)) ;; esac
 
 # --- G-15 observability: a run log is written ---
 [ -n "$(ls "$RUNS"/*.jsonl 2>/dev/null)" ] && { log "  ✓ G-15 run log(s) written to runs dir"; passes=$((passes+1)); } \

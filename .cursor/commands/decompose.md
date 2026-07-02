@@ -11,6 +11,10 @@ Drive the outer-loop decomposition phase against `.grok/templates/decomposition.
 
 ## Steps
 
+-1. **Delegate to Grok first (G-2/G-7, TICKET-109).** Run `bash scripts/grok-run.sh decomposition --input "brief=<scope hint>"` (add `--input research=<the /research output>` when it's in hand).
+   - `"stub": false` → real Grok ran and owns this phase: its `structured_output` carries the tickets. Verify each against the invariants in steps 2–4 below (D-rules, rules-union, one-CL sizing) before presenting — the gates still apply to Grok's output. Cite the run log (`.harness/runs/<run-id>.jsonl`, G-15).
+   - `"stub": true` → outer loop not wired yet (`./install.sh` wires it). Say so in one line and proceed inline below (fallback, unchanged behavior).
+
 0. **Consult-artifact consumption (per ADR-0056, additive):** if `.harness/handoffs/FEATURE-NNN.architecture.json` exists (from `/consult`), validate it with `./scripts/consult.sh --validate <artifact>` (must exit 0), then take per-ticket `complexity` (sizing) + `applicable_rules` + grounding from its `decisions[]` — preferred over a planner estimate. Absent/invalid ⇒ static-context fallback (nothing lost).
 1. Read `.grok/templates/decomposition.md` end-to-end. Note its output schema (per-ticket fields: id, title, scope, acceptance, dependencies, deferrals).
 2. Walk the research_refs and propose a decomposition that:

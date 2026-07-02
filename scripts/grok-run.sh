@@ -13,19 +13,28 @@
 #
 # Usage:
 #   scripts/grok-run.sh <phase> [--input k=v]... [--effort low|medium|high] [--dry-run] [--quiet]
+#   scripts/grok-run.sh --preflight
 #     <phase> ∈ research | decomposition | dispatch  (→ .grok/templates/<phase>.md)
-#   --dry-run : emit a contract-valid STUB result without calling grok (testable w/o CLI+key)
+#   --dry-run   : emit a contract-valid STUB result without calling grok (testable w/o CLI+key)
+#   --preflight : report live-readiness (grok CLI + key discoverable) without any network call;
+#                 exit 0 = LIVE-ready, 3 = something missing (run ./install.sh to wire it)
 #
 # Exit codes (§14): 0 success-with-structured-output · 2 usage · 3 preflight (no grok/key)
 #                   4 grok invocation failed / non-JSON output
 #
-# Overridable for tests: GROK_BIN (the CLI), GROK_RUNS_DIR, GROK_TEMPLATES_DIR.
-# Portability: bash 3.2 + BSD coreutils. Auth (XAI_API_KEY) is read from the env only, never
-# printed, never written to disk (G-2).
+# Overridable for tests: GROK_BIN (the CLI), GROK_RUNS_DIR, GROK_TEMPLATES_DIR,
+#                        GROK_ENV_FILE, GCTP_KEY_FILE.
+# Portability: bash 3.2 + BSD coreutils.
+#
+# Auth (G-2, TICKET-109): env-var auth is the contract. If XAI_API_KEY is not already in the
+# env, it is DISCOVERED from the operator-local files install.sh maintains — repo-local
+# `.grok/.env` (gitignored), then `~/.config/gctp/xai_key` (chmod 600) — and exported into the
+# env for the single `grok` child process. The runner only ever READS the key: never prints it,
+# never writes it, never puts it in a template, a log, or an argv (argv is visible in `ps`).
 
 set -u
 
-PHASE=""; DRY=0; QUIET=0; EFFORT=""
+PHASE=""; DRY=0; QUIET=0; EFFORT=""; PREFLIGHT=0
 INPUTS=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -34,18 +43,50 @@ while [ $# -gt 0 ]; do
 "; shift 2 ;;
         --effort) EFFORT="${2:-}"; shift 2 ;;
         --dry-run) DRY=1; shift ;;
+        --preflight) PREFLIGHT=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
+        -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
         *) printf 'grok-run.sh: unknown arg: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
 emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*" >&2; return 0; }
-[ -n "$PHASE" ] || { printf 'grok-run.sh: a phase (research|decomposition|dispatch) is required\n' >&2; exit 2; }
+[ -n "$PHASE" ] || [ "$PREFLIGHT" -eq 1 ] || { printf 'grok-run.sh: a phase (research|decomposition|dispatch) is required\n' >&2; exit 2; }
 
 _DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)
 TEMPLATES_DIR="${GROK_TEMPLATES_DIR:-$_DIR/.grok/templates}"
 RUNS_DIR="${GROK_RUNS_DIR:-$_DIR/.harness/runs}"
 GROK_BIN="${GROK_BIN:-grok}"
+
+# --- key discovery (TICKET-109) -----------------------------------------------
+# Precedence: env XAI_API_KEY > repo-local .grok/.env > ~/.config/gctp/xai_key.
+# The .env file is PARSED (sed), never sourced — a key file must not execute code.
+GROK_ENV_FILE="${GROK_ENV_FILE:-$_DIR/.grok/.env}"
+GCTP_KEY_FILE="${GCTP_KEY_FILE:-$HOME/.config/gctp/xai_key}"
+KEY_SOURCE="env"
+if [ -z "${XAI_API_KEY:-}" ] && [ -f "$GROK_ENV_FILE" ]; then
+    XAI_API_KEY=$(sed -n 's/^[[:space:]]*XAI_API_KEY[[:space:]]*=[[:space:]]*//p' "$GROK_ENV_FILE" | head -n 1 | sed "s/^[\"']//; s/[\"']\$//")
+    [ -n "${XAI_API_KEY:-}" ] && { export XAI_API_KEY; KEY_SOURCE=".grok/.env"; }
+fi
+if [ -z "${XAI_API_KEY:-}" ] && [ -f "$GCTP_KEY_FILE" ]; then
+    IFS= read -r XAI_API_KEY < "$GCTP_KEY_FILE" || true
+    [ -n "${XAI_API_KEY:-}" ] && { export XAI_API_KEY; KEY_SOURCE="$GCTP_KEY_FILE"; }
+fi
+
+have_grok=0; command -v "$GROK_BIN" >/dev/null 2>&1 && have_grok=1
+have_key=0; [ -n "${XAI_API_KEY:-}" ] && have_key=1
+
+# --- --preflight: readiness report, no phase, no network, never the key -------
+if [ "$PREFLIGHT" -eq 1 ]; then
+    if [ "$have_grok" -eq 1 ]; then printf '[grok-run] preflight: grok CLI — found\n'
+    else printf '[grok-run] preflight: grok CLI — MISSING (./install.sh auto-installs it, or see x.ai/cli)\n'; fi
+    if [ "$have_key" -eq 1 ]; then printf '[grok-run] preflight: XAI_API_KEY — found (source: %s)\n' "$KEY_SOURCE"
+    else printf '[grok-run] preflight: XAI_API_KEY — MISSING (./install.sh asks once and persists it)\n'; fi
+    if [ "$have_grok" -eq 1 ] && [ "$have_key" -eq 1 ]; then
+        printf '[grok-run] preflight: outer loop is LIVE-ready\n'; exit 0
+    fi
+    printf '[grok-run] preflight: outer loop would run as STUB\n'; exit 3
+fi
+
 TEMPLATE="$TEMPLATES_DIR/$PHASE.md"
 [ -f "$TEMPLATE" ] || { printf 'grok-run.sh: template not found: %s\n' "$TEMPLATE" >&2; exit 2; }
 
@@ -87,15 +128,13 @@ _grok_invoke() {  # stdin: compiled prompt ; stdout: structured JSON ; return: g
 
 # --- preflight (G-2) ---------------------------------------------------------
 STUBBED=false
-have_grok=0; command -v "$GROK_BIN" >/dev/null 2>&1 && have_grok=1
-have_key=0; [ -n "${XAI_API_KEY:-}" ] && have_key=1
 
 if [ "$DRY" -eq 1 ] || [ "$have_grok" -eq 0 ] || [ "$have_key" -eq 0 ]; then
     # STUB path (contract-valid, no network). Used for --dry-run and whenever the runtime is
     # absent — mirrors TICKET-006's stub-default. NEVER a silent success: the log + banner say stub.
     if [ "$DRY" -eq 0 ]; then
-        [ "$have_grok" -eq 0 ] && emit "[grok-run] grok CLI not found (install from x.ai/cli) — STUB result."
-        [ "$have_key" -eq 0 ]  && emit "[grok-run] XAI_API_KEY not set (G-2) — STUB result."
+        [ "$have_grok" -eq 0 ] && emit "[grok-run] grok CLI not found — STUB result. ./install.sh auto-installs it (or see x.ai/cli)."
+        [ "$have_key" -eq 0 ]  && emit "[grok-run] XAI_API_KEY not found in env, .grok/.env, or ~/.config/gctp/xai_key (G-2) — STUB result. ./install.sh asks once and persists it."
     fi
     STUBBED=true
     _log start stub ""

@@ -10,6 +10,10 @@ Drive the outer-loop research phase against `.grok/templates/research.md` using 
 
 ## Steps
 
+0. **Delegate to Grok first (G-2/G-7, TICKET-109).** Run `bash scripts/grok-run.sh research --input "topic=<topic>"`.
+   - `"stub": false` in the JSON result → real Grok ran and owns this phase: its `structured_output` IS the research result. Present it per the template's schema, cite the run log (`.harness/runs/<run-id>.jsonl`, G-15), and apply step 3's do-not-write rule. Skip inline steps 1–2.
+   - `"stub": true` → the outer loop isn't wired yet (`./install.sh` wires it — CLI + one-time key). Say so in one line, then proceed inline below (fallback, unchanged behavior).
+
 1. Read `.grok/templates/research.md` end-to-end. Note its output schema (sections, fields).
 2. Apply the template to the user-supplied topic, drawing from:
    - Authority docs enumerated in `AGENTS.md §5` (TIER 0/1/2).

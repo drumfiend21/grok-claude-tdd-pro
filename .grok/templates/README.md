@@ -1,6 +1,6 @@
 # .grok/templates/ — Grok outer-loop prompt templates
 
-This directory holds the three Grok orchestrator prompt templates that drive the outer loop of grok-claude-tdd-pro. They are headless-first (G-2) and consumed via `grok -p <template-name> ...`. Each emits Structured Output (G-3); each is cache-stable byte-for-byte across runs (G-5).
+This directory holds the three Grok orchestrator prompt templates that drive the outer loop of grok-claude-tdd-pro. They are headless-first (G-2) and consumed via `scripts/grok-run.sh <phase>` (TICKET-108/109), which compiles the template + inputs into one self-contained `grok -p` invocation. Each emits Structured Output (G-3); each is cache-stable byte-for-byte across runs (G-5).
 
 ## The three templates
 
@@ -32,7 +32,7 @@ Each template's "Drawn from" section names its Claude Code and/or Cursor analog 
 
 - `deploy.md` — deferred until a real deploy target exists (per D-5: production-grade > toy). The dispatch primitive covers what would otherwise be a deploy template; a future ADR may introduce a distinct deploy phase if and when deploy diverges.
 - `monitor.md` — owned by TICKET-008 (self-healing extension design). Not part of TICKET-003's scope.
-- Template-engine code (Jinja, etc.) — explicitly out. Templates are plain markdown; the runner (TICKET-006) compiles inputs into the Grok CLI invocation.
+- Template-engine code (Jinja, etc.) — explicitly out. Templates are plain markdown; the runner (`scripts/grok-run.sh`, TICKET-108/109) compiles inputs into the Grok CLI invocation.
 
 ## Pre-merge audit (every template added here)
 

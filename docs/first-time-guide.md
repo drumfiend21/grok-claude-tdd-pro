@@ -18,8 +18,12 @@ git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-clau
 ./install.sh
 ```
 
-`./install.sh` downloads the pinned CTP plugin, wires it in, and runs an end-to-end
-self-check (~20–30 seconds, mostly the one-time download). When you see `✅ Done`:
+`./install.sh` downloads the pinned CTP plugin, wires it in, **sets up the Grok outer
+loop** (auto-installs the Grok Build CLI if missing, asks once for your `XAI_API_KEY`
+and saves it to `~/.config/gctp/xai_key` — chmod 600, never committed, never asked
+again on this machine), and runs an end-to-end self-check (~20–30 seconds, mostly the
+one-time download). No key handy? Press Enter to skip — everything still works, the
+Grok phases just run in stub mode until you re-run `./install.sh`. When you see `✅ Done`:
 
 - In **Cursor** *or* **Claude Code**, drive the workflow with GCTP's slash commands
   (shipped for both: `.cursor/commands/` and `.claude/commands/`):

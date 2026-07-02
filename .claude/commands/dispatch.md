@@ -5,6 +5,10 @@ argument-hint: TICKET-NNN
 
 Run the harness **dispatch** phase (Claude Code mirror of `.cursor/commands/dispatch.md`).
 
+0. **Delegate to Grok first (G-2/G-7, TICKET-109).** Run `bash scripts/grok-run.sh dispatch --input "ticket=$ARGUMENTS"` (add `--input decomposition=<the ticket's decomposition block>`).
+   - `"stub": false` → real Grok ran and owns this phase: its `structured_output` is the draft request. You still validate it against every gate below (contract fields, EO rules, design-phase MD gate) before writing the `.req.json` — Grok's output enters the repo only through the same gates. Cite the run log (`.harness/runs/<run-id>.jsonl`, G-15).
+   - `"stub": true` → outer loop not wired yet (`./install.sh` wires it). Say so in one line and proceed inline below (Mode B fallback, unchanged behavior).
+
 1. Read `.grok/templates/dispatch.md` and `docs/handoff-contract.md §Grok→Claude`.
 2. For ticket **$ARGUMENTS**, write `.harness/handoffs/$ARGUMENTS.req.json` populated per the contract (`schema_version: "1"`, `acceptance_criteria`, `file_scope` incl. the `must_not_touch` deny-list, `context`, `quality_gate`, and `applicable_rules`).
 3. `applicable_rules` MUST include every EO-governance rule (`source_namespace: eo` OR `security-governance`) — non-exemptible (ADR-0045/0055), verified by `scripts/audit-eo-governance.sh`.

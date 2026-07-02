@@ -11,7 +11,7 @@ S-3|rm -rf usage (verify path is bounded)|scripts/audit-standards-enforced.sh:16
 S-3|rm -rf usage (verify path is bounded)|scripts/audit-standards-enforced.sh:91:trap 'rm -f -- "$div_file"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/emit-manifest.sh:154:trap 'rm -f -- "$TMP_OUT"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/export-cursor-rules.sh:69:    trap 'rm -rf -- "$OUTDIR"' EXIT INT TERM
-S-3|rm -rf usage (verify path is bounded)|scripts/grok-run.sh:65:trap 'rm -f -- "$compiled"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/grok-run.sh:106:trap 'rm -f -- "$compiled"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:190:    rm -f -- "$TEST_OUT"
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:192:    rm -f -- "$TEST_OUT"
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:199:rm -f -- "$TEST_OUT"
@@ -65,7 +65,8 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-add.sh:21:tr
 S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-review.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-grok-run.sh:24:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
-S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:49:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:26:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-4a|hardcoded _KEY assignment|tests/test-grok-run.sh:97:printf 'XAI_API_KEY="xai-testkey-from-env-file"\n' > "$TMP/dotenv"
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
 S-3|rm -rf usage (verify path is bounded)|tests/test-post-tool-use-review-gate.sh:76:trap 'rm -rf -- "$PTMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-pre-tool-use-govern.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM

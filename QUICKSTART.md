@@ -23,7 +23,7 @@ git clone https://github.com/drumfiend21/grok-claude-tdd-pro.git && cd grok-clau
 ./install.sh                            # sets up + self-checks; ~20–30s (mostly a one-time download)
 ```
 
-`./install.sh` materializes the pinned plugin and runs the end-to-end self-check for you, printing plain-language ✓/✗ and a "what now" pointer. (Prefer the two steps by hand? They're `./scripts/sync-plugin.sh --ensure` then `./scripts/smoke-e2e.sh`.)
+`./install.sh` materializes the pinned plugin, **wires the Grok outer loop**, and runs the end-to-end self-check for you, printing plain-language ✓/✗ and a "what now" pointer. The Grok step (TICKET-109 / ADR-0081) is zero-friction: it auto-installs the Grok Build CLI from `x.ai/cli` if missing, and asks **once** for your `XAI_API_KEY` (stored at `~/.config/gctp/xai_key`, chmod 600, never committed — you'll never be asked again on this machine, even on a fresh clone). With both present, `/research` → `/decompose` → `/dispatch` delegate to real `grok -p` runs via `scripts/grok-run.sh`, with a per-run audit trail in `.harness/runs/` (`"stub": false`). Without them the harness still works — those phases fall back to the documented stub/inline path. Opt out with `./install.sh --no-grok`; check readiness any time with `scripts/grok-run.sh --preflight`. (Prefer the steps by hand? They're `./scripts/sync-plugin.sh --ensure` then `./scripts/smoke-e2e.sh`.)
 
 Output you'll see:
 
@@ -156,9 +156,9 @@ Once you're past your first cycle, daily usage in your IDE's chat is:
 | Command | Drives | Output |
 |---|---|---|
 | `/sync` | `scripts/sync-plugin.sh --ensure` | Refresh plugin cache + regenerate `.cursor/rules/` |
-| `/research <topic>` | `.grok/templates/research.md` | Structured research_refs |
-| `/decompose` | `.grok/templates/decomposition.md` | Atomic, file-scoped tickets |
-| `/dispatch TICKET-NNN` | `.grok/templates/dispatch.md` | Contract-valid `.req.json` |
+| `/research <topic>` | `scripts/grok-run.sh research` → `.grok/templates/research.md` (live Grok when wired; inline fallback) | Structured research_refs |
+| `/decompose` | `scripts/grok-run.sh decomposition` → `.grok/templates/decomposition.md` (live Grok when wired; inline fallback) | Atomic, file-scoped tickets |
+| `/dispatch TICKET-NNN` | `scripts/grok-run.sh dispatch` → `.grok/templates/dispatch.md` (live Grok when wired; inline fallback) | Contract-valid `.req.json` |
 | `/inner-loop TICKET-NNN` | `.claude/skills/tdd-pro-cl-workflow/SKILL.md` | `.res.json` + trail + manifest |
 | `/smoke` | `scripts/smoke-e2e.sh` | End-to-end pipeline test (stub mode) |
 | `/audit` | `scripts/audit-doc-drift.sh` | Pre-commit drift sweep — REQUIRED before commit |
