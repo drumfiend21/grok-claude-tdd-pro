@@ -12,12 +12,28 @@
 # effort per phase (G-4), and emits the audit-trail record to .harness/runs/<run-id>.jsonl (G-15).
 #
 # Usage:
-#   scripts/grok-run.sh <phase> [--input k=v]... [--effort low|medium|high] [--dry-run] [--quiet]
+#   scripts/grok-run.sh <phase> [--input k=v]... [--effort low|medium|high] [--model <id>]
+#                       [--fresh] [--dry-run] [--quiet]
 #   scripts/grok-run.sh --preflight
 #     <phase> ∈ research | decomposition | dispatch  (→ .grok/templates/<phase>.md)
 #   --dry-run   : emit a contract-valid STUB result without calling grok (testable w/o CLI+key)
 #   --preflight : report live-readiness (grok CLI + key discoverable) without any network call;
 #                 exit 0 = LIVE-ready, 3 = something missing (run ./install.sh to wire it)
+#   --model     : run on a cheaper/faster model (e.g. grok-4-fast; default GROK_MODEL env). If it
+#                 fails to produce valid structured output, the runner escalates ONCE to the CLI's
+#                 default model with the reason recorded in the run log (G-20 — no silent
+#                 escalation, and escalation only ever raises capability). Default: unset → the
+#                 CLI's default model; response quality unchanged.
+#   --fresh     : bypass G-19 result reuse and re-invoke grok
+#
+# Cost controls (TICKET-110 / ADR-0082 — all quality-preserving):
+#   • G-19 result reuse — an identical DISPATCH (same phase+prompt+effort+model) returns the
+#     recorded output of the prior green run byte-for-byte without re-invoking grok; announced
+#     on stderr + logged as "cached", never silent. research/decomposition stay FRESH by default
+#     (G-17 freshness); opt into TTL-bound reuse with GROK_REUSE_TTL_SECONDS=<secs>.
+#     GROK_REUSE=0 disables all reuse. A different --effort/--model is a different cache slot,
+#     so an explicit quality ask always runs live.
+#   • G-15 usage capture — token usage from grok's JSON response is recorded in the run log.
 #
 # Exit codes (§14): 0 success-with-structured-output · 2 usage · 3 preflight (no grok/key)
 #                   4 grok invocation failed / non-JSON output
@@ -34,7 +50,8 @@
 
 set -u
 
-PHASE=""; DRY=0; QUIET=0; EFFORT=""; PREFLIGHT=0
+PHASE=""; DRY=0; QUIET=0; EFFORT=""; PREFLIGHT=0; FRESH=0
+MODEL="${GROK_MODEL:-}"
 INPUTS=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -42,10 +59,12 @@ while [ $# -gt 0 ]; do
         --input) INPUTS="${INPUTS}${2}
 "; shift 2 ;;
         --effort) EFFORT="${2:-}"; shift 2 ;;
+        --model) MODEL="${2:-}"; shift 2 ;;
+        --fresh) FRESH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --preflight) PREFLIGHT=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
+        -h|--help) sed -n '2,49p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
         *) printf 'grok-run.sh: unknown arg: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
@@ -114,20 +133,54 @@ mkdir -p "$RUNS_DIR" 2>/dev/null || true
 LOG="$RUNS_DIR/$RUN_ID.jsonl"
 
 _log() { # $1=event $2=status $3=extra-json
-    printf '{"run_id":"%s","phase":"%s","event":"%s","status":"%s","effort":"%s","prompt_hash":"%s","stub":%s%s}\n' \
-        "$RUN_ID" "$PHASE" "$1" "$2" "$EFFORT" "$PROMPT_HASH" "$STUBBED" "${3:-}" >> "$LOG" 2>/dev/null || true
+    printf '{"run_id":"%s","phase":"%s","event":"%s","status":"%s","effort":"%s","model":"%s","prompt_hash":"%s","stub":%s%s}\n' \
+        "$RUN_ID" "$PHASE" "$1" "$2" "$EFFORT" "$MODEL" "$PROMPT_HASH" "$STUBBED" "${3:-}" >> "$LOG" 2>/dev/null || true
 }
 
 # --- the ISOLATED grok invocation (single point of truth for CLI flags) ------
 # Documented contract (§1, §14, .grok/templates/README): `grok -p` reads a self-contained prompt
 # and returns Structured Output; `--output-format json`; auth via XAI_API_KEY env. If the real
-# CLI's flags differ, THIS is the one line to correct (G-21 tolerant reader covers the rest).
-_grok_invoke() {  # stdin: compiled prompt ; stdout: structured JSON ; return: grok's exit
-    "$GROK_BIN" -p --output-format json --effort "$EFFORT"
+# CLI's flags differ, THIS is the one function to correct (G-21 tolerant reader covers the rest).
+_grok_invoke() {  # $1: model override or "" ; stdin: compiled prompt ; stdout: structured JSON
+    if [ -n "${1:-}" ]; then
+        "$GROK_BIN" -p --output-format json --effort "$EFFORT" --model "$1"
+    else
+        "$GROK_BIN" -p --output-format json --effort "$EFFORT"
+    fi
 }
 
 # --- preflight (G-2) ---------------------------------------------------------
 STUBBED=false
+
+# --- G-19 result reuse (TICKET-110 / ADR-0082) --------------------------------
+# Sits BEFORE the stub decision so an already-paid live result is usable even on a machine
+# without the CLI/key. dispatch is fully idempotent (G-19; .grok/templates/README) → reuse by
+# default. research/decomposition are FRESH by default (G-17 freshness is a quality property) →
+# reuse only under an explicit GROK_REUSE_TTL_SECONDS opt-in. The cache slot is keyed on
+# effort+model, so an explicit quality ask (--effort high / --model) never gets a lesser run's
+# result. Reuse is NEVER silent: stderr banner + "cached" events in the run log.
+CACHE_KEY=$(printf '%s|%s' "$EFFORT" "$MODEL" | _sha | cut -c1-8)
+OUT_CACHE="$RUNS_DIR/$RUN_ID.$CACHE_KEY.out.json"
+reuse=0
+if [ "$DRY" -eq 0 ] && [ "$FRESH" -eq 0 ] && [ "${GROK_REUSE:-1}" != "0" ] && [ -s "$OUT_CACHE" ]; then
+    case "$PHASE" in
+        dispatch) reuse=1 ;;
+        research|decomposition)
+            ttl="${GROK_REUSE_TTL_SECONDS:-0}"
+            if [ "$ttl" -gt 0 ] 2>/dev/null; then
+                now=$(date +%s 2>/dev/null || echo 0)
+                mt=$(stat -f %m "$OUT_CACHE" 2>/dev/null || stat -c %Y "$OUT_CACHE" 2>/dev/null || echo 0)
+                if [ "$now" -gt 0 ] && [ "$mt" -gt 0 ] && [ $((now - mt)) -le "$ttl" ]; then reuse=1; fi
+            fi ;;
+    esac
+fi
+if [ "$reuse" -eq 1 ]; then
+    _log start cached ""
+    cat "$OUT_CACHE"
+    _log complete cached ""
+    emit "[grok-run] $PHASE — CACHED (G-19 idempotent reuse of run $RUN_ID; --fresh to re-invoke; log $LOG)."
+    exit 0
+fi
 
 if [ "$DRY" -eq 1 ] || [ "$have_grok" -eq 0 ] || [ "$have_key" -eq 0 ]; then
     # STUB path (contract-valid, no network). Used for --dry-run and whenever the runtime is
@@ -146,21 +199,42 @@ if [ "$DRY" -eq 1 ] || [ "$have_grok" -eq 0 ] || [ "$have_key" -eq 0 ]; then
 fi
 
 # --- LIVE path (G-2/G-3/§14) -------------------------------------------------
-emit "[grok-run] $PHASE — live grok -p (effort=$EFFORT, run=$RUN_ID)..."
+emit "[grok-run] $PHASE — live grok -p (effort=$EFFORT${MODEL:+, model=$MODEL}, run=$RUN_ID)..."
 _log start running ""
-out=$(_grok_invoke < "$compiled") ; rc=$?
-if [ "$rc" -ne 0 ]; then
-    _log complete failed ",\"exit\":$rc"
-    emit "[grok-run] grok exited $rc — see $LOG"
+# Structured output must be JSON (G-3) — checked on every attempt.
+_is_json() { printf '%s' "$1" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{JSON.parse(d);}catch(e){process.exit(1);}});' 2>/dev/null; }
+out=$(_grok_invoke "$MODEL" < "$compiled") ; rc=$?
+fail=""
+[ "$rc" -ne 0 ] && fail="exit $rc"
+if [ -z "$fail" ] && ! _is_json "$out"; then fail="non-json output"; fi
+if [ -n "$fail" ] && [ -n "$MODEL" ]; then
+    # G-20: the cheaper requested model failed structured output — escalate ONCE to the CLI's
+    # default (stronger) model, with the reason recorded. Never silent; only raises capability.
+    _log escalate running ",\"from_model\":\"$MODEL\",\"reason\":\"$fail\""
+    emit "[grok-run] model $MODEL failed ($fail) — escalating to the default model (G-20, recorded)."
+    out=$(_grok_invoke "" < "$compiled") ; rc=$?
+    fail=""
+    [ "$rc" -ne 0 ] && fail="exit $rc"
+    if [ -z "$fail" ] && ! _is_json "$out"; then fail="non-json output"; fi
+fi
+if [ -n "$fail" ]; then
+    if [ "$fail" = "non-json output" ]; then
+        _log complete failed ",\"reason\":\"non-json output\""
+        emit "[grok-run] grok output was not valid JSON (G-3 violation) — see $LOG"
+    else
+        _log complete failed ",\"exit\":$rc"
+        emit "[grok-run] grok exited $rc — see $LOG"
+    fi
     exit 4
 fi
-# Structured output must be JSON (G-3) — fail loudly if not.
-if ! printf '%s' "$out" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{JSON.parse(d);}catch(e){process.exit(1);}});' 2>/dev/null; then
-    _log complete failed ",\"reason\":\"non-json output\""
-    emit "[grok-run] grok output was not valid JSON (G-3 violation) — see $LOG"
-    exit 4
-fi
+# G-15: record token usage when grok reports it (tolerant reader — absent usage is fine, G-21).
+usage_extra=""
+u=$(printf '%s' "$out" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const o=JSON.parse(d);if(o&&typeof o==="object"&&o.usage)process.stdout.write(JSON.stringify(o.usage));}catch(e){}});' 2>/dev/null)
+[ -n "$u" ] && usage_extra=",\"usage\":$u"
+# G-19: record the green result for idempotent reuse (structured output only — never the key;
+# the runs dir is operator-local and gitignored).
+printf '%s\n' "$out" > "$OUT_CACHE" 2>/dev/null || true
 printf '%s\n' "$out"
-_log complete green ""
+_log complete green "$usage_extra"
 emit "[grok-run] $PHASE — OK (run $RUN_ID; structured output; log $LOG)."
 exit 0

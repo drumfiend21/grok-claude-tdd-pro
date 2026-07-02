@@ -26,7 +26,7 @@ Each template's "Drawn from" section names its Claude Code and/or Cursor analog 
 - **Auth** — `XAI_API_KEY` env-var (G-2). Never in templates.
 - **Output format** — JSON (G-3). `--output-format json` for one-shot, `stream-json` for monitoring runs (G-15).
 - **Logging** — every run emits `run-id`, `prompt-hash`, tool calls, token cost (G-15). Persisted under `.harness/runs/<run-id>.jsonl`.
-- **Idempotency** — `dispatch.md` is fully idempotent (G-19). `research.md` and `decomposition.md` are best-effort (same input → equivalent output, not byte-identical).
+- **Idempotency** — `dispatch.md` is fully idempotent (G-19): the runner returns the recorded result of an identical prior green run byte-for-byte without re-invoking Grok (`--fresh` to force; announced, never silent). `research.md` and `decomposition.md` are fresh-by-default (G-17 freshness) with explicit TTL-bound reuse via `GROK_REUSE_TTL_SECONDS` (per ADR-0082).
 
 ## Not in this directory (deferred)
 

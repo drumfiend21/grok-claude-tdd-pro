@@ -129,6 +129,89 @@ env -u XAI_API_KEY GROK_BIN="$TMP/none" GROK_RUNS_DIR="$RUNS" "$SCRIPT" dispatch
 "$SCRIPT" research --dry-run 2>/dev/null | grep -q '"effort":"medium"' \
     && { log "  ✓ research defaults to effort=medium (G-4)"; passes=$((passes+1)); } || { log "  ✗ research effort wrong"; failures=$((failures+1)); }
 
+# --- TICKET-110: G-19 result reuse / G-20 opt-in model / G-15 usage capture ---
+CALLS="$TMP/calls"; RUNS2="$TMP/runs2"
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+echo x >> "${CALL_LOG:?}"
+printf '{"status":"green","req":"r1","usage":{"input_tokens":10,"output_tokens":5}}\n'
+exit 0
+GROK
+chmod +x "$STUBGROK"
+
+# dispatch: identical re-run reuses the recorded result — no second grok call, byte-identical stdout
+out1=$(CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-1' 2>/dev/null); rc1=$?
+assert_eq "$rc1" "0" "live dispatch (cache-priming run) → 0"
+out2=$(CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-1' 2>"$TMP/err2"); rc2=$?
+assert_eq "$rc2" "0" "identical dispatch re-run → 0"
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "1" "identical dispatch re-run does NOT re-invoke grok (G-19)"
+assert_eq "$out2" "$out1" "reused output is byte-identical to the paid run"
+assert_contains "$(cat "$TMP/err2")" "CACHED" "reuse is announced (never silent)"
+
+# --fresh bypasses reuse
+CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-1' --fresh >/dev/null 2>&1
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "2" "--fresh re-invokes grok"
+
+# GROK_REUSE=0 kill switch
+CALL_LOG="$CALLS" GROK_REUSE=0 XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-1' >/dev/null 2>&1
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "3" "GROK_REUSE=0 disables reuse"
+
+# an explicit quality ask (higher --effort) is a different cache slot → always runs live
+CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-1' --effort high >/dev/null 2>&1
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "4" "different --effort never reuses a lower-effort result"
+
+# research: FRESH by default (G-17) — identical re-run still re-invokes …
+CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" research --input 'topic=t1' >/dev/null 2>&1
+CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" research --input 'topic=t1' >/dev/null 2>&1
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "6" "research re-run re-invokes by default (fresh research, G-17)"
+# … and reuses only under an explicit TTL opt-in
+CALL_LOG="$CALLS" GROK_REUSE_TTL_SECONDS=3600 XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" research --input 'topic=t1' >/dev/null 2>&1
+assert_eq "$(wc -l < "$CALLS" | tr -d ' ')" "6" "research reuses within explicit GROK_REUSE_TTL_SECONDS"
+
+# G-15: token usage from grok's response is recorded in the run log
+grep -h '"usage"' "$RUNS2"/*.jsonl 2>/dev/null | grep -q '"output_tokens":5' \
+    && { log "  ✓ G-15 usage tokens recorded in the run log"; passes=$((passes+1)); } \
+    || { log "  ✗ usage tokens missing from run log"; failures=$((failures+1)); }
+
+# G-20: --model passthrough + recorded escalation when the cheap model fails structured output
+ARGLOG="$TMP/arglog"; ARGPROBE="$TMP/argprobe"
+cat > "$ARGPROBE" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '%s\n' "$*" >> "${ARG_LOG:?}"
+case "$*" in *--model*) printf 'not json at all\n'; exit 0 ;; esac
+printf '{"status":"green"}\n'
+GROK
+chmod +x "$ARGPROBE"
+out=$(ARG_LOG="$ARGLOG" XAI_API_KEY=test-key GROK_BIN="$ARGPROBE" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" decomposition --input 'brief=b' --model grok-4-fast 2>/dev/null); rc=$?
+assert_eq "$rc" "0" "cheap-model non-JSON → escalate to default model → 0 (G-20)"
+assert_contains "$out" '"status":"green"' "escalated attempt's output is passed through"
+grep -q -- "--model grok-4-fast" "$ARGLOG" \
+    && { log "  ✓ --model is passed to the CLI"; passes=$((passes+1)); } \
+    || { log "  ✗ --model not passed"; failures=$((failures+1)); }
+assert_eq "$(wc -l < "$ARGLOG" | tr -d ' ')" "2" "exactly one escalation retry (two attempts total)"
+grep -h '"event":"escalate"' "$RUNS2"/*.jsonl 2>/dev/null | grep -q '"from_model":"grok-4-fast"' \
+    && { log "  ✓ escalation recorded with model + reason (G-20 no-silent)"; passes=$((passes+1)); } \
+    || { log "  ✗ escalation not recorded"; failures=$((failures+1)); }
+
+# a failed run must not poison the cache: failure → then a good run invokes live and succeeds
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null; echo x >> "${CALL_LOG:?}"; echo boom >&2; exit 7
+GROK
+chmod +x "$STUBGROK"
+CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-2' >/dev/null 2>&1
+assert_eq "$?" "4" "failing dispatch → 4 (no model set → no ladder)"
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null; echo x >> "${CALL_LOG:?}"; printf '{"status":"green"}\n'; exit 0
+GROK
+chmod +x "$STUBGROK"
+out=$(CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-2' 2>/dev/null); rc=$?
+assert_eq "$rc" "0" "same inputs after a failure run live and succeed (no poisoned cache)"
+assert_contains "$out" '"status":"green"' "post-failure run returns the live result"
+
 total=$((passes + failures))
 log ""
 log "[test-grok-run] $passes/$total passed"
