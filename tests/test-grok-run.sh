@@ -178,10 +178,11 @@ grep -h '"usage"' "$RUNS2"/*.jsonl 2>/dev/null | grep -q '"output_tokens":5' \
 ARGLOG="$TMP/arglog"; ARGPROBE="$TMP/argprobe"
 cat > "$ARGPROBE" <<'GROK'
 #!/usr/bin/env bash
-cat >/dev/null
-printf '%s\n' "$*" >> "${ARG_LOG:?}"
-case "$*" in *--model*) printf 'not json at all\n'; exit 0 ;; esac
-printf '{"status":"green"}\n'
+cat >/dev/null   # prompt may arrive via argv (real CLI) or stdin; consume either way
+case "$*" in
+    *"--model grok-4-fast"*) printf 'ATTEMPT --model grok-4-fast\n' >> "${ARG_LOG:?}"; printf 'not json at all\n'; exit 0 ;;
+    *)                       printf 'ATTEMPT default\n' >> "${ARG_LOG:?}"; printf '{"status":"green"}\n'; exit 0 ;;
+esac
 GROK
 chmod +x "$ARGPROBE"
 out=$(ARG_LOG="$ARGLOG" XAI_API_KEY=test-key GROK_BIN="$ARGPROBE" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" decomposition --input 'brief=b' --model grok-4-fast 2>/dev/null); rc=$?
@@ -194,6 +195,73 @@ assert_eq "$(wc -l < "$ARGLOG" | tr -d ' ')" "2" "exactly one escalation retry (
 grep -h '"event":"escalate"' "$RUNS2"/*.jsonl 2>/dev/null | grep -q '"from_model":"grok-4-fast"' \
     && { log "  ✓ escalation recorded with model + reason (G-20 no-silent)"; passes=$((passes+1)); } \
     || { log "  ✗ escalation not recorded"; failures=$((failures+1)); }
+
+# CLI envelope handling (TICKET-111): the real grok wraps replies in {text, stopReason, ...} —
+# a completed turn (EndTurn) emits the INNER phase JSON; a cancelled turn fails and is never cached
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '{"text":"{\\"phase_doc\\":true}","stopReason":"EndTurn","sessionId":"s","thought":"t"}\n'
+exit 0
+GROK
+chmod +x "$STUBGROK"
+out=$(XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-ENV' 2>/dev/null); rc=$?
+assert_eq "$rc" "0" "EndTurn envelope → 0"
+assert_eq "$out" '{"phase_doc":true}' "envelope is unwrapped — stdout is the inner phase JSON"
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '{"text":"","stopReason":"Cancelled","sessionId":"s","thought":"t"}\n'
+exit 0
+GROK
+chmod +x "$STUBGROK"
+XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-CANCEL' >/dev/null 2>&1
+assert_eq "$?" "4" "Cancelled envelope (valid JSON, empty text) → 4, not a false green"
+cat > "$STUBGROK" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+printf '{"phase_doc":"second"}\n'
+exit 0
+GROK
+chmod +x "$STUBGROK"
+out=$(XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-CANCEL' 2>/dev/null); rc=$?
+assert_eq "$rc" "0" "run after a cancelled turn goes live (cancelled result was not cached)"
+assert_contains "$out" '"phase_doc":"second"' "post-cancel run returns the fresh live result"
+# the runner-compiled prompt carries the headless transport contract (G-5 byte-stable footer)
+PROBE_PROMPT="$TMP/promptprobe"
+cat > "$PROBE_PROMPT" <<'GROK'
+#!/usr/bin/env bash
+printf '%s' "$2" > "${PROMPT_COPY:?}"    # $1=-p $2=<prompt>
+printf '{"ok":true}\n'
+GROK
+chmod +x "$PROBE_PROMPT"
+PROMPT_COPY="$TMP/prompt-copy" XAI_API_KEY=test-key GROK_BIN="$PROBE_PROMPT" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" dispatch --input 'ticket=T-FOOT' >/dev/null 2>&1
+grep -q "Headless transport contract" "$TMP/prompt-copy" \
+    && { log "  ✓ compiled prompt carries the headless transport contract footer"; passes=$((passes+1)); } \
+    || { log "  ✗ headless footer missing from compiled prompt"; failures=$((failures+1)); }
+
+# standing default model (TICKET-111): plain runs pass --model grok-4.3 (§2 reasoning pick —
+# the CLI's non-reasoning default rejects the G-4-mandated --effort); GROK_DEFAULT_MODEL overrides
+MODPROBE="$TMP/modprobe"
+cat > "$MODPROBE" <<'GROK'
+#!/usr/bin/env bash
+cat >/dev/null
+case "$*" in
+    *"--model grok-4.3"*)  echo default43 >> "${ARG_LOG:?}" ;;
+    *"--model my-model"*)  echo mymodel   >> "${ARG_LOG:?}" ;;
+esac
+printf '{"status":"green"}\n'
+GROK
+chmod +x "$MODPROBE"
+: > "$ARGLOG"
+ARG_LOG="$ARGLOG" XAI_API_KEY=test-key GROK_BIN="$MODPROBE" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" research --input 'topic=dm1' >/dev/null 2>&1
+grep -q default43 "$ARGLOG" \
+    && { log "  ✓ plain run uses the standing default model grok-4.3"; passes=$((passes+1)); } \
+    || { log "  ✗ standing default model not passed"; failures=$((failures+1)); }
+ARG_LOG="$ARGLOG" GROK_DEFAULT_MODEL=my-model XAI_API_KEY=test-key GROK_BIN="$MODPROBE" GROK_RUNS_DIR="$RUNS2" "$SCRIPT" research --input 'topic=dm2' >/dev/null 2>&1
+grep -q mymodel "$ARGLOG" \
+    && { log "  ✓ GROK_DEFAULT_MODEL override respected"; passes=$((passes+1)); } \
+    || { log "  ✗ GROK_DEFAULT_MODEL override ignored"; failures=$((failures+1)); }
 
 # a failed run must not poison the cache: failure → then a good run invokes live and succeeds
 cat > "$STUBGROK" <<'GROK'
