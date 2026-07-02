@@ -280,6 +280,53 @@ out=$(CALL_LOG="$CALLS" XAI_API_KEY=test-key GROK_BIN="$STUBGROK" GROK_RUNS_DIR=
 assert_eq "$rc" "0" "same inputs after a failure run live and succeed (no poisoned cache)"
 assert_contains "$out" '"status":"green"' "post-failure run returns the live result"
 
+# --- TICKET-112: metered usage, daily budget gate, --cwd isolation ---
+RUNS3="$TMP/runs3"
+USAGEGROK="$TMP/usagegrok"
+cat > "$USAGEGROK" <<'GROK'
+#!/usr/bin/env bash
+DBG=""; prev=""
+for a in "$@"; do [ "$prev" = "--debug-file" ] && DBG="$a"; prev="$a"; done
+[ -n "$DBG" ] && printf 'meta: {"totalTokens":1550,"inputTokens":1000,"outputTokens":100,"cachedReadTokens":400,"reasoningTokens":50}\n' > "$DBG"
+printf '%s\n' "$*" > "${ARGS_COPY:?}"
+printf '{"status":"green"}\n'
+GROK
+chmod +x "$USAGEGROK"
+out=$(ARGS_COPY="$TMP/args3" XAI_API_KEY=test-key GROK_BIN="$USAGEGROK" GROK_RUNS_DIR="$RUNS3" "$SCRIPT" dispatch --input 'ticket=T-USE' 2>"$TMP/use.err"); rc=$?
+assert_eq "$rc" "0" "metered live run → 0"
+# units = (1000-400) + 400/10 + (100+50)*5 = 600 + 40 + 750 = 1390
+grep -h '"status":"green"' "$RUNS3"/dispatch-*.jsonl 2>/dev/null | grep -q '"units":1390' \
+    && { log "  ✓ run log carries measured usage + units (G-15 live)"; passes=$((passes+1)); } \
+    || { log "  ✗ measured usage missing from run log"; failures=$((failures+1)); }
+grep -q '"units":1390' "$RUNS3/usage-ledger.jsonl" 2>/dev/null \
+    && { log "  ✓ day-keyed usage ledger written"; passes=$((passes+1)); } \
+    || { log "  ✗ usage ledger missing"; failures=$((failures+1)); }
+assert_contains "$(cat "$TMP/use.err")" "1390 units" "per-run cost printed to the operator"
+grep -q -- "--cwd" "$TMP/args3" \
+    && { log "  ✓ --cwd isolation passed to the CLI"; passes=$((passes+1)); } \
+    || { log "  ✗ --cwd not passed"; failures=$((failures+1)); }
+grep -q -- "--tools" "$TMP/args3" \
+    && { log "  ✓ tool surface removed (--tools '') — pure generation per §14"; passes=$((passes+1)); } \
+    || { log "  ✗ --tools not passed"; failures=$((failures+1)); }
+case "$(cat "$TMP/args3")" in
+    *"--cwd $(pwd) "*) log "  ✗ CLI cwd is the repo (context injection not isolated)"; failures=$((failures+1)) ;;
+    *) log "  ✓ CLI cwd is NOT the repo"; passes=$((passes+1)) ;;
+esac
+
+# budget gate (G-13): over budget → live refused (3); override proceeds; cached stays free
+RUNS4="$TMP/runs4"; mkdir -p "$RUNS4"
+printf '{"date":"%s","units":999999}\n' "$(date +%Y-%m-%d)" > "$RUNS4/usage-ledger.jsonl"
+XAI_API_KEY=test-key GROK_BIN="$USAGEGROK" GROK_RUNS_DIR="$RUNS4" "$SCRIPT" dispatch --input 'ticket=T-B' >/dev/null 2>"$TMP/bud.err"
+assert_eq "$?" "3" "over budget → live run refused (3)"
+assert_contains "$(cat "$TMP/bud.err")" "BUDGET" "refusal names the budget (G-13)"
+ARGS_COPY="$TMP/args4" GROK_BUDGET_OVERRIDE=1 XAI_API_KEY=test-key GROK_BIN="$USAGEGROK" GROK_RUNS_DIR="$RUNS4" "$SCRIPT" dispatch --input 'ticket=T-B' >/dev/null 2>&1
+assert_eq "$?" "0" "GROK_BUDGET_OVERRIDE=1 → explicitly approved overage runs"
+XAI_API_KEY=test-key GROK_BIN="$USAGEGROK" GROK_RUNS_DIR="$RUNS4" "$SCRIPT" dispatch --input 'ticket=T-B' >/dev/null 2>"$TMP/cache4.err"
+assert_eq "$?" "0" "cached re-run still allowed while over budget (free)"
+assert_contains "$(cat "$TMP/cache4.err")" "CACHED" "over-budget re-run served from cache"
+ARGS_COPY="$TMP/args5" XAI_API_KEY=test-key GROK_DAILY_BUDGET_UNITS=99999999 GROK_BIN="$USAGEGROK" GROK_RUNS_DIR="$RUNS4" "$SCRIPT" dispatch --input 'ticket=T-C' >/dev/null 2>&1
+assert_eq "$?" "0" "raising GROK_DAILY_BUDGET_UNITS unblocks live runs"
+
 total=$((passes + failures))
 log ""
 log "[test-grok-run] $passes/$total passed"

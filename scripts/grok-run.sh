@@ -34,10 +34,18 @@
 #     (G-17 freshness); opt into TTL-bound reuse with GROK_REUSE_TTL_SECONDS=<secs>.
 #     GROK_REUSE=0 disables all reuse. A different --effort/--model is a different cache slot,
 #     so an explicit quality ask always runs live.
-#   • G-15 usage capture — token usage from grok's JSON response is recorded in the run log.
+#   • G-15 usage capture — real token usage (parsed from the CLI debug meta) is recorded in the
+#     run log AND a day-keyed ledger (.harness/runs/usage-ledger.jsonl), and printed per run.
+#   • --cwd isolation — the CLI runs in an empty scratch dir (GROK_WORKDIR), never the repo:
+#     the agentic session context injection measured ~26k input tokens/run in-repo vs ~13k
+#     isolated (~1k non-cached). The §14 self-contained prompt makes that injection pure cost.
+#   • DAILY BUDGET GATE (G-13) — once today's ledger reaches GROK_DAILY_BUDGET_UNITS (default
+#     150000 ≈ $0.5–1.5/day at typical flagship rates; units = fresh-in + cached/10 +
+#     5×(out+reasoning)), live runs are REFUSED (exit 3) until the operator raises the budget
+#     or sets GROK_BUDGET_OVERRIDE=1. Stubs, --dry-run, and cached re-runs are free, never blocked.
 #
 # Exit codes (§14): 0 success-with-structured-output · 2 usage · 3 preflight (no grok/key)
-#                   4 grok invocation failed / non-JSON output
+#                   or daily budget reached · 4 grok invocation failed / non-JSON output
 #
 # Overridable for tests: GROK_BIN (the CLI), GROK_RUNS_DIR, GROK_TEMPLATES_DIR,
 #                        GROK_ENV_FILE, GCTP_KEY_FILE.
@@ -70,7 +78,7 @@ while [ $# -gt 0 ]; do
         --dry-run) DRY=1; shift ;;
         --preflight) PREFLIGHT=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,49p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
+        -h|--help) sed -n '2,58p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 0 ;;
         *) printf 'grok-run.sh: unknown arg: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
@@ -162,7 +170,16 @@ _log() { # $1=event $2=status $3=extra-json
 # function to correct (G-21 tolerant reader covers the rest).
 _grok_invoke() {  # $1: model override or "" (= DEFAULT_MODEL) ; stdin: compiled prompt ; stdout: structured JSON
     _prompt=$(cat)
-    "$GROK_BIN" -p "$_prompt" --output-format json --effort "$EFFORT" --model "${1:-$DEFAULT_MODEL}"
+    # --cwd ISOLATION + --tools "" (TICKET-112): run in an empty scratch dir, never the repo,
+    # with the built-in tool surface REMOVED. The CLI is an agentic session runner that injects
+    # the working directory's context into EVERY -p call (measured ~26k input tokens/run
+    # in-repo → ~13k isolated → ~11.7k with tools off; ~1k non-cached) and whose model would
+    # otherwise non-deterministically attempt tool calls, which headless mode cancels
+    # (PermissionCancelled). §14 makes the compiled prompt fully self-contained and the harness
+    # owns all persistence (G-1/G-7), so pure generation is the contract — tools are pure cost
+    # + flakiness here. --debug-file is the only surface where this CLI reports usage (G-15).
+    "$GROK_BIN" -p "$_prompt" --output-format json --effort "$EFFORT" --model "${1:-$DEFAULT_MODEL}" \
+        --cwd "$GROK_WORKDIR" --tools "" --debug-file "$GROK_DEBUG_FILE"
 }
 
 # --- preflight (G-2) ---------------------------------------------------------
@@ -214,6 +231,38 @@ if [ "$DRY" -eq 1 ] || [ "$have_grok" -eq 0 ] || [ "$have_key" -eq 0 ]; then
     emit "[grok-run] $PHASE — STUB (run $RUN_ID; log $LOG). Live once grok CLI + XAI_API_KEY are present."
     exit 0
 fi
+
+# --- daily budget gate (TICKET-112 / G-13) ------------------------------------
+# Live runs are METERED: every green run's measured usage lands in the day-keyed ledger, and a
+# new live run is REFUSED once today's spend reaches GROK_DAILY_BUDGET_UNITS. Units approximate
+# billable input-token equivalents: fresh-input ×1, cached-input ×1/10, output+reasoning ×5.
+# The default (150000/day) keeps a heavy architecting day in the ~$0.5–1.5 range at typical
+# flagship rates. Overage needs the operator's explicit GROK_BUDGET_OVERRIDE=1 (G-13 HITL on
+# spend thresholds). Stubs, --dry-run, and G-19 cached re-runs are free and never blocked.
+LEDGER="$RUNS_DIR/usage-ledger.jsonl"
+TODAY=$(date +%Y-%m-%d 2>/dev/null || echo unknown)
+BUDGET="${GROK_DAILY_BUDGET_UNITS:-150000}"
+spent=0
+if [ -f "$LEDGER" ]; then
+    spent=$(TODAY="$TODAY" node -e 'const fs=require("fs");let t=0;for(const l of fs.readFileSync(process.argv[1],"utf8").split("\n")){if(!l.trim())continue;try{const o=JSON.parse(l);if(o.date===process.env.TODAY)t+=(o.units||0);}catch(e){}}console.log(t);' "$LEDGER" 2>/dev/null || echo 0)
+fi
+if [ "$spent" -ge "$BUDGET" ] 2>/dev/null && [ "${GROK_BUDGET_OVERRIDE:-0}" != "1" ]; then
+    _log complete budget-blocked ",\"spent_units\":$spent,\"budget_units\":$BUDGET"
+    emit "[grok-run] DAILY BUDGET REACHED — $spent of $BUDGET units already spent today; live run refused (G-13)."
+    emit "[grok-run] Raise GROK_DAILY_BUDGET_UNITS, or set GROK_BUDGET_OVERRIDE=1 to approve this overage. G-19 cached re-runs remain free."
+    exit 3
+fi
+
+# Isolated CLI working dir + the usage-reporting debug file (see _grok_invoke). The workdir
+# MUST live outside the repo tree — a dir inside it (even an empty one) lets the CLI walk up,
+# detect the repo, and re-inject the very context the isolation removes (measured live).
+_RM_WORKDIR=0
+if [ -z "${GROK_WORKDIR:-}" ]; then
+    GROK_WORKDIR=$(mktemp -d -t grok-cwd.XXXXXX) || exit 4
+    _RM_WORKDIR=1
+fi
+GROK_DEBUG_FILE=$(mktemp -t grok-debug.XXXXXX) || exit 4
+trap 'rm -f -- "$compiled"; [ -n "${GROK_DEBUG_FILE:-}" ] && rm -f -- "$GROK_DEBUG_FILE"; [ "${_RM_WORKDIR:-0}" = "1" ] && rm -rf -- "$GROK_WORKDIR"; :' EXIT INT TERM
 
 # --- LIVE path (G-2/G-3/§14) -------------------------------------------------
 emit "[grok-run] $PHASE — live grok -p (effort=$EFFORT, model=$EFFECTIVE_MODEL, run=$RUN_ID)..."
@@ -268,11 +317,25 @@ if [ -n "$fail" ]; then
     esac
     exit 4
 fi
-# G-15: record token usage when grok reports it (tolerant reader — absent usage is fine, G-21;
-# the go-live CLI's json envelope carries none — activates if a future CLI adds it).
+# G-15: record token usage (TICKET-112). This CLI reports usage only in the debug meta (the
+# json envelope has none); parse the LAST session/prompt meta (= final attempt). Tolerant:
+# absent numbers → fall back to an envelope usage object if a future CLI adds one; else omit.
 usage_extra=""
-u=$(printf '%s' "$out" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const o=JSON.parse(d);if(o&&typeof o==="object"&&o.usage)process.stdout.write(JSON.stringify(o.usage));}catch(e){}});' 2>/dev/null)
-[ -n "$u" ] && usage_extra=",\"usage\":$u"
+in_t=$(grep -o '"inputTokens":[0-9]*' "$GROK_DEBUG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$'); in_t=${in_t:-0}
+out_t=$(grep -o '"outputTokens":[0-9]*' "$GROK_DEBUG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$'); out_t=${out_t:-0}
+cached_t=$(grep -o '"cachedReadTokens":[0-9]*' "$GROK_DEBUG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$'); cached_t=${cached_t:-0}
+reas_t=$(grep -o '"reasoningTokens":[0-9]*' "$GROK_DEBUG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$'); reas_t=${reas_t:-0}
+if [ "$in_t" -gt 0 ] 2>/dev/null; then
+    fresh=$((in_t - cached_t)); [ "$fresh" -lt 0 ] && fresh=0
+    units=$((fresh + cached_t / 10 + (out_t + reas_t) * 5))
+    usage_extra=",\"usage\":{\"input\":$in_t,\"cached\":$cached_t,\"output\":$out_t,\"reasoning\":$reas_t,\"units\":$units}"
+    printf '{"date":"%s","run_id":"%s","phase":"%s","model":"%s","input":%s,"cached":%s,"output":%s,"reasoning":%s,"units":%s}\n' \
+        "$TODAY" "$RUN_ID" "$PHASE" "$EFFECTIVE_MODEL" "$in_t" "$cached_t" "$out_t" "$reas_t" "$units" >> "$LEDGER" 2>/dev/null || true
+    emit "[grok-run] usage: in=$in_t (cached $cached_t) out=$out_t reasoning=$reas_t → $units units; today $((spent + units))/$BUDGET units."
+else
+    u=$(printf '%s' "$out" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const o=JSON.parse(d);if(o&&typeof o==="object"&&o.usage)process.stdout.write(JSON.stringify(o.usage));}catch(e){}});' 2>/dev/null)
+    [ -n "$u" ] && usage_extra=",\"usage\":$u"
+fi
 # G-19: record the green result for idempotent reuse (structured output only — never the key;
 # the runs dir is operator-local and gitignored).
 printf '%s\n' "$final" > "$OUT_CACHE" 2>/dev/null || true
