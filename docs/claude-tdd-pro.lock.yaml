@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   127804ba7874d92edd5b1274b6ff2215936ae694
-pinned_at:       2026-07-01T22:13:49+00:00
-pinned_message:  "§28.70 (CL-538) bash-3.2 composite-dispatch empty-array fix -- resolves GCTP P-10; activates the routed-FOSS-tool paths on macOS bash 3.2 (verified live: crash gone, clean=green, bad=red). Additive over 4668c2e; ADR-0079"
+pinned_commit:   a69f3801f327d4e919ffa3b559c677126bc169d6
+pinned_at:       2026-07-01T23:04:01+00:00
+pinned_message:  "Merge: record GCTP P-10 adoption confirmation"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-07-01T00:00:00Z
-last_synced_session: "TICKET-107 pin bump 4668c2e→127804b (§28.70 CL-538 bash-3.2 composite-dispatch empty-array fix; resolves P-10; activates routed-tool paths on bash 3.2) per ADR-0079"
+last_synced_at:      2026-07-02T00:00:00Z
+last_synced_session: "Docs-only pin bump 127804b→a69f380 (CTP CL-539 + CL-540: handoff record + adoption confirmation for the P-10 fix; contract surface stable, active.json 118→118) per ADR-0085"
