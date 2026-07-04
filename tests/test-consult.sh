@@ -141,8 +141,129 @@ JSON
     out=$("$SCRIPT" --roadmap "$TMP/cyc.json" 2>&1); ec=$?
     assert_eq "$ec" "1" "--roadmap: dependency cycle → exit 1"
     assert_match "$out" "cycle" "--roadmap: names the cycle as the reason"
+
+    # --- --validate-profile (business-profile.json gate, TICKET-114) ---
+    # missing arg → 2
+    "$SCRIPT" --validate-profile >/dev/null 2>&1
+    assert_eq "$?" "2" "--validate-profile: missing arg → exit 2"
+    # missing file → 2
+    "$SCRIPT" --validate-profile "$TMP/no-such-profile.json" >/dev/null 2>&1
+    assert_eq "$?" "2" "--validate-profile: missing file → exit 2"
+
+    # v1.0 profile — valid (as CTP emits at pin 0cf28fe today)
+    cat > "$TMP/prof10.json" <<'JSON'
+{"schema_version":"1.0","complete":true,
+ "answers":{"workload":"grade certification exams at 5-10x volume","motivation":"revenue"},
+ "grounded_in":["azure-waf-business-requirements","nist-800-53"]}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof10.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.0 valid profile → exit 0"
+
+    # v1.0 profile — missing workload
+    cat > "$TMP/prof10-bad.json" <<'JSON'
+{"schema_version":"1.0","complete":false,"answers":{"motivation":"revenue"},"grounded_in":["s"]}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof10-bad.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.0 missing workload → exit 1"
+    assert_match "$out" "answers.workload" "--validate-profile: v1.0 error names workload"
+
+    # v1.0 profile — grounded_in empty
+    cat > "$TMP/prof10-ng.json" <<'JSON'
+{"schema_version":"1.0","complete":true,"answers":{"workload":"x"},"grounded_in":[]}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof10-ng.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate-profile: v1.0 empty grounded_in → exit 1"
+
+    # v1.1 profile — valid (contract-conformant)
+    cat > "$TMP/prof11.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "signals_detected":["backend","ai-high-risk","regulated"],
+   "signals_forced":[],"signals_suppressed":[],
+   "activated_probe_groups":["universal","security-governance","iam"]
+ },
+ "probes":{
+   "universal":{
+     "workload":"grade exams","motivation":"revenue","criticality":"mission-critical",
+     "availability_tolerance":"hours","data_loss_tolerance":"minutes",
+     "data_sensitivity":"confidential","compliance_regime":"gdpr","scale":"large",
+     "budget_posture":"balanced"
+   },
+   "security-governance":{"ai_risk_tier":"annex-iii-high","provenance_commitment":"signed-attested"},
+   "iam":{"identity_federation":"oidc-federated","mfa_scope":"all-users"}
+ },
+ "grounded_in":["azure-waf-business-requirements","nist-800-53","oauth2-oidc"],
+ "grounded_in_namespaces":["_universal","security-governance","iam"],
+ "answers":{
+   "workload":"grade exams","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes",
+   "data_sensitivity":"confidential","compliance_regime":"gdpr","scale":"large",
+   "budget_posture":"balanced"
+ }}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 valid profile → exit 0"
+
+    # v1.1 profile — missing workload_classification
+    cat > "$TMP/prof11-nc.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-nc.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 missing classifier → exit 1"
+    assert_match "$out" "workload_classification" "--validate-profile: v1.1 error names classifier"
+
+    # v1.1 profile — activated probe group but no probes.<group> block
+    cat > "$TMP/prof11-np.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{"signals_detected":["x"],"signals_forced":[],"signals_suppressed":[],
+   "activated_probe_groups":["universal","iam"]},
+ "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["_universal","iam"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-np.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 activated group with no probes block → exit 1"
+    assert_match "$out" "probes.iam" "--validate-profile: v1.1 error names the group"
+
+    # v1.1 profile — universal-9 mirror invariant broken
+    cat > "$TMP/prof11-mm.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{"signals_detected":["x"],"signals_forced":[],"signals_suppressed":[],
+   "activated_probe_groups":["universal"]},
+ "probes":{"universal":{"workload":"one","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
+ "answers":{"workload":"TWO","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-mm.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 mirror invariant broken → exit 1"
+    assert_match "$out" "does not mirror" "--validate-profile: v1.1 error explains mirror"
+
+    # unsupported schema_version → 1
+    printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
+    "$SCRIPT" --validate-profile "$TMP/prof2.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate-profile: unsupported schema_version → exit 1"
+
+    # non-JSON → 1
+    printf '{not json\n' > "$TMP/prof-bad.json"
+    "$SCRIPT" --validate-profile "$TMP/prof-bad.json" >/dev/null 2>&1
+    assert_eq "$?" "1" "--validate-profile: non-JSON → exit 1"
 else
-    log "  (skipped --validate / --roadmap tests: node not on PATH)"
+    log "  (skipped --validate / --roadmap / --validate-profile tests: node not on PATH)"
 fi
 
 total=$((passes + failures))

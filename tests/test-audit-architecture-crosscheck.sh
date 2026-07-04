@@ -23,6 +23,7 @@ mkdir -p "$TMP/h"
 
 cat > "$TMP/rules.json" <<'JSON'
 {"rules":[{"id":"g-node-007","source_namespace":"node"},
+{"id":"g-iam-001","source_namespace":"iam"},
 {"id":"g-security-governance-require-provenance","source_namespace":"security-governance"},
 {"id":"g-security-governance-no-known-exploited-ingress","source_namespace":"security-governance"}]}
 JSON
@@ -81,6 +82,81 @@ run; assert_eq "$?" "0" "crosscheck result 'deviated' (w/ deviation row) → acc
 printf '{not json\n' > "$TMP/h/FEATURE-1.architecture.json"
 rm -f "$TMP/h/FEATURE-1.crosscheck.json"
 run; assert_eq "$?" "1" "non-JSON artifact → violation (1)"
+
+# --- Invariant 4: v1.1 probe-group propagation (TICKET-114) ---
+
+# Test 10: v1.0 profile alongside a valid artifact → vacuous-pass on invariant 4 (0)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[{"juncture":"db","complexity":"medium","applicable_rules":["g-node-007",$EO_ALL]}]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.0","complete":true,"answers":{"workload":"x"},"grounded_in":["s"]}
+JSON
+run; assert_eq "$?" "0" "invariant 4: v1.0 profile → vacuous pass (0)"
+
+# Test 11: v1.1 profile — every activated group propagates via a matching source_namespace → 0
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{"signals_detected":["backend"],"signals_forced":[],"signals_suppressed":[],
+   "activated_probe_groups":["universal","iam","security-governance"]},
+ "probes":{
+   "universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+     "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+     "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"},
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["_universal","iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "0" "invariant 4: v1.1 propagation complete → 0"
+
+# Test 12: v1.1 profile activates `iam` but no iam-namespaced rule referenced → violation (1)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"other","complexity":"medium","applicable_rules":["g-node-007",$EO_ALL]}
+]}
+JSON
+# (business-intake still activates iam from Test 11; iam not present in applicable_rules)
+run; assert_eq "$?" "1" "invariant 4: v1.1 activated group with no matching namespace → violation (1)"
+
+# Test 13: v1.1 profile with only 'universal' activated → invariant 4 trivially passes
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"one","complexity":"medium","applicable_rules":["g-node-007",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{"signals_detected":[],"signals_forced":[],"signals_suppressed":[],
+   "activated_probe_groups":["universal"]},
+ "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "0" "invariant 4: v1.1 with only universal activated → 0"
+
+# Test 14: v1.1 profile is malformed JSON → violation (1)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[{"juncture":"x","complexity":"small","applicable_rules":["g-node-007",$EO_ALL]}]}
+JSON
+printf '{not json\n' > "$TMP/h/FEATURE-1.business-intake.json"
+run; assert_eq "$?" "1" "invariant 4: malformed v1.1 profile → violation (1)"
+
+# Test 15: no profile file → invariant 4 vacuous (already-covered baseline still applies)
+rm -f "$TMP/h/FEATURE-1.business-intake.json"
+run; assert_eq "$?" "0" "invariant 4: no profile file → vacuous pass"
 
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-arch-crosscheck] OK — $passes/$total passed."; exit 0

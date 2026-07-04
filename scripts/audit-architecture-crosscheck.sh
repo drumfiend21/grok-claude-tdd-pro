@@ -15,6 +15,12 @@
 #   (3) If a cross-check record (FEATURE-NNN.crosscheck.json) is present, every
 #       check is pass | deviated | reconsulted; any "fail" without a deviation row
 #       is a violation (ADR-0056 D-E — never silently accept).
+#   (4) If a sibling FEATURE-NNN.business-intake.json is present AND its
+#       schema_version is "1.1" (P-12 / TICKET-114), every activated probe group
+#       (excluding "universal") appears as a source_namespace on at least one
+#       decisions[*].applicable_rules rule — i.e. committed business postures
+#       propagate into the design layer. v1.0 profiles (or absent profile)
+#       vacuous-pass this check (matches CTP v1.13 emit at pin 0cf28fe).
 #
 # CONTENT-AGNOSTIC + VACUOUS when no consult artifacts exist (the loop hasn't run
 # yet) — armed, not biting. Additive: it ADDS a gate; it relaxes nothing.
@@ -80,7 +86,10 @@ for art in "$HANDOFFS_DIR"/*.architecture.json; do
     [ -e "$art" ] || continue
     cc="${art%.architecture.json}.crosscheck.json"
     [ -f "$cc" ] || cc=""
-    out=$(XC_ART="$art" XC_CC="$cc" XC_RULES="$RULES_FILE" XC_EO="$EO_NS" node -e '
+    # v1.1 profile propagation (invariant 4, TICKET-114): sibling business-intake.json.
+    prof="${art%.architecture.json}.business-intake.json"
+    [ -f "$prof" ] || prof=""
+    out=$(XC_ART="$art" XC_CC="$cc" XC_RULES="$RULES_FILE" XC_EO="$EO_NS" XC_PROF="$prof" node -e '
 const fs = require("fs");
 const rd = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
 const errs = [];
@@ -88,13 +97,18 @@ let art, rules;
 try { art = rd(process.env.XC_ART); } catch (e) { console.log("ERR|"+process.env.XC_ART+"|not JSON: "+e.message); process.exit(0); }
 try { rules = rd(process.env.XC_RULES); } catch (e) { console.log("ERR|rules|"+e.message); process.exit(0); }
 const ids = new Set((rules.rules||[]).map(r=>r.id));
+const idToNs = new Map((rules.rules||[]).map(r=>[r.id, r.source_namespace]));
 const eoNs = (process.env.XC_EO||"").split(/\s+/).filter(Boolean);
 const eoIds = (rules.rules||[]).filter(r=>eoNs.includes(r.source_namespace)).map(r=>r.id);
 const decisions = Array.isArray(art.decisions) ? art.decisions : [];
+const referencedNs = new Set();
 for (const d of decisions) {
   const j = (d && d.juncture) ? d.juncture : "?";
   const ar = Array.isArray(d && d.applicable_rules) ? d.applicable_rules : [];
-  for (const rid of ar) if (!ids.has(rid)) errs.push("decision ["+j+"] applicable_rule not in active.json: "+rid);
+  for (const rid of ar) {
+    if (!ids.has(rid)) errs.push("decision ["+j+"] applicable_rule not in active.json: "+rid);
+    else referencedNs.add(idToNs.get(rid));
+  }
   for (const eid of eoIds) if (!ar.includes(eid)) errs.push("decision ["+j+"] missing non-exemptible EO rule: "+eid);
 }
 if (process.env.XC_CC) {
@@ -105,6 +119,18 @@ if (process.env.XC_CC) {
       const ok = ["pass","deviated","reconsulted"].includes(c && c.result);
       if (!ok) errs.push("crosscheck ["+(c&&c.rule||"?")+"] result not pass/deviated/reconsulted: "+(c&&c.result));
       if (c && c.result === "fail" && !deviated.has(c.rule)) errs.push("crosscheck ["+c.rule+"] failed with no deviation row (ADR-0056 D-E)");
+    }
+  }
+}
+// Invariant 4: v1.1 probe-group propagation (TICKET-114). v1.0 or absent profile → vacuous.
+if (process.env.XC_PROF) {
+  let prof; try { prof = rd(process.env.XC_PROF); } catch (e) { errs.push("business-intake profile not JSON: "+e.message); }
+  if (prof && prof.schema_version === "1.1") {
+    const activated = Array.isArray(prof.workload_classification && prof.workload_classification.activated_probe_groups)
+      ? prof.workload_classification.activated_probe_groups : [];
+    for (const g of activated) {
+      if (g === "universal") continue;
+      if (!referencedNs.has(g)) errs.push("v1.1 profile activated probe group [" + g + "] does not propagate into any decision applicable_rules (no rule with source_namespace=" + g + " referenced)");
     }
   }
 }
@@ -121,7 +147,16 @@ process.exit(0);
         printf '%s\n' "$out" | sed -n 's/^VIOL|/  [VIOLATION] '"$(basename "$art")"': /p' | while IFS= read -r line; do emit "$line"; done
         violations=$((violations + nviol))
     else
-        emit "  [ok] $(basename "$art"): applicable_rules resolve + EO non-exemptible present$([ -n "$cc" ] && printf ' + cross-check record valid')"
+        _prof_tag=""
+        if [ -n "$prof" ]; then
+            _sv=$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).schema_version||"1.0")}catch(e){console.log("?")}' "$prof" 2>/dev/null || echo "?")
+            case "$_sv" in
+                "1.1") _prof_tag=" + v1.1 probe-group propagation verified" ;;
+                "1.0") _prof_tag=" + profile v1.0 (v1.1 propagation N/A)" ;;
+                *)     _prof_tag=" + profile schema=$_sv" ;;
+            esac
+        fi
+        emit "  [ok] $(basename "$art"): applicable_rules resolve + EO non-exemptible present$([ -n "$cc" ] && printf ' + cross-check record valid')${_prof_tag}"
     fi
 done
 

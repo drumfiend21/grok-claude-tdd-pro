@@ -18,6 +18,22 @@
 #                          every decisions[] entry sized (complexity ∈ {small,medium,large})
 #                          with a non-empty applicable_rules. /decompose runs this before
 #                          consuming an artifact (A-4). Requires node (JSON parse).
+#   --validate-profile <file>
+#                          Validate a business-profile.json against
+#                          docs/handoff-contract.md §Business-Intake. Auto-detects
+#                          schema_version:
+#                            "1.0" — verify answers.workload + grounded_in non-empty
+#                                    + complete flag present (existing shape unchanged).
+#                            "1.1" — v1.0 checks PLUS workload_classification present
+#                                    (signals_detected + activated_probe_groups arrays,
+#                                    universal in activated set); every activated probe
+#                                    group has a probes.<group> block with ≥ 1 answer;
+#                                    grounded_in_namespaces includes _universal + every
+#                                    activated group; probes.universal mirrors answers.
+#                          Missing schema_version treated as "1.0". Additive; blocked
+#                          on CTP v1.14 for the 1.1 branch to actually fire (a fresh
+#                          intake at pin 0cf28fe still emits 1.0). TICKET-114.
+#                          Requires node.
 #   --roadmap <file>       Stage 7 of the loop: render a contract-valid consult artifact's
 #                          decisions[] as a roadmap (docs/handoff-contract.md §Roadmap) —
 #                          real chunks, sized, topologically sequenced over depends_on,
@@ -115,6 +131,69 @@ case "$1" in
         if engine_path "$2"; then exit 0; else
             printf 'consult.sh: engine script not found or not allowed: %s\n' "$2" >&2; exit 1
         fi
+        ;;
+    --validate-profile)
+        [ $# -ge 2 ] || { usage; exit 2; }
+        [ -f "$2" ] || { printf 'consult.sh: profile not found: %s\n' "$2" >&2; exit 2; }
+        command -v node >/dev/null 2>&1 || { printf 'consult.sh: node required for --validate-profile\n' >&2; exit 2; }
+        # Validate a business-profile.json against docs/handoff-contract.md §Business-Intake.
+        # Auto-detects schema_version. v1.0 checks unchanged; v1.1 adds classifier + probes
+        # + grounded_in_namespaces + universal-mirror invariants. env-var-first (no argv
+        # quoting); process.exit only (bash32/node portability). Backward-compat: absent
+        # schema_version → treat as "1.0" (matches CTP v1.13 emit at pin 0cf28fe).
+        UNIVERSAL_KEYS="workload motivation criticality availability_tolerance data_loss_tolerance data_sensitivity compliance_regime scale budget_posture"
+        CONSULT_PROFILE="$2" CONSULT_UNIVERSAL="$UNIVERSAL_KEYS" node -e '
+const fs = require("fs");
+let p;
+try { p = JSON.parse(fs.readFileSync(process.env.CONSULT_PROFILE, "utf8")); }
+catch (e) { console.error("[consult --validate-profile] INVALID: not JSON (" + e.message + ")"); process.exit(1); }
+const sv = p.schema_version || "1.0";
+const universal = (process.env.CONSULT_UNIVERSAL || "").split(/\s+/).filter(Boolean);
+const errs = [];
+// v1.0 baseline (also applies to v1.1 via mirror).
+const answers = (p && p.answers) || {};
+if (!answers.workload || !String(answers.workload).trim()) errs.push("answers.workload missing/empty");
+if (!Array.isArray(p.grounded_in) || p.grounded_in.length < 1) errs.push("grounded_in empty");
+if (typeof p.complete === "undefined") errs.push("complete flag missing");
+if (sv === "1.0") {
+  // done — v1.0 stops here.
+} else if (sv === "1.1") {
+  const wc = p.workload_classification || {};
+  if (!Array.isArray(wc.signals_detected)) errs.push("workload_classification.signals_detected not an array");
+  const activated = Array.isArray(wc.activated_probe_groups) ? wc.activated_probe_groups : null;
+  if (!activated) errs.push("workload_classification.activated_probe_groups not an array");
+  else if (!activated.includes("universal")) errs.push("activated_probe_groups must include \"universal\"");
+  const probes = p.probes || {};
+  if (!probes.universal || typeof probes.universal !== "object") errs.push("probes.universal missing");
+  else for (const k of universal) if (!(k in probes.universal)) errs.push("probes.universal missing key: " + k);
+  // Universal-9 mirror invariant (belt-and-suspenders backward-compat).
+  if (probes.universal) for (const k of universal) {
+    if (probes.universal[k] !== undefined && answers[k] !== undefined && probes.universal[k] !== answers[k]) {
+      errs.push("probes.universal." + k + " does not mirror answers." + k);
+    }
+  }
+  if (activated) for (const g of activated) {
+    if (g === "universal") continue;
+    const b = probes[g];
+    if (!b || typeof b !== "object" || Object.keys(b).length < 1) errs.push("probes." + g + " missing or empty (activated but unanswered)");
+  }
+  const gns = Array.isArray(p.grounded_in_namespaces) ? p.grounded_in_namespaces : null;
+  if (!gns) errs.push("grounded_in_namespaces not an array");
+  else {
+    if (!gns.includes("_universal")) errs.push("grounded_in_namespaces missing _universal");
+    if (activated) for (const g of activated) {
+      if (g === "universal") continue;
+      if (!gns.includes(g)) errs.push("grounded_in_namespaces missing activated group: " + g);
+    }
+  }
+} else {
+  errs.push("unsupported schema_version: " + sv + " (expected \"1.0\" or \"1.1\")");
+}
+if (errs.length) { console.error("[consult --validate-profile] INVALID (schema_version=" + sv + "):\n  " + errs.join("\n  ")); process.exit(1); }
+console.log("[consult --validate-profile] OK (schema_version=" + sv + ") — contract-conformant.");
+process.exit(0);
+'
+        exit $?
         ;;
     --validate)
         [ $# -ge 2 ] || { usage; exit 2; }
