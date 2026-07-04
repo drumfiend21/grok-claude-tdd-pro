@@ -1,0 +1,147 @@
+{
+  "//": "P-12 supplementary — sample business-profile.json in the proposed v1.14 §27.16 shape. Non-normative example; CTP owns the final schema. Modeled on the Certifiable, Inc. kata workload as it would be captured under full-surface intake. Companion to docs/handoff-ctp-p12-full-surface-intake.md.",
+  "schema_version": "1.1",
+  "generated_at": "2026-07-04T14:00:00Z",
+  "complete": true,
+  "workload_classification": {
+    "signals_detected": [
+      "backend",
+      "ml-ai",
+      "ai-high-risk",
+      "regulated",
+      "public-facing",
+      "multi-tenant",
+      "data-pipeline"
+    ],
+    "signals_forced": [],
+    "signals_suppressed": [],
+    "activated_probe_groups": [
+      "universal",
+      "security-governance",
+      "us-government",
+      "owasp",
+      "slsa",
+      "sbom",
+      "iam",
+      "jwt",
+      "observability",
+      "arch",
+      "documentation",
+      "linux-foundation",
+      "oas"
+    ],
+    "grounded_in": [
+      "azure-waf-business-requirements",
+      "aws-rpo-rto-targets",
+      "aws-wa-tool-profiles",
+      "nist-800-53"
+    ]
+  },
+  "probes": {
+    "universal": {
+      "workload": "Adopt Generative AI to automate short-answer + case-study grading + AI-driven question generation for Certifiable, Inc., a professional-architecture certification body. Absorb 5–10× candidate growth (30,000 to 150,000–300,000 exams/year) without exhausting the pool of 300 retired-architect SME graders. Preserve grading accuracy at or above SME baseline, preserve accreditor-facing credibility, cap total per-exam cost at ≤130% of today's, and detect + prevent candidates cheating with GenAI. Integrate with the existing exam system without disrupting workflow.",
+      "motivation": "revenue",
+      "criticality": "mission-critical",
+      "availability_tolerance": "hours",
+      "data_loss_tolerance": "minutes",
+      "data_sensitivity": "confidential",
+      "compliance_regime": "gdpr",
+      "scale": "large",
+      "budget_posture": "balanced"
+    },
+    "security-governance": {
+      "ai_risk_tier": "annex-iii-high",
+      "provenance_commitment": "signed-attested"
+    },
+    "us-government": {
+      "human_oversight_commitment": "confidence-gated",
+      "explainability_commitment": "human-readable-rationale"
+    },
+    "owasp": {
+      "asvs_level": "L2",
+      "threat_surface": "authenticated-only",
+      "secure_headers_commitment": "baseline"
+    },
+    "slsa": {
+      "slsa_level_commitment": 3
+    },
+    "sbom": {
+      "sbom_commitment": "cyclonedx"
+    },
+    "iam": {
+      "identity_federation": "oidc-federated",
+      "mfa_scope": "all-users",
+      "zero_trust_posture": "gradual"
+    },
+    "jwt": {
+      "token_lifetime_posture": "short-lived-with-refresh"
+    },
+    "observability": {
+      "slo_commitment": "formal-99.9",
+      "telemetry_posture": "logs-metrics-traces"
+    },
+    "arch": {
+      "contract_first_commitment": "all-boundaries",
+      "boundary_style": "service-based"
+    },
+    "documentation": {
+      "adr_discipline": "all-architectural-changes",
+      "architecture_doc_commitment": "arc42-or-c4-full"
+    },
+    "linux-foundation": {
+      "openssf_scorecard_commitment": "advisory"
+    },
+    "oas": {
+      "oas_commitment": "oas-3.1"
+    }
+  },
+  "grounded_in": [
+    "azure-waf-business-requirements",
+    "aws-rpo-rto-targets",
+    "aws-wa-tool-profiles",
+    "nist-800-53",
+    "eu-ai-act-annex-iii",
+    "eu-ai-act-art-13",
+    "eu-ai-act-art-14",
+    "slsa-framework",
+    "cyclonedx-spec",
+    "owasp-asvs",
+    "owasp-top10",
+    "owasp-secure-headers",
+    "oauth2-oidc",
+    "nist-zero-trust",
+    "google-sre-book",
+    "opentelemetry-docs",
+    "microsoft-rest-api-guidelines",
+    "twelve-factor-app",
+    "google-eng-practices",
+    "openssf-scorecard"
+  ],
+  "grounded_in_namespaces": [
+    "_universal",
+    "security-governance",
+    "us-government",
+    "owasp",
+    "slsa",
+    "sbom",
+    "iam",
+    "jwt",
+    "observability",
+    "arch",
+    "documentation",
+    "linux-foundation",
+    "oas"
+  ],
+  "answers": {
+    "//": "DEPRECATED but preserved for v1.0-consumer backward-compat. Downstream translate/recommend engines MAY read from this block if they don't yet understand probes.universal.",
+    "workload": "Adopt Generative AI to automate short-answer + case-study grading + AI-driven question generation for Certifiable, Inc., a professional-architecture certification body. Absorb 5–10× candidate growth (30,000 to 150,000–300,000 exams/year) without exhausting the pool of 300 retired-architect SME graders. Preserve grading accuracy at or above SME baseline, preserve accreditor-facing credibility, cap total per-exam cost at ≤130% of today's, and detect + prevent candidates cheating with GenAI. Integrate with the existing exam system without disrupting workflow.",
+    "motivation": "revenue",
+    "criticality": "mission-critical",
+    "availability_tolerance": "hours",
+    "data_loss_tolerance": "minutes",
+    "data_sensitivity": "confidential",
+    "compliance_regime": "gdpr",
+    "scale": "large",
+    "budget_posture": "balanced"
+  }
+}

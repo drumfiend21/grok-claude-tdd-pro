@@ -371,3 +371,97 @@ The harness builds the user's product in a **separate working tree** ("app_root"
 - **Consumers:** `/consult` `/decompose` `/inner-loop` `/audit` resolve the app_root through this script;
   the forthcoming Fix-B `enforce-standards.sh` and the Fix-C dynamic gate target it as `enforce.sh --root`.
 
+## Business-Intake (business-profile.json) — SHAPE PENDING CTP v1.14
+
+> **Status: PENDING.** This section documents the anticipated shape of `business-profile.json` under
+> CTP v1.14 §27.16 (P-12 / TICKET-114). It is here so `/consult` skill authors and the audit spine
+> can prepare against a known target. The **normative shape** is whatever CTP ships at `v1.14` — if
+> the tag lands with different keys, this section is corrected in the same CL as the pin bump.
+> Backward-compat is required: `schema_version: "1.0"` profiles remain valid indefinitely.
+
+### v1.0 shape (current, still supported)
+
+Emitted by CTP's `commands/business-intake.sh` at pin `0cf28fe`. Nine universal question keys under
+`answers`, `grounded_in` sourced to 4 catalog IDs.
+
+```jsonc
+{
+  "schema_version": "1.0",
+  "generated_at": "<iso>",
+  "complete": <bool>,
+  "answers": { "workload": "...", "motivation": "...", /* 8 more */ },
+  "grounded_in": ["azure-waf-business-requirements", "aws-rpo-rto-targets",
+                  "nist-800-53", "aws-wa-tool-profiles"],
+  "unanswered": [ /* keys still pending */ ]
+}
+```
+
+### v1.1 shape (anticipated under CTP v1.14 §27.16)
+
+Additive extension. `schema_version` bumps to `"1.1"`. Universal 9 keys remain (in `probes.universal`
+AND — for v1.0-consumer backward-compat — mirrored in `answers`). New top-level `workload_classification`
+records detected signals + activated probe groups. New `probes.<namespace>` blocks carry committed
+postures. `grounded_in` becomes a **strict superset** of what v1.0 would have emitted.
+
+```jsonc
+{
+  "schema_version": "1.1",
+  "generated_at": "<iso>",
+  "complete": <bool>,
+  "workload_classification": {
+    "signals_detected":   ["backend", "ml-ai", "ai-high-risk", "regulated", ...],
+    "signals_forced":     [],     // operator overrides
+    "signals_suppressed": [],
+    "activated_probe_groups": ["universal", "security-governance", "iam", ...],
+    "grounded_in": ["azure-waf-business-requirements", ...]
+  },
+  "probes": {
+    "universal": { /* the 9 universal keys — same enums as v1.0 */ },
+    "security-governance": { "ai_risk_tier": "annex-iii-high", "provenance_commitment": "signed-attested" },
+    "iam":                 { "identity_federation": "oidc-federated", "mfa_scope": "all-users" },
+    "observability":       { "slo_commitment": "formal-99.9", "telemetry_posture": "logs-metrics-traces" }
+    /* ...activated per-namespace groups... */
+  },
+  "grounded_in":            [ /* union across universal + all activated probe groups */ ],
+  "grounded_in_namespaces": [ "_universal", "security-governance", "iam", ... ],
+  "answers": { /* MIRROR of probes.universal, preserved for v1.0 consumers */ }
+}
+```
+
+Concrete example: `docs/handoff-ctp-p12-sample-profile-v1.1.json` (the Certifiable kata under
+proposed v1.14 shape).
+
+### Contract invariants (guaranteed by CTP under §27.16)
+
+1. **Additivity (ADR-0047 compliance).** No universal-9 key is removed or renamed. No enum value is
+   dropped from an existing key. Every stage-2 addition may only turn a probe group ON.
+2. **Backward-compat.** `schema_version: "1.0"` profiles validate + translate + recommend unchanged.
+   Downstream engines (`business-translate.sh`, `architect-recommend.sh`) MUST accept both shapes.
+3. **`grounded_in` monotonicity.** For the same workload, v1.1 `grounded_in` ⊇ v1.0 `grounded_in`.
+   Never a subset.
+4. **Cite-or-decline preserved.** Every activated stage-2 question grounded in a `source_id` that
+   resolves in one of the five `standards/*.yaml` catalogs AND to at least one `active.json`
+   namespace. `needs_grounding=0` discipline retained.
+5. **Universal 9 mirror.** `answers` at top level mirrors `probes.universal` byte-identically. This
+   lets v1.0-shape consumers (including a not-yet-upgraded GCTP) read v1.1 profiles without
+   understanding the classifier + probes structure — belt-and-suspenders backward-compat.
+
+### Consumer contract on the GCTP side (TICKET-114, blocked on CTP v1.14 tag)
+
+Once CTP tags `v1.14` and GCTP re-pins:
+
+- `scripts/consult.sh --validate <profile>` — detects `schema_version`; for `"1.1"` additionally
+  verifies `workload_classification` present, activated `probes.<namespace>` blocks answered, and
+  `grounded_in_namespaces` includes every activated group. For `"1.0"` unchanged.
+- `scripts/audit-architecture-crosscheck.sh` — for every v1.1 profile in the run, verifies every
+  activated probe group's committed posture propagates into at least one `decisions[]` juncture's
+  `applicable_rules`. Fail-closed on silent omission.
+- `/consult` skill — walks Stage 0 (classifier reveal → operator confirms/edits signals) → Stage 1
+  (universal 9) → Stage 2 (activated per-namespace groups, translated to plain business language
+  per the crossroads/translator loop, ADR-0056).
+- `docs/handoff-ctp-p12-full-surface-intake.md` + companions
+  (`docs/handoff-ctp-p12-namespace-question-manifest.md`,
+  `docs/handoff-ctp-p12-sample-profile-v1.1.json`,
+  `docs/handoff-ctp-p12-acceptance-test.sh`) are the authoritative reference until CTP v1.14 lands;
+  this section reflects them.
+
