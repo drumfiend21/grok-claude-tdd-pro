@@ -13,13 +13,19 @@ kata session knows exactly what to expect.
 
 ```bash
 git clone https://github.com/drumfiend21/grok-claude-tdd-pro   # or: git -C grok-claude-tdd-pro pull origin main
-cd grok-claude-tdd-pro                                          # origin/main == 4fbbd63
+cd grok-claude-tdd-pro                                          # main tip; for the KATA session use branch dev/kata-2026-07-03-consult
 ```
 
 ## 2. Bootstrap the harness (in order)
 
 ```bash
-./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned 7a7f74d + skills + active.json (46 rules)
+./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned 43ea692 (2026-07-06) + skills +
+                                         # active.json (118 rules across 43 namespaces). At this pin: §29..§29.6
+                                         # (full-surface consult grounding + byte-identical native enforcement),
+                                         # §30 (full-surface intake — workload classifier + per-namespace probe
+                                         # groups), §30.1 (design engines consume the probes), and §30.2 (precise
+                                         # cloud classification + IaC probe coverage + unprobed_in_scope
+                                         # transparency marker) — see ADR-0086/0087/0088/0089.
 ./scripts/accept-compact.sh              # REQUIRED: fail-closed agent compact (ADR-0057). Until accepted, the
                                          # agent MUST NOT drive /consult../inner-loop. Accept = you agree to act
                                          # only as GCTP's user (don't self-architect; CTP generates, GCTP enforces).
@@ -37,7 +43,7 @@ cp .harness/app.json.example .harness/app.json
 
 ## 4. PATH A — Audit the existing code (recommended first; cheap, gives ground truth)
 
-Run the real detectors against the tree (over-scope all 46 rules; `not_applicable` is harmless):
+Run the real detectors against the tree (over-scope all 118 rules; `not_applicable` is harmless):
 
 ```bash
 PR=.harness/plugin-cache/claude-tdd-pro
@@ -45,7 +51,7 @@ ALL=$(node -e 'process.stdout.write(require("./.harness/rules/active.json").rule
 CLAUDE_PLUGIN_ROOT="$PR" bash "$PR/rubric/enforce.sh" --root ../softarchcert-win25 --rules "$ALL" --json
 ```
 
-**What you'll get (real result from this audit):** `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
+**What you'll get (numbers below are the audit result at the historical pin `7a7f74d` / 46 rules — kept as an illustrative shape, NOT a target).** At today's pin `43ea692` / 118 rules the counts will be larger (more rules in scope means more `pass` and more `not_applicable`); the *interpretation* of the failure categories still applies. Re-run at the current pin to get the ground-truth numbers for this kata. Historical snapshot: `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
 
 | Category | Rules | Verdict |
 |---|---|---|
@@ -61,7 +67,22 @@ CLAUDE_PLUGIN_ROOT="$PR" bash "$PR/rubric/enforce.sh" --root ../softarchcert-win
 Drive only the sanctioned commands, in plain language, letting CTP architect and GCTP enforce:
 
 ```
-/consult     # CTP's architecture engine designs under standards (cite-or-decline); GCTP translates + cross-checks
+/consult     # Crossroads/translator loop (ADR-0056):
+             #   Stage 0 — S-57 --classify reveal. CTP infers workload_types from the vision;
+             #             GCTP translates plainly ("public-facing REST API on Kubernetes with an
+             #             AWS deployment") and confirms with the operator. NEW at pin 43ea692
+             #             (§30.2): classification is PRECISE — a pure-AWS kata is probed for
+             #             aws+cfn only, not Azure/GCP. Any in-scope namespace without a probe
+             #             group appears in unprobed_in_scope — visible, never silent.
+             #   Stage 1 — universal 9 (S-32, unchanged). Business language, one at a time.
+             #   Stage 2 — activated per-namespace probes (§30 / S-57). e.g. jwt token lifetime,
+             #             react rendering model, k8s multitenancy, aws region strategy — CTP
+             #             grounded in a cite-or-decline source, GCTP translated to plain business
+             #             language. Each answered probe becomes a COMMITTED POSTURE the design
+             #             engines honor (§30.1 / S-33 / S-34): translate emits a grounded concern,
+             #             recommend can let a decisive commitment modestly move the pick.
+             #   Per juncture — CTP proposes under enforcement (google/owasp/EO/SLSA/…); GCTP
+             #                   cross-checks against active.json + R/D/G/C-rules + EO spine.
 /roadmap     # sized, sequenced tickets
 /decompose   # Fix A: each ticket's applicable_rules = language floor ∪ all g-universal-* ∪ EO (typed globs!)
 /dispatch    # emit the contract-valid request per ticket
