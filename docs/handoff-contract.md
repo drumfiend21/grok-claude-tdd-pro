@@ -371,18 +371,18 @@ The harness builds the user's product in a **separate working tree** ("app_root"
 - **Consumers:** `/consult` `/decompose` `/inner-loop` `/audit` resolve the app_root through this script;
   the forthcoming Fix-B `enforce-standards.sh` and the Fix-C dynamic gate target it as `enforce.sh --root`.
 
-## Business-Intake (business-profile.json) — SHAPE PENDING CTP v1.14
+## Business-Intake (business-profile.json) — AUTHORITATIVE (CTP §30 / S-57 / §2.35, CL-546)
 
-> **Status: PENDING.** This section documents the anticipated shape of `business-profile.json` under
-> CTP v1.14 §27.16 (P-12 / TICKET-114). It is here so `/consult` skill authors and the audit spine
-> can prepare against a known target. The **normative shape** is whatever CTP ships at `v1.14` — if
-> the tag lands with different keys, this section is corrected in the same CL as the pin bump.
-> Backward-compat is required: `schema_version: "1.0"` profiles remain valid indefinitely.
+> **Status: AUTHORITATIVE at CTP pin `f060a8e`.** This section reflects the shape CTP shipped on
+> `main` under the P-12 amendment. GCTP filed P-12 as "§27.16 Full-Surface Intake"; that label
+> already existed in CTP's architecture ("Layered multi-cloud advisor"), so CTP landed the amendment
+> at **§30 / S-57 / §2.35**. CTP is authoritative on the shape; GCTP reconciles. Backward-compat is
+> guaranteed: `schema_version: "1.0"` profiles remain valid indefinitely.
 
-### v1.0 shape (current, still supported)
+### v1.0 shape (still supported, unchanged)
 
-Emitted by CTP's `commands/business-intake.sh` at pin `0cf28fe`. Nine universal question keys under
-`answers`, `grounded_in` sourced to 4 catalog IDs.
+Emitted by CTP's `commands/business-intake.sh` (S-32). Nine universal question keys under `answers`,
+`grounded_in` sourced to 4 catalog IDs.
 
 ```jsonc
 {
@@ -396,72 +396,91 @@ Emitted by CTP's `commands/business-intake.sh` at pin `0cf28fe`. Nine universal 
 }
 ```
 
-### v1.1 shape (anticipated under CTP v1.14 §27.16)
+### v1.1 shape (CTP §30 / S-57 / §2.35, `commands/full-surface-intake.sh`)
 
-Additive extension. `schema_version` bumps to `"1.1"`. Universal 9 keys remain (in `probes.universal`
-AND — for v1.0-consumer backward-compat — mirrored in `answers`). New top-level `workload_classification`
-records detected signals + activated probe groups. New `probes.<namespace>` blocks carry committed
-postures. `grounded_in` becomes a **strict superset** of what v1.0 would have emitted.
+Additive extension. `schema_version` bumps to `"1.1"`. The universal 9 answers **remain in `answers`
+unchanged** (universal-stays-universal — S-57 composes S-32 for the universal layer). New top-level
+`workload_classification` records the workload types the classifier detected, the aggregator
+namespaces they put in scope, and which of those had a probe group activated. New `probes.<namespace>`
+blocks carry per-namespace committed postures. `grounded_in` becomes a **strict superset** of what
+v1.0 would have emitted; `grounded_in_namespaces` enumerates the namespaces grounded from a gathered
+probe answer (not a default).
 
 ```jsonc
 {
   "schema_version": "1.1",
   "generated_at": "<iso>",
   "complete": <bool>,
+  "answers": { /* universal 9, mirrored UNCHANGED from S-32 */ },
   "workload_classification": {
-    "signals_detected":   ["backend", "ml-ai", "ai-high-risk", "regulated", ...],
-    "signals_forced":     [],     // operator overrides
-    "signals_suppressed": [],
-    "activated_probe_groups": ["universal", "security-governance", "iam", ...],
-    "grounded_in": ["azure-waf-business-requirements", ...]
+    "workload_types":             ["web-frontend", "rest-api", "ml-inference", ...],
+    "namespaces":                 ["react", "node", "k8s", "jwt", "owasp", ...],
+    "activated_probe_namespaces": ["react", "jwt", "k8s", ...]
   },
   "probes": {
-    "universal": { /* the 9 universal keys — same enums as v1.0 */ },
-    "security-governance": { "ai_risk_tier": "annex-iii-high", "provenance_commitment": "signed-attested" },
-    "iam":                 { "identity_federation": "oidc-federated", "mfa_scope": "all-users" },
-    "observability":       { "slo_commitment": "formal-99.9", "telemetry_posture": "logs-metrics-traces" }
-    /* ...activated per-namespace groups... */
+    "react": { "react_rendering_model": "spa" },
+    "jwt":   { "jwt_token_lifetime": "short" },
+    "k8s":   { "resource_limits_posture": "requests-and-limits" }
+    /* per-namespace probe answers; every key here belongs to an activated_probe_namespace */
   },
-  "grounded_in":            [ /* union across universal + all activated probe groups */ ],
-  "grounded_in_namespaces": [ "_universal", "security-governance", "iam", ... ],
-  "answers": { /* MIRROR of probes.universal, preserved for v1.0 consumers */ }
+  "grounded_in":            [ /* universal source_ids ∪ answered-probe source_ids (STRICT SUPERSET of v1.0) */ ],
+  "grounded_in_namespaces": [ "react", "jwt", "k8s", ... ],
+  "unanswered": [ /* activated probes still pending */ ]
 }
 ```
 
-Concrete example: `docs/handoff-ctp-p12-sample-profile-v1.1.json` (the Certifiable kata under
-proposed v1.14 shape).
+Authoritative schema: `.harness/plugin-cache/claude-tdd-pro/schemas/business-profile.schema.json`
+(`oneOf` on `schema_version`; v1.1 additionally requires `workload_classification` + `probes` +
+`grounded_in_namespaces`). Validatable by CTP's own `rubric/detectors/lib/validate-json-schema.js`
+(no npm dep).
 
-### Contract invariants (guaranteed by CTP under §27.16)
+### Contract invariants (guaranteed by CTP under §2.35, all tested in `cl546-fsintake-01..12`)
 
 1. **Additivity (ADR-0047 compliance).** No universal-9 key is removed or renamed. No enum value is
-   dropped from an existing key. Every stage-2 addition may only turn a probe group ON.
+   dropped. Every S-57 addition is *additional*; the classifier can only turn a probe group ON.
 2. **Backward-compat.** `schema_version: "1.0"` profiles validate + translate + recommend unchanged.
-   Downstream engines (`business-translate.sh`, `architect-recommend.sh`) MUST accept both shapes.
+   Downstream engines (`business-translate.sh`, `architect-recommend.sh`) read `answers` (unchanged)
+   — the whole existing chain works on a v1.1 profile without knowing about probes. Consumption of
+   the richer `probes` block by downstream engines is a deliberate CTP follow-up CL, not part of
+   this contract.
 3. **`grounded_in` monotonicity.** For the same workload, v1.1 `grounded_in` ⊇ v1.0 `grounded_in`.
    Never a subset.
-4. **Cite-or-decline preserved.** Every activated stage-2 question grounded in a `source_id` that
-   resolves in one of the five `standards/*.yaml` catalogs AND to at least one `active.json`
-   namespace. `needs_grounding=0` discipline retained.
-5. **Universal 9 mirror.** `answers` at top level mirrors `probes.universal` byte-identically. This
-   lets v1.0-shape consumers (including a not-yet-upgraded GCTP) read v1.1 profiles without
-   understanding the classifier + probes structure — belt-and-suspenders backward-compat.
+4. **Cite-or-decline preserved.** Every activated probe question is grounded in a `source_id` that
+   resolves in one of CTP's `standards/*.yaml` catalogs AND to at least one `active.json` namespace.
+   `needs_grounding=0` discipline retained.
+5. **Universal-stays-universal.** The universal 9 answers live in `answers` (byte-identical to S-32
+   output) — S-57 does not introduce a `probes.universal` block. Only namespace-scoped probes live
+   under `probes.<namespace>`.
+6. **Namespace-grounding traceability.** Every `grounded_in_namespaces` entry appears in
+   `workload_classification.activated_probe_namespaces` and is backed by ≥ 1 answered probe.
 
-### Consumer contract on the GCTP side (TICKET-114, blocked on CTP v1.14 tag)
+### Consumer contract on the GCTP side (TICKET-114, resolved at pin `f060a8e`)
 
-Once CTP tags `v1.14` and GCTP re-pins:
-
-- `scripts/consult.sh --validate <profile>` — detects `schema_version`; for `"1.1"` additionally
-  verifies `workload_classification` present, activated `probes.<namespace>` blocks answered, and
-  `grounded_in_namespaces` includes every activated group. For `"1.0"` unchanged.
-- `scripts/audit-architecture-crosscheck.sh` — for every v1.1 profile in the run, verifies every
-  activated probe group's committed posture propagates into at least one `decisions[]` juncture's
-  `applicable_rules`. Fail-closed on silent omission.
-- `/consult` skill — walks Stage 0 (classifier reveal → operator confirms/edits signals) → Stage 1
-  (universal 9) → Stage 2 (activated per-namespace groups, translated to plain business language
-  per the crossroads/translator loop, ADR-0056).
+- `scripts/consult.sh --validate-profile <profile>` — detects `schema_version`; for `"1.1"`
+  additionally verifies `workload_classification.{workload_types,namespaces,activated_probe_namespaces}`
+  present, every activated probe namespace has an answered `probes.<ns>` block, and
+  `grounded_in_namespaces` ⊆ `activated_probe_namespaces` with each entry backed by an answer.
+  For `"1.0"` unchanged.
+- `scripts/audit-architecture-crosscheck.sh` — invariant 4: for every v1.1 profile in the run,
+  every `activated_probe_namespaces` entry propagates into at least one `decisions[]` juncture's
+  `applicable_rules` (a rule whose `source_namespace` matches the namespace). Fail-closed on silent
+  omission.
+- `/consult` skill — walks Stage 0 (`--classify` reveal → operator confirms workload types) →
+  Stage 1 (universal 9, forwarded to S-32) → Stage 2 (`--probe-answer ns:key=value` per activated
+  namespace, translated to plain business language per the crossroads/translator loop, ADR-0056).
+- **Downstream consumption (CL-547 / §30.1, pin `c23e5fe`+).** CTP's S-33 `business-translate.sh`
+  reads `probes.<namespace>` and adds a grounded concern per committed posture (cited by the probe
+  `source_id`); S-34 `architect-recommend.sh` lets a decisive commitment modestly move the pick
+  (multi-region → most-resilient; hard cost-cap → cost-optimized). Both engines emit
+  `probes_consumed=<n>` on stderr. Gated on `probes` presence — v1.0 profiles byte-identical.
+  Adopted via ADR-0088. Observable end-to-end: intake → translate `probes_consumed=<n>` →
+  recommend `probes_consumed=<n>` → decisions[] `applicable_rules` cover the propagated namespaces
+  (invariant 4).
 - `docs/handoff-ctp-p12-full-surface-intake.md` + companions
   (`docs/handoff-ctp-p12-namespace-question-manifest.md`,
   `docs/handoff-ctp-p12-sample-profile-v1.1.json`,
-  `docs/handoff-ctp-p12-acceptance-test.sh`) are the authoritative reference until CTP v1.14 lands;
-  this section reflects them.
+  `docs/handoff-ctp-p12-acceptance-test.sh`) remain in-repo as the P-12 proposal trail; the
+  authoritative reference is now the plugin cache (`schemas/business-profile.schema.json`,
+  `commands/full-surface-intake.sh`, `docs/architecture-v1.9.md §30`) at pin `f060a8e`. Historical
+  key-name drift between the proposal and the shipped shape is documented in ADR-0087.
 

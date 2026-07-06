@@ -94,7 +94,7 @@ cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
 JSON
 run; assert_eq "$?" "0" "invariant 4: v1.0 profile → vacuous pass (0)"
 
-# Test 11: v1.1 profile — every activated group propagates via a matching source_namespace → 0
+# Test 11: v1.1 profile — every activated namespace propagates via a matching source_namespace → 0
 cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
 {"schema_version":"1","needs_grounding":0,"decisions":[
   {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
@@ -102,19 +102,19 @@ cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
 JSON
 cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
- "workload_classification":{"signals_detected":["backend"],"signals_forced":[],"signals_suppressed":[],
-   "activated_probe_groups":["universal","iam","security-governance"]},
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","security-governance"],
+   "activated_probe_namespaces":["iam","security-governance"]
+ },
  "probes":{
-   "universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
-     "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-     "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"},
    "iam":{"identity_federation":"oidc-federated"},
    "security-governance":{"ai_risk_tier":"annex-iii-high"}
  },
- "grounded_in":["s"],"grounded_in_namespaces":["_universal","iam","security-governance"],
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
  "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"},
+ "unanswered":[]}
 JSON
 run; assert_eq "$?" "0" "invariant 4: v1.1 propagation complete → 0"
 
@@ -124,10 +124,10 @@ cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
   {"juncture":"other","complexity":"medium","applicable_rules":["g-node-007",$EO_ALL]}
 ]}
 JSON
-# (business-intake still activates iam from Test 11; iam not present in applicable_rules)
-run; assert_eq "$?" "1" "invariant 4: v1.1 activated group with no matching namespace → violation (1)"
+# (business-intake still activates iam+security-governance from Test 11; iam not present in applicable_rules)
+run; assert_eq "$?" "1" "invariant 4: v1.1 activated namespace with no matching rule → violation (1)"
 
-# Test 13: v1.1 profile with only 'universal' activated → invariant 4 trivially passes
+# Test 13: v1.1 profile with no activated probe namespaces → invariant 4 trivially passes
 cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
 {"schema_version":"1","needs_grounding":0,"decisions":[
   {"juncture":"one","complexity":"medium","applicable_rules":["g-node-007",$EO_ALL]}
@@ -135,17 +135,17 @@ cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
 JSON
 cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
- "workload_classification":{"signals_detected":[],"signals_forced":[],"signals_suppressed":[],
-   "activated_probe_groups":["universal"]},
- "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
-   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
- "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
+ "workload_classification":{
+   "workload_types":["baseline"],"namespaces":[],
+   "activated_probe_namespaces":[]
+ },
+ "probes":{},
+ "grounded_in":["s"],"grounded_in_namespaces":[],
  "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
    "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
 JSON
-run; assert_eq "$?" "0" "invariant 4: v1.1 with only universal activated → 0"
+run; assert_eq "$?" "0" "invariant 4: v1.1 with no activated probes → 0"
 
 # Test 14: v1.1 profile is malformed JSON → violation (1)
 cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON

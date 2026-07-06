@@ -56,6 +56,11 @@ docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: doc
 docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: docs/frontier-model-readiness.md
 docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: scripts/classify-from-url.sh
 docs/adr/0070-plugin-pin-bump-39903da-to-230e99d.md references missing path: scripts/review-queue.sh
+docs/adr/0087-plugin-pin-bump-0cf28fe-to-f060a8e.md references missing path: docs/architecture-v1.9.md
+docs/adr/0087-plugin-pin-bump-0cf28fe-to-f060a8e.md references missing path: docs/design/v1.14-full-surface-intake.md
+docs/adr/0087-plugin-pin-bump-0cf28fe-to-f060a8e.md references missing path: docs/handoff-ctp-to-gctp-p12-fixed.md
+docs/adr/0088-plugin-pin-bump-f060a8e-to-c23e5fe.md references missing path: docs/architecture-v1.9.md
+docs/adr/0088-plugin-pin-bump-f060a8e-to-c23e5fe.md references missing path: docs/design/v1.14-full-surface-intake.md
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
 docs/architecture-v1.9-drift-review-230e99d-to-4668c2e.md references missing path: docs/architecture-v1.9.md
 docs/deviations-template.md references missing path: docs/architecture/adr/0010-data-residency-region-extensible-iac.md

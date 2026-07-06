@@ -34,9 +34,12 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:21:trap '
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:36:rm -f "$CA"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:39:clear_h() { rm -f "$TMP/h"/*.json; }
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:158:rm -f "$TMP/h/FEATURE-1.business-intake.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:39:rm -f "$TMP/h"/*.json
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:40:rm -f "$TMP/h"/*.json
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:82:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:83:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-config-surface.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-design-phase-md.sh:107:clear_h() { rm -f "$TMP/h"/*.json; }
@@ -67,7 +70,6 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-gctp-standards-review.sh:20
 S-3|rm -rf usage (verify path is bounded)|tests/test-grok-run.sh:24:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-hook-contracts.sh:89:rm -f "$TMPFIX"
 S-3|rm -rf usage (verify path is bounded)|tests/test-install.sh:26:trap 'rm -rf -- "$TMP"' EXIT INT TERM
-S-4a|hardcoded _KEY assignment|tests/test-grok-run.sh:97:printf 'XAI_API_KEY="xai-testkey-from-env-file"\n' > "$TMP/dotenv"
 S-3|rm -rf usage (verify path is bounded)|tests/test-orchestrating-swarms.sh:83:        rm -f ".harness/handoffs/${w}.req.json" \
 S-3|rm -rf usage (verify path is bounded)|tests/test-post-tool-use-review-gate.sh:76:trap 'rm -rf -- "$PTMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-pre-tool-use-govern.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
@@ -81,3 +83,4 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:65:rm 
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:76:rm -f "$C" "$TMP/refresh.log"
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:96:rm -f "$C" "$TMP/refresh.log"; run --configure on-demand >/dev/null 2>&1
 S-3|rm -rf usage (verify path is bounded)|tests/test-test-cache.sh:27:trap 'rm -rf -- "$TMP"' EXIT INT TERM
+S-4a|hardcoded _KEY assignment|tests/test-grok-run.sh:97:printf 'XAI_API_KEY="xai-testkey-from-env-file"\n' > "$TMP/dotenv"

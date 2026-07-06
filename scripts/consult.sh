@@ -25,14 +25,15 @@
 #                            "1.0" — verify answers.workload + grounded_in non-empty
 #                                    + complete flag present (existing shape unchanged).
 #                            "1.1" — v1.0 checks PLUS workload_classification present
-#                                    (signals_detected + activated_probe_groups arrays,
-#                                    universal in activated set); every activated probe
-#                                    group has a probes.<group> block with ≥ 1 answer;
-#                                    grounded_in_namespaces includes _universal + every
-#                                    activated group; probes.universal mirrors answers.
-#                          Missing schema_version treated as "1.0". Additive; blocked
-#                          on CTP v1.14 for the 1.1 branch to actually fire (a fresh
-#                          intake at pin 0cf28fe still emits 1.0). TICKET-114.
+#                                    (workload_types + namespaces + activated_probe_namespaces
+#                                    arrays); every activated probe namespace has a
+#                                    probes.<namespace> block with ≥ 1 answer;
+#                                    grounded_in_namespaces ⊆ activated_probe_namespaces
+#                                    with each entry backed by an answered probe.
+#                          Universal 9 live in `answers` (universal-stays-universal —
+#                          S-57 does not introduce a probes.universal block). Missing
+#                          schema_version treated as "1.0". TICKET-114 / ADR-0087;
+#                          resolved at CTP pin f060a8e (S-57 / §2.35 / §30).
 #                          Requires node.
 #   --roadmap <file>       Stage 7 of the loop: render a contract-valid consult artifact's
 #                          decisions[] as a roadmap (docs/handoff-contract.md §Roadmap) —
@@ -138,19 +139,19 @@ case "$1" in
         command -v node >/dev/null 2>&1 || { printf 'consult.sh: node required for --validate-profile\n' >&2; exit 2; }
         # Validate a business-profile.json against docs/handoff-contract.md §Business-Intake.
         # Auto-detects schema_version. v1.0 checks unchanged; v1.1 adds classifier + probes
-        # + grounded_in_namespaces + universal-mirror invariants. env-var-first (no argv
-        # quoting); process.exit only (bash32/node portability). Backward-compat: absent
-        # schema_version → treat as "1.0" (matches CTP v1.13 emit at pin 0cf28fe).
-        UNIVERSAL_KEYS="workload motivation criticality availability_tolerance data_loss_tolerance data_sensitivity compliance_regime scale budget_posture"
-        CONSULT_PROFILE="$2" CONSULT_UNIVERSAL="$UNIVERSAL_KEYS" node -e '
+        # + grounded_in_namespaces invariants (universal-stays-universal — universal 9 live
+        # in `answers`, not `probes.universal`). Reconciled to CTP's shipped shape (S-57 /
+        # §2.35 / §30) at pin f060a8e per ADR-0087. env-var-first (no argv quoting);
+        # process.exit only (bash32/node portability). Backward-compat: absent
+        # schema_version → treat as "1.0".
+        CONSULT_PROFILE="$2" node -e '
 const fs = require("fs");
 let p;
 try { p = JSON.parse(fs.readFileSync(process.env.CONSULT_PROFILE, "utf8")); }
 catch (e) { console.error("[consult --validate-profile] INVALID: not JSON (" + e.message + ")"); process.exit(1); }
 const sv = p.schema_version || "1.0";
-const universal = (process.env.CONSULT_UNIVERSAL || "").split(/\s+/).filter(Boolean);
 const errs = [];
-// v1.0 baseline (also applies to v1.1 via mirror).
+// v1.0 baseline (also applies to v1.1 — universal-stays-universal in `answers`).
 const answers = (p && p.answers) || {};
 if (!answers.workload || !String(answers.workload).trim()) errs.push("answers.workload missing/empty");
 if (!Array.isArray(p.grounded_in) || p.grounded_in.length < 1) errs.push("grounded_in empty");
@@ -159,32 +160,30 @@ if (sv === "1.0") {
   // done — v1.0 stops here.
 } else if (sv === "1.1") {
   const wc = p.workload_classification || {};
-  if (!Array.isArray(wc.signals_detected)) errs.push("workload_classification.signals_detected not an array");
-  const activated = Array.isArray(wc.activated_probe_groups) ? wc.activated_probe_groups : null;
-  if (!activated) errs.push("workload_classification.activated_probe_groups not an array");
-  else if (!activated.includes("universal")) errs.push("activated_probe_groups must include \"universal\"");
+  if (!Array.isArray(wc.workload_types)) errs.push("workload_classification.workload_types not an array");
+  if (!Array.isArray(wc.namespaces))     errs.push("workload_classification.namespaces not an array");
+  const activated = Array.isArray(wc.activated_probe_namespaces) ? wc.activated_probe_namespaces : null;
+  if (!activated) errs.push("workload_classification.activated_probe_namespaces not an array");
   const probes = p.probes || {};
-  if (!probes.universal || typeof probes.universal !== "object") errs.push("probes.universal missing");
-  else for (const k of universal) if (!(k in probes.universal)) errs.push("probes.universal missing key: " + k);
-  // Universal-9 mirror invariant (belt-and-suspenders backward-compat).
-  if (probes.universal) for (const k of universal) {
-    if (probes.universal[k] !== undefined && answers[k] !== undefined && probes.universal[k] !== answers[k]) {
-      errs.push("probes.universal." + k + " does not mirror answers." + k);
-    }
+  if (typeof probes !== "object") errs.push("probes not an object");
+  // Completeness rule: when complete=true, every activated namespace must be answered.
+  // When complete=false (partial), unanswered activated probes are legitimate and
+  // surfaced via the top-level "unanswered" array — that is incompleteness, not
+  // structural invalidity. Matches CTP S-57 semantics (spec cl546-fsintake-06).
+  if (p.complete === true && activated) for (const ns of activated) {
+    const b = probes[ns];
+    if (!b || typeof b !== "object" || Object.keys(b).length < 1) errs.push("probes." + ns + " missing or empty (complete=true but activated probe unanswered)");
   }
-  if (activated) for (const g of activated) {
-    if (g === "universal") continue;
-    const b = probes[g];
-    if (!b || typeof b !== "object" || Object.keys(b).length < 1) errs.push("probes." + g + " missing or empty (activated but unanswered)");
-  }
+  // grounded_in_namespaces (regardless of completeness): every entry must be an
+  // activated probe namespace AND be backed by an answered probe. This is the
+  // namespace-grounding traceability invariant — a namespace can appear in
+  // grounded_in_namespaces only if it contributed a stated fact.
   const gns = Array.isArray(p.grounded_in_namespaces) ? p.grounded_in_namespaces : null;
   if (!gns) errs.push("grounded_in_namespaces not an array");
-  else {
-    if (!gns.includes("_universal")) errs.push("grounded_in_namespaces missing _universal");
-    if (activated) for (const g of activated) {
-      if (g === "universal") continue;
-      if (!gns.includes(g)) errs.push("grounded_in_namespaces missing activated group: " + g);
-    }
+  else if (activated) for (const ns of gns) {
+    if (!activated.includes(ns)) errs.push("grounded_in_namespaces has [" + ns + "] not in activated_probe_namespaces");
+    const b = probes[ns];
+    if (!b || typeof b !== "object" || Object.keys(b).length < 1) errs.push("grounded_in_namespaces has [" + ns + "] but no answered probe under probes." + ns);
   }
 } else {
   errs.push("unsupported schema_version: " + sv + " (expected \"1.0\" or \"1.1\")");

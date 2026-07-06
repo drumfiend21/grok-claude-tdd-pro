@@ -16,11 +16,12 @@
 #       check is pass | deviated | reconsulted; any "fail" without a deviation row
 #       is a violation (ADR-0056 D-E — never silently accept).
 #   (4) If a sibling FEATURE-NNN.business-intake.json is present AND its
-#       schema_version is "1.1" (P-12 / TICKET-114), every activated probe group
-#       (excluding "universal") appears as a source_namespace on at least one
-#       decisions[*].applicable_rules rule — i.e. committed business postures
-#       propagate into the design layer. v1.0 profiles (or absent profile)
-#       vacuous-pass this check (matches CTP v1.13 emit at pin 0cf28fe).
+#       schema_version is "1.1" (P-12 / TICKET-114 / ADR-0087; resolved at CTP
+#       pin f060a8e — S-57 / §2.35 / §30), every entry in
+#       workload_classification.activated_probe_namespaces appears as a
+#       source_namespace on at least one decisions[*].applicable_rules rule — i.e.
+#       committed business postures propagate into the design layer. v1.0 profiles
+#       (or absent profile) vacuous-pass this check.
 #
 # CONTENT-AGNOSTIC + VACUOUS when no consult artifacts exist (the loop hasn't run
 # yet) — armed, not biting. Additive: it ADDS a gate; it relaxes nothing.
@@ -122,15 +123,14 @@ if (process.env.XC_CC) {
     }
   }
 }
-// Invariant 4: v1.1 probe-group propagation (TICKET-114). v1.0 or absent profile → vacuous.
+// Invariant 4: v1.1 probe-namespace propagation (TICKET-114 / ADR-0087). v1.0 or absent profile → vacuous.
 if (process.env.XC_PROF) {
   let prof; try { prof = rd(process.env.XC_PROF); } catch (e) { errs.push("business-intake profile not JSON: "+e.message); }
   if (prof && prof.schema_version === "1.1") {
-    const activated = Array.isArray(prof.workload_classification && prof.workload_classification.activated_probe_groups)
-      ? prof.workload_classification.activated_probe_groups : [];
-    for (const g of activated) {
-      if (g === "universal") continue;
-      if (!referencedNs.has(g)) errs.push("v1.1 profile activated probe group [" + g + "] does not propagate into any decision applicable_rules (no rule with source_namespace=" + g + " referenced)");
+    const activated = Array.isArray(prof.workload_classification && prof.workload_classification.activated_probe_namespaces)
+      ? prof.workload_classification.activated_probe_namespaces : [];
+    for (const ns of activated) {
+      if (!referencedNs.has(ns)) errs.push("v1.1 profile activated probe namespace [" + ns + "] does not propagate into any decision applicable_rules (no rule with source_namespace=" + ns + " referenced)");
     }
   }
 }

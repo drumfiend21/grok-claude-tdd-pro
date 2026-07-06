@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # docs/handoff-ctp-p12-acceptance-test.sh — machine-verifiable acceptance for
-# CTP v1.14 §27.16 Full-Surface Intake.
+# CTP §30 / S-57 / §2.35 Full-Surface Intake (P-12; resolved at CTP pin f060a8e
+# per ADR-0087).
 #
-# This is a NON-NORMATIVE test harness that CTP can run locally against the
-# proposed v1.14 build BEFORE tagging. It exercises the acceptance criteria
-# from §5 of docs/handoff-ctp-p12-full-surface-intake.md. Companion to that
-# handoff — CTP owns the authoritative test corpus in evals/.
+# Originally written as a pre-tag proposal-era test; reconciled at ADR-0087 to
+# verify the SHIPPED shape (S-57 landed as a NEW commands/full-surface-intake.sh
+# composing S-32, rather than modifying business-intake.sh). Sections that key
+# on S-57 output (3, 5, 7, 11) invoke commands/full-surface-intake.sh with a
+# namespace-rich workload; sections that verify v1.0 back-compat (1, 2, 4, 6,
+# 8, 10) still exercise commands/business-intake.sh. CTP's authoritative test
+# corpus is evals/specs/cl546-fsintake-01..12 in the plugin cache.
 #
 # Usage (from a claude-tdd-pro checkout, at the dev/v1.14-full-surface-intake
 # branch tip):
@@ -83,13 +87,35 @@ for k in $UNIVERSAL_KEYS; do
 done
 
 # ---------------------------------------------------------------------------
-section "3. Extended surface — > 9 questions when classifier signals hit"
+section "3. Extended surface — > 9 questions when S-57 classifier signals hit"
 
-TOTAL_Q=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).length)' "$TMP/q.json")
-if [ "$TOTAL_Q" -gt 9 ]; then
-    ok "--list-questions returns $TOTAL_Q > 9 (stage-2 groups exposed)"
+# S-57 landed as a NEW command composing S-32 (rather than modifying business-intake.sh);
+# --list-questions on the new command returns {universal_source, probe_groups: {ns: [...]}}
+# — flatten to the same shape sections 4/5/6 downstream expect.
+S57="$CTP_ROOT/commands/full-surface-intake.sh"
+if [ -f "$S57" ]; then
+    RICH_WORKLOAD="React SPA REST API JWT auth on Kubernetes via Terraform SQL database"
+    if CLAUDE_PLUGIN_ROOT="$CTP_ROOT" /bin/bash "$S57" --workload "$RICH_WORKLOAD" --list-questions > "$TMP/s57-q.json" 2>"$TMP/s57-q.err"; then
+        node -e '
+            const raw = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+            const flat = [];
+            const groups = (raw && raw.probe_groups) || {};
+            for (const ns of Object.keys(groups)) for (const q of (groups[ns]||[])) flat.push({...q, probe_group: ns});
+            // Prepend universal 9 for downstream sections that scan for them.
+            const univ = JSON.parse(require("fs").readFileSync(process.argv[2],"utf8"));
+            require("fs").writeFileSync(process.argv[3], JSON.stringify(univ.concat(flat), null, 2));
+        ' "$TMP/s57-q.json" "$TMP/q.json" "$TMP/q.json.new" && mv "$TMP/q.json.new" "$TMP/q.json"
+        TOTAL_Q=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).length)' "$TMP/q.json")
+        if [ "$TOTAL_Q" -gt 9 ]; then
+            ok "S-57 --list-questions (universal + probe_groups flattened) returns $TOTAL_Q > 9"
+        else
+            bad "S-57 --list-questions still returns only $TOTAL_Q — probe groups empty for rich workload"
+        fi
+    else
+        bad "S-57 --list-questions failed: $(head -1 "$TMP/s57-q.err" 2>/dev/null || echo unknown)"
+    fi
 else
-    bad "--list-questions still returns only $TOTAL_Q — stage-2 groups missing"
+    bad "commands/full-surface-intake.sh not present — S-57 not shipped at this pin"
 fi
 
 # ---------------------------------------------------------------------------
@@ -152,12 +178,29 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-section "7. Classifier stage exists (--classify or equivalent)"
+section "7. S-57 classifier stage exists + emits workload_classification"
 
-if /bin/bash "$CTP_ROOT/commands/business-intake.sh" --help 2>&1 | grep -qE '\-\-classify|classifier'; then
-    ok "--classify surfaced in --help"
+if [ -f "$CTP_ROOT/commands/full-surface-intake.sh" ]; then
+    if CLAUDE_PLUGIN_ROOT="$CTP_ROOT" /bin/bash "$CTP_ROOT/commands/full-surface-intake.sh" \
+        --workload "React SPA REST API on Kubernetes" --classify > "$TMP/cls.json" 2>/dev/null; then
+        if node -e '
+            const c = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+            const wc = c && c.workload_classification;
+            const ok = wc
+                && Array.isArray(wc.workload_types) && wc.workload_types.length > 0
+                && Array.isArray(wc.namespaces) && wc.namespaces.length > 0
+                && Array.isArray(wc.activated_probe_namespaces);
+            process.exit(ok ? 0 : 1);
+        ' "$TMP/cls.json"; then
+            ok "--classify emits workload_classification.{workload_types,namespaces,activated_probe_namespaces}"
+        else
+            bad "--classify output missing required workload_classification fields"
+        fi
+    else
+        bad "--classify failed on S-57 command"
+    fi
 else
-    warn "--classify not surfaced in --help — verify classifier is invoked from architect-session.sh"
+    bad "S-57 command not present at CTP_ROOT"
 fi
 
 # ---------------------------------------------------------------------------
@@ -235,18 +278,65 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-section "11. namespace-count check (informational)"
+section "11. namespace-count check (S-57 classifier on a rich workload)"
 
-# Count unique namespaces represented in --list-questions (via probe_group +
-# universal being counted as _universal).
-NS_COUNT=$(node -e '
-    const q = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-    const universal = new Set("workload motivation criticality availability_tolerance data_loss_tolerance data_sensitivity compliance_regime scale budget_posture".split(" "));
-    const ns = new Set();
-    for (const x of q) ns.add(universal.has(x.key) ? "_universal" : (x.probe_group || "?"));
-    console.log(ns.size);
-' "$TMP/q.json")
-printf '  info: --list-questions covers %s probe groups (target: > 10 for a namespace-rich workload)\n' "$NS_COUNT"
+if [ -f "$CTP_ROOT/commands/full-surface-intake.sh" ] && [ -f "$TMP/cls.json" ]; then
+    NS_COUNT=$(node -e '
+        const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+        const wc = c && c.workload_classification || {};
+        console.log((wc.activated_probe_namespaces||[]).length);
+    ' "$TMP/cls.json")
+    if [ "$NS_COUNT" -gt 10 ]; then
+        ok "S-57 classifier activated $NS_COUNT probe namespaces for a rich workload (> 10 target)"
+    else
+        printf '  info: S-57 classifier activated %s probe namespaces (target: > 10 for a namespace-rich workload)\n' "$NS_COUNT"
+    fi
+else
+    warn "S-57 command or classification output not available for namespace count"
+fi
+
+# ---------------------------------------------------------------------------
+section "12. GCTP --validate-profile accepts sample v1.1 profile (shipped shape)"
+
+SAMPLE_V11="$CTP_ROOT/../../../docs/handoff-ctp-p12-sample-profile-v1.1.json"
+[ -f "$SAMPLE_V11" ] || SAMPLE_V11="$(dirname "$0")/handoff-ctp-p12-sample-profile-v1.1.json"
+
+if [ -f "$SAMPLE_V11" ]; then
+    warn "sample v1.1 fixture uses PROPOSAL-ERA keys (signals_detected / activated_probe_groups / probes.universal) — will not validate against SHIPPED shape; regenerate via S-57 for a live check"
+else
+    warn "sample v1.1 profile not found — skipping GCTP validator check"
+fi
+
+# Additionally: exercise S-57 end-to-end and validate the emitted v1.1 profile.
+if [ -f "$CTP_ROOT/commands/full-surface-intake.sh" ]; then
+    cat > "$TMP/univ.json" <<'EOF'
+{"workload":"React SPA on Kubernetes","motivation":"revenue","criticality":"mission-critical","availability_tolerance":"minutes","data_loss_tolerance":"minutes","data_sensitivity":"confidential","compliance_regime":"soc2","scale":"large","budget_posture":"balanced"}
+EOF
+    if CLAUDE_PLUGIN_ROOT="$CTP_ROOT" /bin/bash "$CTP_ROOT/commands/full-surface-intake.sh" \
+        --workload "React SPA REST API JWT auth on Kubernetes" \
+        --answers "$TMP/univ.json" \
+        --probe-answer react:react_rendering_model=spa \
+        --probe-answer jwt:jwt_token_lifetime=short \
+        --probe-answer k8s:k8s_multitenancy=multi-tenant \
+        --partial --out "$TMP/live-v11.json" --now 2026-07-05T00:00:00Z >/dev/null 2>&1; then
+        ok "S-57 emits v1.1 profile end-to-end"
+        # Repo-relative path to consult.sh — this test file lives under docs/, so
+        # scripts/ is two levels up from CTP_ROOT (.harness/plugin-cache/claude-tdd-pro).
+        CONSULT_SH="$CTP_ROOT/../../../scripts/consult.sh"
+        [ -f "$CONSULT_SH" ] || CONSULT_SH="$(dirname "$0")/../scripts/consult.sh"
+        if [ -f "$CONSULT_SH" ]; then
+            if /bin/bash "$CONSULT_SH" --validate-profile "$TMP/live-v11.json" >/dev/null 2>"$TMP/vp.err"; then
+                ok "GCTP scripts/consult.sh --validate-profile accepts live S-57 v1.1 profile"
+            else
+                bad "GCTP --validate-profile REJECTS live S-57 v1.1 profile: $(head -3 "$TMP/vp.err" | tr '\n' ' ')"
+            fi
+        else
+            warn "scripts/consult.sh not locatable from test — skipping validator check"
+        fi
+    else
+        bad "S-57 failed to emit v1.1 profile end-to-end"
+    fi
+fi
 
 # ---------------------------------------------------------------------------
 section "Summary"

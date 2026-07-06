@@ -174,32 +174,27 @@ JSON
     "$SCRIPT" --validate-profile "$TMP/prof10-ng.json" >/dev/null 2>&1
     assert_eq "$?" "1" "--validate-profile: v1.0 empty grounded_in → exit 1"
 
-    # v1.1 profile — valid (contract-conformant)
+    # v1.1 profile — valid (contract-conformant, CTP S-57 / §2.35 shipped shape at pin f060a8e)
     cat > "$TMP/prof11.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
  "workload_classification":{
-   "signals_detected":["backend","ai-high-risk","regulated"],
-   "signals_forced":[],"signals_suppressed":[],
-   "activated_probe_groups":["universal","security-governance","iam"]
+   "workload_types":["rest-api","ml-inference"],
+   "namespaces":["security-governance","iam"],
+   "activated_probe_namespaces":["security-governance","iam"]
  },
  "probes":{
-   "universal":{
-     "workload":"grade exams","motivation":"revenue","criticality":"mission-critical",
-     "availability_tolerance":"hours","data_loss_tolerance":"minutes",
-     "data_sensitivity":"confidential","compliance_regime":"gdpr","scale":"large",
-     "budget_posture":"balanced"
-   },
    "security-governance":{"ai_risk_tier":"annex-iii-high","provenance_commitment":"signed-attested"},
    "iam":{"identity_federation":"oidc-federated","mfa_scope":"all-users"}
  },
  "grounded_in":["azure-waf-business-requirements","nist-800-53","oauth2-oidc"],
- "grounded_in_namespaces":["_universal","security-governance","iam"],
+ "grounded_in_namespaces":["security-governance","iam"],
  "answers":{
    "workload":"grade exams","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes",
    "data_sensitivity":"confidential","compliance_regime":"gdpr","scale":"large",
    "budget_posture":"balanced"
- }}
+ },
+ "unanswered":[]}
 JSON
     "$SCRIPT" --validate-profile "$TMP/prof11.json" >/dev/null 2>&1
     assert_eq "$?" "0" "--validate-profile: v1.1 valid profile → exit 0"
@@ -207,10 +202,8 @@ JSON
     # v1.1 profile — missing workload_classification
     cat > "$TMP/prof11-nc.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
- "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
-   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
- "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
+ "probes":{"iam":{"identity_federation":"oidc-federated"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["iam"],
  "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
    "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
@@ -219,39 +212,56 @@ JSON
     assert_eq "$ec" "1" "--validate-profile: v1.1 missing classifier → exit 1"
     assert_match "$out" "workload_classification" "--validate-profile: v1.1 error names classifier"
 
-    # v1.1 profile — activated probe group but no probes.<group> block
+    # v1.1 profile — complete=true but activated namespace has no probes.<ns> block
     cat > "$TMP/prof11-np.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
- "workload_classification":{"signals_detected":["x"],"signals_forced":[],"signals_suppressed":[],
-   "activated_probe_groups":["universal","iam"]},
- "probes":{"universal":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
-   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
- "grounded_in":["s"],"grounded_in_namespaces":["_universal","iam"],
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam"],
+   "activated_probe_namespaces":["iam"]
+ },
+ "probes":{},
+ "grounded_in":["s"],"grounded_in_namespaces":[],
  "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
    "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
 JSON
     out=$("$SCRIPT" --validate-profile "$TMP/prof11-np.json" 2>&1); ec=$?
-    assert_eq "$ec" "1" "--validate-profile: v1.1 activated group with no probes block → exit 1"
-    assert_match "$out" "probes.iam" "--validate-profile: v1.1 error names the group"
+    assert_eq "$ec" "1" "--validate-profile: v1.1 activated namespace with no probes block → exit 1"
+    assert_match "$out" "probes.iam" "--validate-profile: v1.1 error names the namespace"
 
-    # v1.1 profile — universal-9 mirror invariant broken
-    cat > "$TMP/prof11-mm.json" <<'JSON'
+    # v1.1 profile — grounded_in_namespaces entry not in activated set (traceability breach)
+    cat > "$TMP/prof11-gns.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
- "workload_classification":{"signals_detected":["x"],"signals_forced":[],"signals_suppressed":[],
-   "activated_probe_groups":["universal"]},
- "probes":{"universal":{"workload":"one","motivation":"revenue","criticality":"mission-critical",
-   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
-   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}},
- "grounded_in":["s"],"grounded_in_namespaces":["_universal"],
- "answers":{"workload":"TWO","motivation":"revenue","criticality":"mission-critical",
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam"],
+   "activated_probe_namespaces":["iam"]
+ },
+ "probes":{"iam":{"identity_federation":"oidc-federated"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","owasp"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
    "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
    "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
 JSON
-    out=$("$SCRIPT" --validate-profile "$TMP/prof11-mm.json" 2>&1); ec=$?
-    assert_eq "$ec" "1" "--validate-profile: v1.1 mirror invariant broken → exit 1"
-    assert_match "$out" "does not mirror" "--validate-profile: v1.1 error explains mirror"
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-gns.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 grounded_in_namespaces has unactivated ns → exit 1"
+    assert_match "$out" "owasp" "--validate-profile: v1.1 error names the ungrounded namespace"
+
+    # v1.1 profile — partial (complete=false, unanswered activated probe) → valid structurally
+    cat > "$TMP/prof11-partial.json" <<'JSON'
+{"schema_version":"1.1","complete":false,
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","owasp"],
+   "activated_probe_namespaces":["iam","owasp"]
+ },
+ "probes":{"iam":{"identity_federation":"oidc-federated"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["iam"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"},
+ "unanswered":["owasp.asvs_level"]}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-partial.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 partial profile (complete=false) → exit 0"
 
     # unsupported schema_version → 1
     printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
