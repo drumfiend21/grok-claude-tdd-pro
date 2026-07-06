@@ -476,6 +476,18 @@ Authoritative schema: `.harness/plugin-cache/claude-tdd-pro/schemas/business-pro
   Adopted via ADR-0088. Observable end-to-end: intake → translate `probes_consumed=<n>` →
   recommend `probes_consumed=<n>` → decisions[] `applicable_rules` cover the propagated namespaces
   (invariant 4).
+- **Precise classification + coverage transparency (CL-548 / §30.2, pin `43ea692`+).** The classifier
+  is now precise on clouds: the generic `iac-cloud` type scopes only provider-agnostic namespaces
+  (`hashicorp`, `iam`, `security-governance`); dedicated `aws-platform` / `azure-platform` /
+  `gcp-platform` / `cloudformation` / `config-management` types fire on cloud-specific signals — so
+  an AWS-only workload is probed for `aws`+`cfn`, not Azure/GCP. Grounded probe groups added for
+  `azure` / `gcp` / `cfn`. New `workload_classification.unprobed_in_scope` field (additive optional)
+  enumerates in-scope namespaces with no probe group — surfaced on `--classify`, run marker, and
+  the persisted block. **Standing invariant: no in-scope namespace is silently unprobed** (the
+  intake mirror of "no rule silently unenforced"). Adopted via ADR-0089. `scripts/consult.sh
+  --validate-profile` tolerates the new key as an additive optional field — absent ⇒ pre-§30.2
+  profile ⇒ pass unchanged; present ⇒ must be a string array, ⊆ `namespaces`, disjoint from
+  `activated_probe_namespaces` (mutually exclusive by construction).
 - `docs/handoff-ctp-p12-full-surface-intake.md` + companions
   (`docs/handoff-ctp-p12-namespace-question-manifest.md`,
   `docs/handoff-ctp-p12-sample-profile-v1.1.json`,

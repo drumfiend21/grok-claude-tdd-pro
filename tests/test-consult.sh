@@ -263,6 +263,62 @@ JSON
     "$SCRIPT" --validate-profile "$TMP/prof11-partial.json" >/dev/null 2>&1
     assert_eq "$?" "0" "--validate-profile: v1.1 partial profile (complete=false) → exit 0"
 
+    # §30.2 (CTP pin 43ea692+, ADR-0089): unprobed_in_scope tolerance — present, well-formed, disjoint → valid
+    cat > "$TMP/prof11-unprobed.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","ansible"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "unprobed_in_scope":["ansible"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-unprobed.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 with well-formed unprobed_in_scope → exit 0"
+
+    # unprobed_in_scope with a namespace also in activated_probe_namespaces → invalid (mutually exclusive)
+    cat > "$TMP/prof11-unprobed-bad.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "unprobed_in_scope":["aws"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-unprobed-bad.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 unprobed_in_scope overlaps activated → exit 1"
+    assert_match "$out" "mutually exclusive" "--validate-profile: v1.1 unprobed_in_scope overlap error names the invariant"
+
+    # unprobed_in_scope with a namespace not in namespaces → invalid (must be subset)
+    cat > "$TMP/prof11-unprobed-oor.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "unprobed_in_scope":["ansible"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-unprobed-oor.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 unprobed_in_scope not ⊆ namespaces → exit 1"
+    assert_match "$out" "not in workload_classification.namespaces" "--validate-profile: v1.1 unprobed_in_scope OOR error is specific"
+
     # unsupported schema_version → 1
     printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
     "$SCRIPT" --validate-profile "$TMP/prof2.json" >/dev/null 2>&1

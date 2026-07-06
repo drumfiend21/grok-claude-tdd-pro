@@ -34,6 +34,11 @@
 #                          S-57 does not introduce a probes.universal block). Missing
 #                          schema_version treated as "1.0". TICKET-114 / ADR-0087;
 #                          resolved at CTP pin f060a8e (S-57 / §2.35 / §30).
+#                          §30.2 (CTP pin 43ea692+, ADR-0089): tolerates the additive
+#                          optional workload_classification.unprobed_in_scope field —
+#                          absent ⇒ pre-§30.2 profile ⇒ pass unchanged; present ⇒
+#                          must be a string array, ⊆ namespaces, disjoint from
+#                          activated_probe_namespaces.
 #                          Requires node.
 #   --roadmap <file>       Stage 7 of the loop: render a contract-valid consult artifact's
 #                          decisions[] as a roadmap (docs/handoff-contract.md §Roadmap) —
@@ -164,6 +169,26 @@ if (sv === "1.0") {
   if (!Array.isArray(wc.namespaces))     errs.push("workload_classification.namespaces not an array");
   const activated = Array.isArray(wc.activated_probe_namespaces) ? wc.activated_probe_namespaces : null;
   if (!activated) errs.push("workload_classification.activated_probe_namespaces not an array");
+  // §30.2 coverage-transparency marker: optional additive field. Absent ⇒ pre-§30.2
+  // profile ⇒ pass unchanged. Present ⇒ must be a string array, must be a subset of
+  // namespaces (unprobed only makes sense inside the in-scope set), and must be
+  // disjoint from activated_probe_namespaces (a namespace is either probed or unprobed,
+  // never both). Adopted at CTP pin 43ea692 per ADR-0089.
+  if ("unprobed_in_scope" in wc) {
+    const unprobed = wc.unprobed_in_scope;
+    if (!Array.isArray(unprobed)) errs.push("workload_classification.unprobed_in_scope not an array");
+    else {
+      const nsSet = new Set(Array.isArray(wc.namespaces) ? wc.namespaces : []);
+      const actSet = new Set(activated || []);
+      for (const ns of unprobed) {
+        if (typeof ns !== "string") errs.push("workload_classification.unprobed_in_scope contains non-string entry");
+        else {
+          if (nsSet.size && !nsSet.has(ns)) errs.push("unprobed_in_scope has [" + ns + "] not in workload_classification.namespaces");
+          if (actSet.has(ns)) errs.push("unprobed_in_scope has [" + ns + "] which is also in activated_probe_namespaces (mutually exclusive)");
+        }
+      }
+    }
+  }
   const probes = p.probes || {};
   if (typeof probes !== "object") errs.push("probes not an object");
   // Completeness rule: when complete=true, every activated namespace must be answered.
