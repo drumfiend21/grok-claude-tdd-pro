@@ -488,6 +488,22 @@ Authoritative schema: `.harness/plugin-cache/claude-tdd-pro/schemas/business-pro
   --validate-profile` tolerates the new key as an additive optional field — absent ⇒ pre-§30.2
   profile ⇒ pass unchanged; present ⇒ must be a string array, ⊆ `namespaces`, disjoint from
   `activated_probe_namespaces` (mutually exclusive by construction).
+- **Word-boundary matching precision (CL-549 / §30.3, pin `f39fcdc`+).** §30.2's precision was
+  correct in principle but defeated in practice by substring matching in the classifier — the
+  compact signals `aks` / `ci` / `spa` matched inside larger business words (`leaks`,
+  `certification`/`accreditation`, `space`) and phantom-activated the wrong workload types. §30.3
+  changes the classifier's signal-matching function from naive substring to word-boundary regex
+  `(?<![a-z0-9])<sig>s?(?![a-z0-9])` — alphanumeric boundaries so phrases (`amazon web services`)
+  and internal punctuation (`ci/cd`, `k8s`) still match; optional trailing `s` so plurals
+  (`microservices`) still match. Can only **tighten** the classifier (fewer false-positive types),
+  never loosen. **No schema change** — v1.1 `business-profile.json` shape unchanged; only
+  classification *behavior* is more precise. Consumer surface unaffected (`--validate-profile`,
+  invariant 4 audit, `/consult` skill unchanged). Adopted via ADR-0090. 8 spec fixtures
+  (`evals/specs/cl549-precision-01..08.json` in the plugin) pin the exact misfires that must never
+  regress; the intended effect is that the real Certifiable, Inc. AI-credentialing prose classifies
+  cleanly to `workload_types=[ai-governed, baseline-quality]` with no phantom
+  `azure-platform`/`container-orchestration`/`ci-cd`, while real `AKS` / `CI/CD` / `space` tokens
+  continue to fire when actually present.
 - `docs/handoff-ctp-p12-full-surface-intake.md` + companions
   (`docs/handoff-ctp-p12-namespace-question-manifest.md`,
   `docs/handoff-ctp-p12-sample-profile-v1.1.json`,

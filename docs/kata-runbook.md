@@ -19,13 +19,16 @@ cd grok-claude-tdd-pro                                          # main tip; for 
 ## 2. Bootstrap the harness (in order)
 
 ```bash
-./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned 43ea692 (2026-07-06) + skills +
+./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned f39fcdc (2026-07-06) + skills +
                                          # active.json (118 rules across 43 namespaces). At this pin: §29..§29.6
                                          # (full-surface consult grounding + byte-identical native enforcement),
                                          # §30 (full-surface intake — workload classifier + per-namespace probe
-                                         # groups), §30.1 (design engines consume the probes), and §30.2 (precise
+                                         # groups), §30.1 (design engines consume the probes), §30.2 (precise
                                          # cloud classification + IaC probe coverage + unprobed_in_scope
-                                         # transparency marker) — see ADR-0086/0087/0088/0089.
+                                         # transparency marker), and §30.3 (word-boundary signal matching so
+                                         # compact tokens like `aks`/`ci`/`spa` don't phantom-match inside
+                                         # larger business words like `leaks`/`certification`/`space`) —
+                                         # see ADR-0086/0087/0088/0089/0090.
 ./scripts/accept-compact.sh              # REQUIRED: fail-closed agent compact (ADR-0057). Until accepted, the
                                          # agent MUST NOT drive /consult../inner-loop. Accept = you agree to act
                                          # only as GCTP's user (don't self-architect; CTP generates, GCTP enforces).
@@ -51,7 +54,7 @@ ALL=$(node -e 'process.stdout.write(require("./.harness/rules/active.json").rule
 CLAUDE_PLUGIN_ROOT="$PR" bash "$PR/rubric/enforce.sh" --root ../softarchcert-win25 --rules "$ALL" --json
 ```
 
-**What you'll get (numbers below are the audit result at the historical pin `7a7f74d` / 46 rules — kept as an illustrative shape, NOT a target).** At today's pin `43ea692` / 118 rules the counts will be larger (more rules in scope means more `pass` and more `not_applicable`); the *interpretation* of the failure categories still applies. Re-run at the current pin to get the ground-truth numbers for this kata. Historical snapshot: `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
+**What you'll get (numbers below are the audit result at the historical pin `7a7f74d` / 46 rules — kept as an illustrative shape, NOT a target).** At today's pin `f39fcdc` / 118 rules the counts will be larger (more rules in scope means more `pass` and more `not_applicable`); the *interpretation* of the failure categories still applies. Re-run at the current pin to get the ground-truth numbers for this kata. Historical snapshot: `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
 
 | Category | Rules | Verdict |
 |---|---|---|
@@ -70,10 +73,15 @@ Drive only the sanctioned commands, in plain language, letting CTP architect and
 /consult     # Crossroads/translator loop (ADR-0056):
              #   Stage 0 — S-57 --classify reveal. CTP infers workload_types from the vision;
              #             GCTP translates plainly ("public-facing REST API on Kubernetes with an
-             #             AWS deployment") and confirms with the operator. NEW at pin 43ea692
+             #             AWS deployment") and confirms with the operator. At pin 43ea692+
              #             (§30.2): classification is PRECISE — a pure-AWS kata is probed for
              #             aws+cfn only, not Azure/GCP. Any in-scope namespace without a probe
-             #             group appears in unprobed_in_scope — visible, never silent.
+             #             group appears in unprobed_in_scope — visible, never silent. NEW at
+             #             pin f39fcdc (§30.3): signal matching is WORD-BOUNDARY — compact
+             #             tokens like `aks`/`ci`/`spa` no longer phantom-match inside
+             #             larger business words (`leaks`/`certification`/`space`), so an
+             #             AI-credentialing vision classifies cleanly (ai-governed +
+             #             baseline-quality) instead of dragging in Azure/K8s/CI-CD phantoms.
              #   Stage 1 — universal 9 (S-32, unchanged). Business language, one at a time.
              #   Stage 2 — activated per-namespace probes (§30 / S-57). e.g. jwt token lifetime,
              #             react rendering model, k8s multitenancy, aws region strategy — CTP

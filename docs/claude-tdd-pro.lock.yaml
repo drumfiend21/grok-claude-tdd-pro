@@ -17,9 +17,9 @@ schema_version: 1
 
 upstream_repo:   https://github.com/drumfiend21/claude-tdd-pro
 pinned_branch:   main
-pinned_commit:   43ea6926a0478a0d00cb4f1ad381670261162d84
-pinned_at:       2026-07-06T05:43:50+00:00
-pinned_message:  "Merge: §30.2 precise cloud classification + IaC probe coverage + transparency"
+pinned_commit:   f39fcdc6a8a450a087389f22a95ed17f9cfec7d1
+pinned_at:       2026-07-07T02:34:10+00:00
+pinned_message:  "Merge: gitignore consult/kata submission output (keep submissions out of the plugin)"
 
 # The contract surface — files in upstream this repo's architecture depends on.
 # Each entry is hashed at pin time; sync-plugin.sh re-hashes upstream HEAD and
@@ -29,7 +29,7 @@ contract_surface_files:
   - path:   CLAUDE.md
     sha256: 814e43c20a0809582f56d4d597d20d2993ff51e180823ffac07f6cfb579c48da
   - path:   docs/architecture-v1.9.md
-    sha256: 62e87bc4e0a9a4879a3ac51f5d96d4557a5efabea54aa52307dfc0481f53f001
+    sha256: 28748cb90a7d107c77f357bdb16051436893725004ca0b3ad23ceab615aec4d6
   - path:   .claude/skills/tdd-pro-cl-workflow/SKILL.md
     sha256: 82e6dc5d7e827e0bd83080a63869ce5de13a04c1570aeb2a794607ba8a4de924
   - path:   .claude/skills/tdd-pro-batch-cl/SKILL.md
@@ -37,5 +37,5 @@ contract_surface_files:
   - path:   .claude/skills/tdd-pro-bash32-portability/SKILL.md
     sha256: 10d07ac999b194b63291511ef8423ec2ef72012ec3d82c7ca6615944d0d427a7
 
-last_synced_at:      2026-07-05T13:00:00Z
-last_synced_session: "Pin bump c23e5fe→43ea692 (CTP CL-548: §30.2 precise cloud classification + IaC probe coverage + coverage transparency — closes the KATA-flagged silent-unprobed IaC-namespaces gap; classifier no longer over-scopes clouds on generic Terraform signal — new aws-platform/azure-platform/gcp-platform/cloudformation/config-management types fire on cloud-specific signals; grounded probe groups added for azure (region + landing-zone via azure-well-architected + azure-architecture-center), gcp (region + project-structure via gcp-architecture-framework + gcp-architecture-center), cfn (stack-policy + drift-detection via aws-cloudformation-best-practices); unprobed_in_scope field surfaces remaining unprobed in-scope namespaces on --classify + run marker + persisted workload_classification — no in-scope namespace can be silently unprobed again; v1.0 + v1.1 profiles byte-identical; architecture-v1.9.md +11/-0 §30.2 amendment; 3× SKILL.md + CLAUDE.md byte-identical; consumer-surface reshape is narrow + additive — --validate-profile tolerates unprobed_in_scope as an optional key) per ADR-0089."
+last_synced_at:      2026-07-06T14:00:00Z
+last_synced_session: "Pin bump 43ea692→f39fcdc (CTP CL-549: §30.3 word-boundary classifier precision — signal matching changed from substring `hay.include?(sig)` to word-boundary `(?<![a-z0-9])<sig>s?(?![a-z0-9])` so `aks` no longer matches inside `leaks` and `ci` no longer matches inside `certification`/`accreditation`; alphanumeric boundaries preserve phrase matches like `amazon web services` and internal punctuation like `ci/cd`; optional trailing `s` preserves plural matches like `microservices`; classifier can only TIGHTEN (fewer false-positive types) never loosen; no schema/contract-key change — v1.1 business-profile shape identical; classifier now yields the clean pre-flight the KATA needs (real AI-credentialing prose → workload_types=[ai-governed, baseline-quality], no phantom azure-platform/container-orchestration/ci-cd); additive: 8× cl549-precision-*.json specs + §30.3 architecture amendment; also chore: .gitignore guard so consult/kata submission output can never leak into the plugin — run consult with --out into your own submission tree; architecture-v1.9.md +10/-0 §30.3 amendment; 3× SKILL.md + CLAUDE.md byte-identical) per ADR-0090."
