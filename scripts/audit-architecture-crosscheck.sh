@@ -123,14 +123,27 @@ if (process.env.XC_CC) {
     }
   }
 }
-// Invariant 4: v1.1 probe-namespace propagation (TICKET-114 / ADR-0087). v1.0 or absent profile → vacuous.
+// Invariant 4: v1.1 probe-namespace propagation (TICKET-114 / ADR-0087; generalized in
+// TICKET-118.a / P-13 §30.5 pre-wire). v1.0 or absent profile → vacuous.
+//   • Pre-§30.5 (no stack[]): target = activated_probe_namespaces (unchanged behavior).
+//   • §30.5+ (stack[] present): target = activated_probe_namespaces ∪ stack[].namespace.
+// Rationale: §30.5 makes rule activation progressive — a namespace committed to the stack
+// at any stage (classifier, universal-answer, probe-answer, design-decision, operator)
+// carries the same enforcement-floor obligation as an activated probe namespace. Invariant 4
+// still means "every namespace known to be in-stack must be considered by at least one
+// decision"; §30.5 just widens the "known to be in-stack" set.
 if (process.env.XC_PROF) {
   let prof; try { prof = rd(process.env.XC_PROF); } catch (e) { errs.push("business-intake profile not JSON: "+e.message); }
   if (prof && prof.schema_version === "1.1") {
-    const activated = Array.isArray(prof.workload_classification && prof.workload_classification.activated_probe_namespaces)
-      ? prof.workload_classification.activated_probe_namespaces : [];
-    for (const ns of activated) {
-      if (!referencedNs.has(ns)) errs.push("v1.1 profile activated probe namespace [" + ns + "] does not propagate into any decision applicable_rules (no rule with source_namespace=" + ns + " referenced)");
+    const wc = prof.workload_classification || {};
+    const activated = Array.isArray(wc.activated_probe_namespaces) ? wc.activated_probe_namespaces : [];
+    const stackNs = Array.isArray(wc.stack) ? wc.stack.map(e => e && e.namespace).filter(x => typeof x === "string" && x) : [];
+    const target = new Set([...activated, ...stackNs]);
+    for (const ns of target) {
+      if (!referencedNs.has(ns)) {
+        const from = activated.includes(ns) ? (stackNs.includes(ns) ? "activated_probe_namespaces + stack[]" : "activated_probe_namespaces") : "stack[]";
+        errs.push("v1.1 profile in-stack namespace [" + ns + "] (from " + from + ") does not propagate into any decision applicable_rules (no rule with source_namespace=" + ns + " referenced)");
+      }
     }
   }
 }

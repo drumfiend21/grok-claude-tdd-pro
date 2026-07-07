@@ -189,6 +189,36 @@ if (sv === "1.0") {
       }
     }
   }
+  // §30.5 (P-13 pre-wire, TICKET-118.a): workload_classification.stack[] tolerance.
+  // Additive optional. Absent ⇒ pre-§30.5 profile ⇒ pass unchanged.
+  // Present ⇒ must be an array of objects, each carrying {namespace, source, trigger, added_at}.
+  //   - namespace: string, ⊆ workload_classification.namespaces (rule floor consistency).
+  //   - source:    string in [classifier, universal-answer, probe-answer, design-decision, operator].
+  //   - trigger:   non-empty string (free-text audit trail — why the namespace was added).
+  //   - added_at:  non-empty string (ISO-8601 timestamp; not strictly parsed here).
+  // Namespaces in stack[] must be unique (idempotence-at-persistence). CTP guarantees this at
+  // append-time; the validator enforces it as a shape invariant so a corrupted profile is caught.
+  const stackEnumSources = ["classifier","universal-answer","probe-answer","design-decision","operator"];
+  if ("stack" in wc) {
+    if (!Array.isArray(wc.stack)) errs.push("workload_classification.stack not an array");
+    else {
+      const nsSetForStack = new Set(Array.isArray(wc.namespaces) ? wc.namespaces : []);
+      const seenNs = new Set();
+      for (let i = 0; i < wc.stack.length; i++) {
+        const e = wc.stack[i];
+        if (!e || typeof e !== "object" || Array.isArray(e)) { errs.push("workload_classification.stack["+i+"] not an object"); continue; }
+        for (const k of ["namespace","source","trigger","added_at"]) {
+          if (typeof e[k] !== "string" || !e[k]) errs.push("workload_classification.stack["+i+"]."+k+" missing or not a non-empty string");
+        }
+        if (typeof e.namespace === "string" && e.namespace) {
+          if (nsSetForStack.size && !nsSetForStack.has(e.namespace)) errs.push("workload_classification.stack["+i+"].namespace ["+e.namespace+"] not in workload_classification.namespaces");
+          if (seenNs.has(e.namespace)) errs.push("workload_classification.stack["+i+"].namespace ["+e.namespace+"] duplicated (idempotence violated)");
+          seenNs.add(e.namespace);
+        }
+        if (typeof e.source === "string" && e.source && !stackEnumSources.includes(e.source)) errs.push("workload_classification.stack["+i+"].source ["+e.source+"] not in enum [" + stackEnumSources.join(", ") + "]");
+      }
+    }
+  }
   const probes = p.probes || {};
   if (typeof probes !== "object") errs.push("probes not an object");
   // Completeness rule: when complete=true, every activated namespace must be answered.

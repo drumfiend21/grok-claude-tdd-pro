@@ -24,6 +24,8 @@ mkdir -p "$TMP/h"
 cat > "$TMP/rules.json" <<'JSON'
 {"rules":[{"id":"g-node-007","source_namespace":"node"},
 {"id":"g-iam-001","source_namespace":"iam"},
+{"id":"g-aws-001","source_namespace":"aws"},
+{"id":"g-react-001","source_namespace":"react"},
 {"id":"g-security-governance-require-provenance","source_namespace":"security-governance"},
 {"id":"g-security-governance-no-known-exploited-ingress","source_namespace":"security-governance"}]}
 JSON
@@ -157,6 +159,139 @@ run; assert_eq "$?" "1" "invariant 4: malformed v1.1 profile → violation (1)"
 # Test 15: no profile file → invariant 4 vacuous (already-covered baseline still applies)
 rm -f "$TMP/h/FEATURE-1.business-intake.json"
 run; assert_eq "$?" "0" "invariant 4: no profile file → vacuous pass"
+
+# --- Invariant 4 generalization: v1.1 profile with stack[] (TICKET-118.a / P-13 §30.5 pre-wire) ---
+# Rationale: §30.5 makes rule activation progressive — a namespace committed to the stack at
+# ANY stage carries the same enforcement-floor obligation as an activated probe namespace.
+# The generalized invariant 4 keys on activated_probe_namespaces ∪ stack[].namespace.
+
+# Test 16: v1.1 profile with stack[] adds a namespace beyond activated — decision covers it → 0
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]},
+  {"juncture":"platform","complexity":"medium","applicable_rules":["g-node-007","g-aws-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api","aws-platform"],"namespaces":["iam","security-governance","aws"],
+   "activated_probe_namespaces":["iam","security-governance"],
+   "stack":[
+     {"namespace":"iam","source":"classifier","trigger":"vision fired rest-api","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"security-governance","source":"classifier","trigger":"vision fired regulated","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"aws","source":"universal-answer","trigger":"answer named AWS","added_at":"2026-07-07T14:05:00Z"}
+   ]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "0" "invariant 4 §30.5: stack[] namespace covered by a decision → 0"
+
+# Test 17: stack[] adds `aws` but no decision references an aws-namespaced rule → violation (1)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+# (business-intake still carries iam + security-governance + stack.aws from Test 16; aws now uncovered)
+run; assert_eq "$?" "1" "invariant 4 §30.5: stack[] namespace uncovered → violation (1)"
+
+# Test 18: violation error message names the "from stack[]" source
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+out=$(XC_RULES_FILE="$TMP/rules.json" XC_HANDOFFS_DIR="$TMP/h" "$SCRIPT" 2>&1)
+echo "$out" | grep -q "from stack\[\]" && stack_msg_ok=1 || stack_msg_ok=0
+assert_eq "$stack_msg_ok" "1" "invariant 4 §30.5: violation names 'from stack[]' provenance"
+
+# Test 19: stack[].namespace and activated_probe_namespaces overlap — no double-report
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001","g-aws-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],"namespaces":["iam","security-governance","aws"],
+   "activated_probe_namespaces":["iam","security-governance","aws"],
+   "stack":[
+     {"namespace":"iam","source":"classifier","trigger":"vision fired","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"aws","source":"classifier","trigger":"vision fired","added_at":"2026-07-07T14:00:00Z"}
+   ]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"},
+   "aws":{"aws_region_strategy":"multi-region"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance","aws"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "0" "invariant 4 §30.5: stack ∪ activated with all covered → 0"
+
+# Test 20: stack[] empty (v1.1 pre-§30.5-adoption) → falls back to activated_probe_namespaces (unchanged behavior)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","security-governance"],
+   "activated_probe_namespaces":["iam","security-governance"],
+   "stack":[]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "0" "invariant 4 §30.5: stack[] present-but-empty behaves as pre-§30.5 → 0"
+
+# Test 21: stack[] with a namespace not covered even though activated_probe_namespaces IS covered → violation (1)
+# This proves the invariant widens correctly, not just that it's ignored.
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","security-governance","react"],
+   "activated_probe_namespaces":["iam","security-governance"],
+   "stack":[
+     {"namespace":"iam","source":"classifier","trigger":"vision fired","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"react","source":"design-decision","trigger":"architect-recommend picked React","added_at":"2026-07-07T14:05:00Z"}
+   ]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run; assert_eq "$?" "1" "invariant 4 §30.5: stack[] adds react uncovered by any decision → violation (1)"
 
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-arch-crosscheck] OK — $passes/$total passed."; exit 0

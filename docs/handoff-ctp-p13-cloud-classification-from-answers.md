@@ -199,3 +199,134 @@ P-12 → CL-546 → ADR-0087 (§30 intake). CL-547 → ADR-0088 (§30.1 design c
 ## 7. Boundary (unchanged)
 
 CTP owns the classifier + question bank + stack-mechanism content; GCTP owns the consumer surface. This proposal is one small edit inside `commands/full-surface-intake.sh` (§30.4 haystack line), one new field on the v1.1 profile schema (§30.5 `stack[]`), and stack-append hooks in the downstream engines (`business-translate`, `architect-recommend`). Consumer-side reconciliation on GCTP is one line in `--validate-profile` (tolerate `stack[]` as additive optional) and one line in `audit-crosscheck` (invariant 4 uses `stack[]` when present). Additive per ADR-0047, zero deletions. Prime-directive-preserving.
+
+## 8. Build guide — what CTP produces + GCTP-side pre-wired tests as the acceptance surface
+
+GCTP has already **pre-wired** the consumer surface to accept the shape §30.5 will produce, and locked the expected behavior in unit + integration tests. Building CTP to make those tests pass is the operational definition of "done" from the consumer side.
+
+### 8.1. Where GCTP's pre-wired tests live (canonical acceptance for the consumer contract)
+
+| Test | What it locks in | Assertions |
+|---|---|---|
+| `tests/test-consult.sh` (in this repo) | Shape validation of `business-profile.json` v1.1 with the `stack[]` field — `scripts/consult.sh --validate-profile` accepts/rejects the right shapes | **13 new assertions** on top of the pre-existing 51 (total 64/64 green at `f39fcdc`): absent `stack[]` still valid; well-formed `stack[]` valid; `stack` not an array rejected; entry missing any of `{namespace, source, trigger, added_at}` rejected; `source` not in the 5-value enum rejected; `namespace` not in `workload_classification.namespaces` rejected; duplicate namespace in `stack[]` rejected (idempotence-at-persistence); all five enum sources accepted |
+| `tests/test-audit-architecture-crosscheck.sh` (in this repo) | Enforcement wire — invariant 4 (probe/rule propagation into decisions) generalizes from `activated_probe_namespaces` to `activated_probe_namespaces ∪ stack[].namespace` | **6 new assertions** on top of the pre-existing 16 (total 22/22 green at `f39fcdc`): stack namespace covered by a decision → OK; stack namespace uncovered → violation; violation message names "from stack[]" provenance; overlap between stack and activated deduplicates; present-but-empty `stack[]` behaves as pre-§30.5; stack that adds a new namespace beyond activated is enforced |
+| `docs/handoff-ctp-p13-acceptance-test.sh` (in this repo) | Behavioral acceptance runnable against the CTP branch itself | Tier A: 12 assertions on §30.4 haystack behavior. Tier B: 7 assertions on §30.5 stack mechanism (`stack[]` presence + shape + idempotence + unprobed→activated migration + additive-optional back-compat + cite-or-decline rejection of unknown namespaces + active.json invariant-4 mapping) |
+
+### 8.2. The v1.1 profile shape CTP must emit at §30.5 (contract-precise)
+
+`business-profile.json` gains ONE additive field inside `workload_classification`:
+
+```json
+{
+  "schema_version": "1.1",
+  "complete": true,
+  "answers": { ... universal 9 unchanged ... },
+  "workload_classification": {
+    "workload_types": [ ... ],
+    "namespaces": [ ... ],
+    "activated_probe_namespaces": [ ... ],
+    "unprobed_in_scope": [ ... ],
+    "stack": [
+      {
+        "namespace": "aws",
+        "source": "universal-answer",
+        "trigger": "answers.motivation contains 'AWS Bedrock'",
+        "added_at": "2026-07-07T14:32:11Z"
+      },
+      {
+        "namespace": "react",
+        "source": "design-decision",
+        "trigger": "architect-recommend selected 'React SPA'",
+        "added_at": "2026-07-07T14:41:07Z"
+      }
+    ]
+  },
+  "probes": { ... unchanged ... },
+  "grounded_in": [ ... ],
+  "grounded_in_namespaces": [ ... ]
+}
+```
+
+**Field-by-field contract enforced by GCTP's tests (`tests/test-consult.sh`):**
+
+| Field | Type | Constraint | Rejection message pattern |
+|---|---|---|---|
+| `workload_classification.stack` | array (optional) | Absent OR array of objects | `stack not an array` |
+| `stack[i].namespace` | string | Non-empty, ⊆ `workload_classification.namespaces` | `namespace missing` / `not in workload_classification.namespaces` |
+| `stack[i].source` | string | Non-empty, in enum `[classifier, universal-answer, probe-answer, design-decision, operator]` | `source missing` / `not in enum` |
+| `stack[i].trigger` | string | Non-empty (free-text audit trail — why the namespace was added) | `trigger missing` |
+| `stack[i].added_at` | string | Non-empty (ISO-8601 timestamp; GCTP does not strictly parse — CTP owns the emission format) | `added_at missing` |
+| `stack[*].namespace` | — | Unique across the array (idempotence-at-persistence — CTP guarantees at append-time, validator catches corruption) | `idempotence violated` |
+
+The five `source` enum values MUST be spelled exactly `classifier`, `universal-answer`, `probe-answer`, `design-decision`, `operator`. Any other value fails validation.
+
+### 8.3. The enforcement contract CTP unlocks (`tests/test-audit-architecture-crosscheck.sh`)
+
+At §30.5, the profile's `stack[].namespace` is treated as **enforcement-floor equivalent** to `activated_probe_namespaces`. GCTP's invariant-4 audit now requires that every namespace in `activated_probe_namespaces ∪ stack[].namespace` be considered by at least one `decisions[].applicable_rules` entry (i.e., at least one rule with matching `source_namespace`). Practically this means:
+
+- **A stack append CTP does at Stage-1** (e.g., operator names AWS in `answers.motivation` → `stack[]` gains `{namespace: "aws", source: "universal-answer"}`) creates an **immediate obligation** for downstream `architect-recommend` output to include at least one aws-namespaced rule in some decision's `applicable_rules`.
+- **A stack append CTP does at design-time** (e.g., `architect-recommend` picks React → `stack[]` gains `{namespace: "react", source: "design-decision"}`) creates the same obligation — the react rule floor must appear somewhere in the artifact.
+
+If CTP doesn't propagate the stack into the design's rule floors, GCTP's audit will catch it and emit `v1.1 profile in-stack namespace [<ns>] (from stack[]) does not propagate into any decision applicable_rules`. That message pattern is asserted in test 18; CTP can grep for it in its own end-to-end runs.
+
+### 8.4. Where to add the append hooks in CTP (five entry points to satisfy Tier B assertions)
+
+Not all five need to ship in v1.15 — pick whichever subset closes the immediate bug fully. The tests are structured so each entry point is independently testable.
+
+| Trigger | CTP file(s) most likely to own the hook | GCTP test that exercises it |
+|---|---|---|
+| Stage-0 classifier fires a workload_type | `commands/full-surface-intake.sh` — after `fired` is computed, iterate `t["namespaces"]` and append `{ns, "classifier", "workload_type=<t>", now}` | test-consult.sh: `stack with all five enum sources → exit 0` (source=classifier row) |
+| Stage-1 universal answer text signal | Same file, after §30.4's haystack union, if the union fires a NEW workload_type absent from the vision-only pass, append `{ns, "universal-answer", "answers.<k> contains <sig>", now}` for each new namespace | test-consult.sh: `well-formed stack[]` + P-13 acceptance test Tier B section T-B.2 |
+| Stage-2 probe answer commits a technology | `commands/full-surface-intake.sh` when parsing `--probe-answer ns:key=value`, or `commands/business-translate.sh` when consuming committed postures — append `{ns, "probe-answer", "probes.<ns>.<key>=<val>", now}` if the answer names a distinct technology | test-consult.sh: 5-source fixture (source=probe-answer row) |
+| Design decision commits a technology | `commands/architect-recommend.sh` — after picking an option, for each `implementation_hints`-named technology that resolves to an `active.json` namespace, append `{ns, "design-decision", "architect-recommend picked <opt>", now}` | test-arch-crosscheck: test 21 (stack[] adds react uncovered → violation) locks in the enforcement expectation |
+| Explicit operator injection (CLI) | `commands/full-surface-intake.sh` — new `--stack-add <ns>` flag; validate against `active.json` first (cite-or-decline: unknown namespace ⇒ exit 2 with a clear error), then append `{ns, "operator", "explicit --stack-add", now}` | P-13 acceptance test Tier B sections T-B.1 (append), T-B.3 (idempotence), T-B.6 (cite-or-decline reject on unknown ns) |
+
+### 8.5. Running GCTP's tests against your CTP branch (developer workflow)
+
+```bash
+# 1. From a CTP checkout, checkout your v1.15 branch.
+git checkout dev/v1.15-stack-driven
+
+# 2. In parallel, from this GCTP checkout, hand-swap the pinned plugin cache to point at your branch.
+#    (This is a temporary developer-only override, NOT a real pin bump — no ADR.)
+rm -rf /path/to/gctp/.harness/plugin-cache/claude-tdd-pro
+ln -s /path/to/your-ctp-checkout /path/to/gctp/.harness/plugin-cache/claude-tdd-pro
+cd /path/to/gctp
+./scripts/standards-sync.sh   # regenerates active.json against your branch's standards/
+
+# 3. Run the acceptance test against your CTP checkout.
+CTP_ROOT=/path/to/your-ctp-checkout bash docs/handoff-ctp-p13-acceptance-test.sh
+# Expect: Tier A pass at §30.4; Tier B pass at §30.5; SKIPs downgrade to warnings if a subset shipped.
+
+# 4. Run GCTP's consumer-surface unit + integration tests against the pre-wired consumer.
+#    (These don't call CTP — they exercise the harness's own --validate-profile + invariant 4.
+#    They pass today at the pre-wire; they'll continue passing once CTP ships §30.5 — the pre-wire
+#    is the shape spec.)
+./tests/test-consult.sh                            # 64/64
+./tests/test-audit-architecture-crosscheck.sh      # 22/22
+./tests/test-all.sh                                # 42/42
+
+# 5. End-to-end: pipe your CTP's produced v1.1 profile with stack[] into GCTP's --validate-profile.
+bash /path/to/your-ctp-checkout/commands/full-surface-intake.sh \
+     --workload "$CLOUD_AGNOSTIC_VISION" \
+     --answer motivation="deploy on AWS Bedrock" \
+     --stack-add react \
+     --classify \
+     --out /tmp/profile-v1.1.json
+./scripts/consult.sh --validate-profile /tmp/profile-v1.1.json
+# Expect: OK (schema_version=1.1) — contract-conformant.
+```
+
+### 8.6. Order of operations (recommended)
+
+CTP can ship both §30.4 and §30.5 in one v1.15 tag, or stage them. Recommended sequencing:
+
+1. **§30.4 Core Fix first (1-line edit).** Ships as CL-550 (or similar). Unblocks the immediate cloud-classification-from-answers bug. Passes the P-13 acceptance test Tier A. No new profile field, no schema migration. GCTP pin-bumps to consume via a §15-gated ADR.
+2. **§30.5 Structural Extension next (bigger surface).** Ships as CL-551 (or similar). Adds `stack[]` to the profile, wires the five append points, ships the `--stack-add` CLI flag. Passes P-13 acceptance test Tier B + GCTP's `tests/test-consult.sh` new 13 assertions + `tests/test-audit-architecture-crosscheck.sh` new 6 assertions. GCTP pin-bumps again.
+
+Either order is safe — the pre-wire is idempotent and additive-optional.
+
+### 8.7. When you're done — how to signal back to GCTP
+
+Match the pattern of CL-547/CL-548/CL-549: land the change on `main`, add a return handoff at `.harness/plugin-cache/claude-tdd-pro/docs/handoff-ctp-to-gctp-p13-fixed.md` (in the CTP repo, materialized into GCTP's plugin cache on the next `sync-plugin --ensure`) naming the re-pin target SHA, and note in the packet which of §30.4 / §30.5 shipped. GCTP will pin-bump via a new ADR (procedure per ADR-0087/0089/0090) and re-run `tests/test-all.sh` — the pre-wired tests are the machine gate that the shipped shape matches the pre-wire.
+

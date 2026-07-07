@@ -319,6 +319,167 @@ JSON
     assert_eq "$ec" "1" "--validate-profile: v1.1 unprobed_in_scope not ⊆ namespaces → exit 1"
     assert_match "$out" "not in workload_classification.namespaces" "--validate-profile: v1.1 unprobed_in_scope OOR error is specific"
 
+    # §30.5 (P-13 pre-wire, TICKET-118.a): workload_classification.stack[] tolerance.
+    # Absent stack ⇒ pre-§30.5 profile ⇒ pass unchanged (regression baseline).
+    cat > "$TMP/prof11-no-stack.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-no-stack.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 without stack[] → exit 0 (additive-optional back-compat)"
+
+    # Well-formed stack[] ⇒ valid.
+    cat > "$TMP/prof11-stack-ok.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","react"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[
+     {"namespace":"aws","source":"universal-answer","trigger":"motivation contains 'AWS Bedrock'","added_at":"2026-07-07T14:32:11Z"},
+     {"namespace":"react","source":"design-decision","trigger":"architect-recommend selected React SPA","added_at":"2026-07-07T14:41:07Z"}
+   ]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-stack-ok.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 with well-formed stack[] → exit 0"
+
+    # stack not an array ⇒ invalid.
+    cat > "$TMP/prof11-stack-notarr.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":"not-an-array"
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-stack-notarr.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 stack not an array → exit 1"
+    assert_match "$out" "stack not an array" "--validate-profile: v1.1 stack-not-array error is specific"
+
+    # stack entry missing required key (namespace) ⇒ invalid.
+    cat > "$TMP/prof11-stack-missingns.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[{"source":"operator","trigger":"stated cloud","added_at":"2026-07-07T14:32:11Z"}]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-stack-missingns.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 stack entry missing namespace → exit 1"
+    assert_match "$out" "namespace missing" "--validate-profile: v1.1 stack-missing-namespace error names namespace"
+
+    # stack entry with source not in enum ⇒ invalid.
+    cat > "$TMP/prof11-stack-badsrc.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[{"namespace":"aws","source":"telepathy","trigger":"stated cloud","added_at":"2026-07-07T14:32:11Z"}]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-stack-badsrc.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 stack entry with non-enum source → exit 1"
+    assert_match "$out" "not in enum" "--validate-profile: v1.1 stack-bad-source error names the enum"
+
+    # stack entry namespace not in workload_classification.namespaces ⇒ invalid.
+    cat > "$TMP/prof11-stack-nsoor.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[{"namespace":"totally-fake","source":"operator","trigger":"typo","added_at":"2026-07-07T14:32:11Z"}]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-stack-nsoor.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 stack entry namespace not in namespaces → exit 1"
+    assert_match "$out" "not in workload_classification.namespaces" "--validate-profile: v1.1 stack-oor error names the constraint"
+
+    # duplicate namespace in stack ⇒ invalid (idempotence-at-persistence).
+    cat > "$TMP/prof11-stack-dup.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[
+     {"namespace":"aws","source":"universal-answer","trigger":"first","added_at":"2026-07-07T14:32:11Z"},
+     {"namespace":"aws","source":"operator","trigger":"second","added_at":"2026-07-07T14:42:11Z"}
+   ]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-stack-dup.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 duplicate namespace in stack → exit 1"
+    assert_match "$out" "idempotence violated" "--validate-profile: v1.1 stack-dup error names idempotence"
+
+    # stack accepts all five enum sources.
+    cat > "$TMP/prof11-stack-allsrc.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","react","k8s","owasp"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "stack":[
+     {"namespace":"aws","source":"classifier","trigger":"vision fired aws-platform","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"cfn","source":"universal-answer","trigger":"answer mentioned SAM","added_at":"2026-07-07T14:05:00Z"},
+     {"namespace":"react","source":"probe-answer","trigger":"probe committed React","added_at":"2026-07-07T14:10:00Z"},
+     {"namespace":"k8s","source":"design-decision","trigger":"architect-recommend picked EKS","added_at":"2026-07-07T14:15:00Z"},
+     {"namespace":"owasp","source":"operator","trigger":"explicit --stack-add owasp","added_at":"2026-07-07T14:20:00Z"}
+   ]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-stack-allsrc.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 stack with all five enum sources → exit 0"
+
     # unsupported schema_version → 1
     printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
     "$SCRIPT" --validate-profile "$TMP/prof2.json" >/dev/null 2>&1
