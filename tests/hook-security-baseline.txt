@@ -34,12 +34,10 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:21:trap '
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-app-tree.sh:36:rm -f "$CA"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-applicable-rules.sh:39:clear_h() { rm -f "$TMP/h"/*.json; }
-S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:158:rm -f "$TMP/h/FEATURE-1.business-intake.json"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:160:rm -f "$TMP/h/FEATURE-1.business-intake.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
-S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:39:rm -f "$TMP/h"/*.json
-S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:40:rm -f "$TMP/h"/*.json
-S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:82:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
-S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:83:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:42:rm -f "$TMP/h"/*.json
+S-3|rm -rf usage (verify path is bounded)|tests/test-audit-architecture-crosscheck.sh:85:rm -f "$TMP/h/FEATURE-1.crosscheck.json"
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-config-surface.sh:21:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-cross-references.sh:43:rm -f "$TMPDOC"   # restore BEFORE asserting
 S-3|rm -rf usage (verify path is bounded)|tests/test-audit-design-phase-md.sh:107:clear_h() { rm -f "$TMP/h"/*.json; }

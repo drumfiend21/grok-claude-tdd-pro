@@ -504,6 +504,29 @@ Authoritative schema: `.harness/plugin-cache/claude-tdd-pro/schemas/business-pro
   cleanly to `workload_types=[ai-governed, baseline-quality]` with no phantom
   `azure-platform`/`container-orchestration`/`ci-cd`, while real `AKS` / `CI/CD` / `space` tokens
   continue to fire when actually present.
+- **Stack-driven progressive rule activation (CL-550/551/552 / §30.4+§30.5+§30.6, pin `11126a8`+).**
+  Three composed amendments closing P-13. **§30.4 Core Fix — classify from answers:** the classifier
+  haystack unions `vision + all business-answer values`, so a cloud stated in an answer
+  (`--answer motivation="deploy on AWS Bedrock"`) fires `aws-platform` and activates the `aws` probe
+  group. §30.3 word-boundary matching preserved over the wider haystack; monotone (haystack only
+  grows). **§30.5 Structural Extension — `stack[]` mechanism:** new `--stack-add <ns>` CLI flag
+  (repeatable) + `workload_classification.stack[]` field on v1.1 profile (additive optional). Every
+  append triggers namespace-keyed rule lookup in `active.json` by `source_namespace` + probe-group
+  activation (moves the namespace out of `unprobed_in_scope` into `activated_probe_namespaces`).
+  Cite-or-decline: unknown namespace rejected with exit 2 + human-readable error. **§30.6 Entry shape
+  + idempotency:** each `stack[i]` is a provenance object with exactly four keys `{namespace,
+  source, trigger, added_at}` sorted-by-namespace in both `workload_classification.stack` and
+  top-level `profile.stack`. Enum: `[stack-add, vision, answer]` — only `stack-add` emitted today
+  (CLI provenance); `vision`/`answer` reserved by CTP for future haystack-inferred entries.
+  Idempotent (dedupe by namespace at append; first-write wins). Adopted via **ADR-0091**.
+  `scripts/consult.sh --validate-profile` v1.1 branch tolerates `stack[]` as additive optional (shape
+  validation: array of `{namespace, source, trigger, added_at}` objects, `namespace` ⊆
+  `workload_classification.namespaces`, `source` ∈ `[stack-add, vision, answer]`, unique namespaces
+  per idempotence-at-persistence). `scripts/audit-architecture-crosscheck.sh` invariant 4 generalized
+  from `activated_probe_namespaces` to `activated_probe_namespaces ∪ stack[].namespace` when `stack[]`
+  present. Machine acceptance surface: [`docs/handoff-ctp-p13-acceptance-test.sh`](handoff-ctp-p13-acceptance-test.sh)
+  (19 assertions; Tier A §30.4 + Tier B §30.5/§30.6). Consumer-side pre-wire (TICKET-118.a) enum
+  reconciled to shipped shape at pin adoption per ADR-0091.
 - `docs/handoff-ctp-p12-full-surface-intake.md` + companions
   (`docs/handoff-ctp-p12-namespace-question-manifest.md`,
   `docs/handoff-ctp-p12-sample-profile-v1.1.json`,

@@ -189,16 +189,16 @@ if (sv === "1.0") {
       }
     }
   }
-  // §30.5 (P-13 pre-wire, TICKET-118.a): workload_classification.stack[] tolerance.
-  // Additive optional. Absent ⇒ pre-§30.5 profile ⇒ pass unchanged.
-  // Present ⇒ must be an array of objects, each carrying {namespace, source, trigger, added_at}.
-  //   - namespace: string, ⊆ workload_classification.namespaces (rule floor consistency).
-  //   - source:    string in [classifier, universal-answer, probe-answer, design-decision, operator].
-  //   - trigger:   non-empty string (free-text audit trail — why the namespace was added).
-  //   - added_at:  non-empty string (ISO-8601 timestamp; not strictly parsed here).
-  // Namespaces in stack[] must be unique (idempotence-at-persistence). CTP guarantees this at
-  // append-time; the validator enforces it as a shape invariant so a corrupted profile is caught.
-  const stackEnumSources = ["classifier","universal-answer","probe-answer","design-decision","operator"];
+  // §30.5/§30.6 (P-13 ADOPTED at CTP pin 11126a8 / CL-550+CL-551+CL-552, ADR-0091):
+  // workload_classification.stack[] tolerance. Additive optional; absent ⇒ pre-§30.5
+  // profile ⇒ pass unchanged. Present ⇒ array of objects, each with the four keys
+  // {namespace, source, trigger, added_at} (entry shape locked by CL-552 §30.6 —
+  // matches GCTP acceptance test T-B.2). Enum: [stack-add, vision, answer] — the
+  // shipped enum at pin 11126a8. Only stack-add is emitted today (from --stack-add);
+  // vision and answer are reserved by CTP for future haystack-inferred entries.
+  // Idempotence-at-persistence per §30.6: CTP dedupes by namespace at append-time;
+  // this validator enforces uniqueness as a shape invariant.
+  const stackEnumSources = ["stack-add","vision","answer"];
   if ("stack" in wc) {
     if (!Array.isArray(wc.stack)) errs.push("workload_classification.stack not an array");
     else {

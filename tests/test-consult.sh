@@ -345,8 +345,8 @@ JSON
    "namespaces":["aws","cfn","react"],
    "activated_probe_namespaces":["aws","cfn"],
    "stack":[
-     {"namespace":"aws","source":"universal-answer","trigger":"motivation contains 'AWS Bedrock'","added_at":"2026-07-07T14:32:11Z"},
-     {"namespace":"react","source":"design-decision","trigger":"architect-recommend selected React SPA","added_at":"2026-07-07T14:41:07Z"}
+     {"namespace":"aws","source":"answer","trigger":"motivation contains 'AWS Bedrock'","added_at":"2026-07-07T14:32:11Z"},
+     {"namespace":"react","source":"stack-add","trigger":"--stack-add react","added_at":"2026-07-07T14:41:07Z"}
    ]
  },
  "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
@@ -384,7 +384,7 @@ JSON
    "workload_types":["aws-platform"],
    "namespaces":["aws","cfn"],
    "activated_probe_namespaces":["aws","cfn"],
-   "stack":[{"source":"operator","trigger":"stated cloud","added_at":"2026-07-07T14:32:11Z"}]
+   "stack":[{"source":"stack-add","trigger":"stated cloud","added_at":"2026-07-07T14:32:11Z"}]
  },
  "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
  "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
@@ -422,7 +422,7 @@ JSON
    "workload_types":["aws-platform"],
    "namespaces":["aws","cfn"],
    "activated_probe_namespaces":["aws","cfn"],
-   "stack":[{"namespace":"totally-fake","source":"operator","trigger":"typo","added_at":"2026-07-07T14:32:11Z"}]
+   "stack":[{"namespace":"totally-fake","source":"stack-add","trigger":"typo","added_at":"2026-07-07T14:32:11Z"}]
  },
  "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
  "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
@@ -442,8 +442,8 @@ JSON
    "namespaces":["aws","cfn"],
    "activated_probe_namespaces":["aws","cfn"],
    "stack":[
-     {"namespace":"aws","source":"universal-answer","trigger":"first","added_at":"2026-07-07T14:32:11Z"},
-     {"namespace":"aws","source":"operator","trigger":"second","added_at":"2026-07-07T14:42:11Z"}
+     {"namespace":"aws","source":"answer","trigger":"first","added_at":"2026-07-07T14:32:11Z"},
+     {"namespace":"aws","source":"stack-add","trigger":"second","added_at":"2026-07-07T14:42:11Z"}
    ]
  },
  "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
@@ -456,19 +456,18 @@ JSON
     assert_eq "$ec" "1" "--validate-profile: v1.1 duplicate namespace in stack → exit 1"
     assert_match "$out" "idempotence violated" "--validate-profile: v1.1 stack-dup error names idempotence"
 
-    # stack accepts all five enum sources.
+    # stack accepts all three shipped enum sources (stack-add live at 11126a8; vision/answer
+    # reserved by CTP for future haystack-inferred entries — validator accepts today).
     cat > "$TMP/prof11-stack-allsrc.json" <<'JSON'
 {"schema_version":"1.1","complete":true,
  "workload_classification":{
    "workload_types":["aws-platform"],
-   "namespaces":["aws","cfn","react","k8s","owasp"],
+   "namespaces":["aws","cfn","react"],
    "activated_probe_namespaces":["aws","cfn"],
    "stack":[
-     {"namespace":"aws","source":"classifier","trigger":"vision fired aws-platform","added_at":"2026-07-07T14:00:00Z"},
-     {"namespace":"cfn","source":"universal-answer","trigger":"answer mentioned SAM","added_at":"2026-07-07T14:05:00Z"},
-     {"namespace":"react","source":"probe-answer","trigger":"probe committed React","added_at":"2026-07-07T14:10:00Z"},
-     {"namespace":"k8s","source":"design-decision","trigger":"architect-recommend picked EKS","added_at":"2026-07-07T14:15:00Z"},
-     {"namespace":"owasp","source":"operator","trigger":"explicit --stack-add owasp","added_at":"2026-07-07T14:20:00Z"}
+     {"namespace":"aws","source":"stack-add","trigger":"--stack-add aws","added_at":"2026-07-07T14:00:00Z"},
+     {"namespace":"cfn","source":"vision","trigger":"vision text mentioned CloudFormation","added_at":"2026-07-07T14:05:00Z"},
+     {"namespace":"react","source":"answer","trigger":"answer mentioned React SPA","added_at":"2026-07-07T14:10:00Z"}
    ]
  },
  "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
@@ -478,7 +477,7 @@ JSON
    "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
 JSON
     "$SCRIPT" --validate-profile "$TMP/prof11-stack-allsrc.json" >/dev/null 2>&1
-    assert_eq "$?" "0" "--validate-profile: v1.1 stack with all five enum sources → exit 0"
+    assert_eq "$?" "0" "--validate-profile: v1.1 stack with all three shipped enum sources → exit 0"
 
     # unsupported schema_version → 1
     printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
