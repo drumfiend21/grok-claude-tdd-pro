@@ -13,22 +13,30 @@ kata session knows exactly what to expect.
 
 ```bash
 git clone https://github.com/drumfiend21/grok-claude-tdd-pro   # or: git -C grok-claude-tdd-pro pull origin main
-cd grok-claude-tdd-pro                                          # main tip; for the KATA session use branch dev/kata-2026-07-03-consult
+cd grok-claude-tdd-pro                                          # main tip; for the KATA session use branch dev/kata-2026-07-05-consult
 ```
 
 ## 2. Bootstrap the harness (in order)
 
 ```bash
-./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned f39fcdc (2026-07-06) + skills +
+./scripts/sync-plugin.sh --ensure        # materializes CTP plugin @ pinned 11126a8 (2026-07-08) + skills +
                                          # active.json (118 rules across 43 namespaces). At this pin: §29..§29.6
                                          # (full-surface consult grounding + byte-identical native enforcement),
                                          # §30 (full-surface intake — workload classifier + per-namespace probe
                                          # groups), §30.1 (design engines consume the probes), §30.2 (precise
                                          # cloud classification + IaC probe coverage + unprobed_in_scope
-                                         # transparency marker), and §30.3 (word-boundary signal matching so
+                                         # transparency marker), §30.3 (word-boundary signal matching so
                                          # compact tokens like `aks`/`ci`/`spa` don't phantom-match inside
-                                         # larger business words like `leaks`/`certification`/`space`) —
-                                         # see ADR-0086/0087/0088/0089/0090.
+                                         # larger business words like `leaks`/`certification`/`space`),
+                                         # §30.4 (classify from answers — a cloud stated in a universal
+                                         # answer fires the platform type; classifier haystack unions vision
+                                         # + all business-answer values), §30.5 (stack-driven progressive
+                                         # rule activation via --stack-add <ns> + workload_classification.stack[]
+                                         # additive-optional field, each append triggers namespace-keyed rule
+                                         # lookup in active.json + probe-group activation, cite-or-decline),
+                                         # and §30.6 (stack entry shape {namespace, source, trigger, added_at}
+                                         # + dedupe-by-namespace idempotency) — see ADR-0086/0087/0088/0089/
+                                         # 0090/0091.
 ./scripts/accept-compact.sh              # REQUIRED: fail-closed agent compact (ADR-0057). Until accepted, the
                                          # agent MUST NOT drive /consult../inner-loop. Accept = you agree to act
                                          # only as GCTP's user (don't self-architect; CTP generates, GCTP enforces).
@@ -54,7 +62,7 @@ ALL=$(node -e 'process.stdout.write(require("./.harness/rules/active.json").rule
 CLAUDE_PLUGIN_ROOT="$PR" bash "$PR/rubric/enforce.sh" --root ../softarchcert-win25 --rules "$ALL" --json
 ```
 
-**What you'll get (numbers below are the audit result at the historical pin `7a7f74d` / 46 rules — kept as an illustrative shape, NOT a target).** At today's pin `f39fcdc` / 118 rules the counts will be larger (more rules in scope means more `pass` and more `not_applicable`); the *interpretation* of the failure categories still applies. Re-run at the current pin to get the ground-truth numbers for this kata. Historical snapshot: `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
+**What you'll get (numbers below are the audit result at the historical pin `7a7f74d` / 46 rules — kept as an illustrative shape, NOT a target).** At today's pin `11126a8` / 118 rules the counts will be larger (more rules in scope means more `pass` and more `not_applicable`); the *interpretation* of the failure categories still applies. Re-run at the current pin to get the ground-truth numbers for this kata. Historical snapshot: `pass:22 · fail:14 · not_applicable:10 · not_enforced:0`. Interpret the 14 fails by category:
 
 | Category | Rules | Verdict |
 |---|---|---|
@@ -76,12 +84,17 @@ Drive only the sanctioned commands, in plain language, letting CTP architect and
              #             AWS deployment") and confirms with the operator. At pin 43ea692+
              #             (§30.2): classification is PRECISE — a pure-AWS kata is probed for
              #             aws+cfn only, not Azure/GCP. Any in-scope namespace without a probe
-             #             group appears in unprobed_in_scope — visible, never silent. NEW at
+             #             group appears in unprobed_in_scope — visible, never silent. At
              #             pin f39fcdc (§30.3): signal matching is WORD-BOUNDARY — compact
              #             tokens like `aks`/`ci`/`spa` no longer phantom-match inside
              #             larger business words (`leaks`/`certification`/`space`), so an
              #             AI-credentialing vision classifies cleanly (ai-governed +
              #             baseline-quality) instead of dragging in Azure/K8s/CI-CD phantoms.
+             #             NEW at pin 11126a8 (§30.4): the classifier haystack is
+             #             `vision + all universal-answer values`, so a cloud stated in a
+             #             Stage-1 answer (`motivation="deploy on AWS Bedrock"`) fires the
+             #             `aws-platform` type on re-classify and activates the `aws` probe
+             #             group — cloud-agnostic visions no longer strand the cloud choice.
              #   Stage 1 — universal 9 (S-32, unchanged). Business language, one at a time.
              #   Stage 2 — activated per-namespace probes (§30 / S-57). e.g. jwt token lifetime,
              #             react rendering model, k8s multitenancy, aws region strategy — CTP
@@ -89,8 +102,21 @@ Drive only the sanctioned commands, in plain language, letting CTP architect and
              #             language. Each answered probe becomes a COMMITTED POSTURE the design
              #             engines honor (§30.1 / S-33 / S-34): translate emits a grounded concern,
              #             recommend can let a decisive commitment modestly move the pick.
+             #   Commit-to-stack at each juncture (§30.5/§30.6, pin 11126a8+). Whenever the
+             #             operator commits to a technology at any juncture (a cloud, a frontend,
+             #             an identity model, a K8s stack, a supply-chain posture), append it via
+             #             `--stack-add <ns>` on the next intake invocation. CTP writes each entry
+             #             as {namespace, source: "stack-add", trigger: "--stack-add <ns>",
+             #             added_at: <ISO-8601>} under `workload_classification.stack[]` (also
+             #             mirrored at top-level `profile.stack[]`). Every append triggers
+             #             namespace-keyed rule lookup in active.json + probe-group activation
+             #             (moves the ns out of unprobed_in_scope into activated_probe_namespaces).
+             #             Cite-or-decline: unknown namespace → exit 2. Idempotent: duplicate
+             #             --stack-add collapses to one entry (first-write wins).
              #   Per juncture — CTP proposes under enforcement (google/owasp/EO/SLSA/…); GCTP
              #                   cross-checks against active.json + R/D/G/C-rules + EO spine.
+             #                   Invariant 4: every namespace in activated_probe_namespaces ∪
+             #                   stack[].namespace propagates into ≥ 1 decision's applicable_rules.
 /roadmap     # sized, sequenced tickets
 /decompose   # Fix A: each ticket's applicable_rules = language floor ∪ all g-universal-* ∪ EO (typed globs!)
 /dispatch    # emit the contract-valid request per ticket

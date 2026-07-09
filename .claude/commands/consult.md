@@ -26,8 +26,10 @@ and CTP writes the first `business-profile.json`, detect its `schema_version` an
     - **Stage 0 — classifier reveal.** Run `full-surface-intake.sh --workload "<vision>" --classify`;
       CTP writes `workload_classification.{workload_types, namespaces, activated_probe_namespaces}`.
       Show them to the user in plain language ("based on what you described, I'm treating this as a
-      web-frontend + REST-API + Kubernetes workload at large scale — is that right?"). The activated
-      probe namespaces drive Stage 2.
+      web-frontend + REST-API + Kubernetes workload at large scale — is that right?"). At pin
+      `11126a8`+ (§30.4, ADR-0091): the classifier haystack is `vision + all universal answers`, so
+      a cloud stated in a universal answer (Stage 1) fires the platform type on re-classify. The
+      activated probe namespaces drive Stage 2.
     - **Stage 1 — universal 9.** Same 9 questions as v1.0. Ask them in plain business language.
       Forward answers to S-32 via `--answer key=value` / `--answers <json>` (S-57 composes S-32);
       they land under top-level `answers` unchanged (universal-stays-universal — S-57 does NOT
@@ -40,6 +42,20 @@ and CTP writes the first `business-profile.json`, detect its `schema_version` an
       the crossroads/translator loop. Feed answers back via `--probe-answer ns:key=value`. Every
       answered probe becomes a **committed posture** the downstream design layer will honor and
       lands the namespace in `grounded_in_namespaces`.
+    - **Commit-to-stack at each juncture (§30.5/§30.6, pin `11126a8`+, ADR-0091).** Whenever the
+      user commits to a technology at any juncture — a cloud (`aws`/`azure`/`gcp`/`cfn`), a
+      frontend (`react`), an identity model (`jwt`/`iam`), a K8s stack (`k8s`/`helm`), a supply-chain
+      posture (`slsa`/`sbom`), etc. — append it to the profile stack via `--stack-add <ns>` on the
+      next intake invocation. Every append triggers namespace-keyed rule lookup in `active.json` by
+      `source_namespace` and moves the namespace out of `unprobed_in_scope` into
+      `activated_probe_namespaces`. Cite-or-decline: only namespaces resolving in `active.json` are
+      accepted (unknown → exit 2 with a human-readable error). Idempotent (dedupe by namespace at
+      append; first-write wins). Each stack entry ships as a provenance object
+      `{namespace, source: "stack-add", trigger: "--stack-add <ns>", added_at: <ISO-8601>}` in both
+      `workload_classification.stack[]` and top-level `profile.stack[]`. The mechanism is what makes
+      rule + probe activation **progressive** — a cloud-agnostic vision that later commits to AWS
+      still activates the `aws` probe group (aws-region-strategy, cfn-stack-policy) so the design
+      layer honors the choice with cite-or-decline grounding.
 
 Validate the resulting profile with `./scripts/consult.sh --validate-profile <profile>` before
 moving to Stage 2 (per-juncture loop). Exit 0 means contract-conformant; exit 1 lists what's
@@ -65,8 +81,9 @@ missing/broken; exit 2 is a usage/file error.
 (§Architecture-Cross-Check), and the roadmap (§Roadmap) — real tickets, sized, sequenced, planned.
 `applicable_rules` must resolve in `active.json` and always include the non-exemptible
 EO-governance rules. For v1.1 profiles, every entry in
-`workload_classification.activated_probe_namespaces` must **propagate** into at least one decision's
-`applicable_rules` (a rule whose `source_namespace` matches the namespace) — invariant 4 of the
-cross-check audit; a silent omission is a violation.
+`workload_classification.activated_probe_namespaces ∪ workload_classification.stack[].namespace`
+must **propagate** into at least one decision's `applicable_rules` (a rule whose `source_namespace`
+matches the namespace) — invariant 4 of the cross-check audit; a silent omission is a violation.
+The stack-generalized invariant landed in TICKET-118.a (pre-wire) and is now live under ADR-0091.
 
 **4. Present the roadmap** to the user in plain language. Then `/dispatch` + `/inner-loop` per ticket.
