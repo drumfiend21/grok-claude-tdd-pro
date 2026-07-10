@@ -493,6 +493,204 @@ JSON
     "$SCRIPT" --validate-profile "$TMP/prof11-stack-allsrc.json" >/dev/null 2>&1
     assert_eq "$?" "0" "--validate-profile: v1.1 stack with all three shipped enum sources → exit 0"
 
+    # --- P-15 Phase 1 pre-wire (TICKET-121.a) — families_active[] tolerance ---
+    # Absent (backward compat with pre-P-15 v1.1 profiles) ⇒ pass unchanged.
+    # This is asserted implicitly by all earlier v1.1 tests; here we add explicit
+    # coverage that a profile with families_active omitted is not rejected on
+    # account of that omission.
+    cat > "$TMP/prof11-fam-absent.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-fam-absent.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 families_active absent → exit 0 (P-15 pre-wire, additive-optional)"
+
+    # Well-formed families_active ⇒ pass. Includes polyglot case (Next.js-shaped
+    # membership in two families) — Delta D union semantics locked in convergence
+    # doc §3.3. This is the shape S-58 will emit once shipped.
+    cat > "$TMP/prof11-fam-wf.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "families_active":["frontend","backend_runtime"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-fam-wf.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 families_active well-formed (polyglot union) → exit 0"
+
+    # families_active not an array ⇒ invalid.
+    cat > "$TMP/prof11-fam-notarray.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "families_active":"frontend"
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-fam-notarray.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 families_active not-array → exit 1"
+    assert_match "$out" "families_active not an array" "--validate-profile: v1.1 families_active not-array error names field"
+
+    # families_active with non-string entry ⇒ invalid.
+    cat > "$TMP/prof11-fam-nonstr.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "families_active":["frontend", 42]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-fam-nonstr.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 families_active non-string entry → exit 1"
+    assert_match "$out" "not a non-empty string" "--validate-profile: v1.1 families_active non-string error names shape"
+
+    # families_active with duplicate entry ⇒ invalid (family membership is a set).
+    cat > "$TMP/prof11-fam-dup.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "families_active":["frontend","frontend"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-fam-dup.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 families_active duplicate → exit 1"
+    assert_match "$out" "family membership is a set" "--validate-profile: v1.1 families_active duplicate error names set invariant"
+
+    # --- P-15 Phase 2 pre-wire (TICKET-121.b) — project scoping tolerance ---
+    # project_id absent (backward compat) ⇒ pass. Asserted implicitly above.
+    # Well-formed project_id + project_overlay_namespaces ⇒ pass. This is the
+    # shape S-63 will emit for per-project rule scoping. Convergence doc §3.3.
+    cat > "$TMP/prof11-proj-wf.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","vue"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "project_id":"FEATURE-003",
+   "project_overlay_namespaces":["vue"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    "$SCRIPT" --validate-profile "$TMP/prof11-proj-wf.json" >/dev/null 2>&1
+    assert_eq "$?" "0" "--validate-profile: v1.1 project_id + overlay well-formed → exit 0"
+
+    # project_id with bad format ⇒ invalid (GCTP-owned ID regex, convergence doc B1).
+    cat > "$TMP/prof11-proj-badid.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "project_id":"lowercase-not-allowed"
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-proj-badid.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 project_id bad format → exit 1"
+    assert_match "$out" "GCTP-owned ID format" "--validate-profile: v1.1 project_id bad-format error cites convergence-doc B1"
+
+    # overlay present without project_id ⇒ invalid (no-silent-globalization spine, B4).
+    cat > "$TMP/prof11-proj-orphan.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","vue"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "project_overlay_namespaces":["vue"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-proj-orphan.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 overlay without project_id → exit 1 (B4 no-silent-globalization)"
+    assert_match "$out" "no silent globalization spine" "--validate-profile: v1.1 orphan-overlay error names the B4 invariant"
+
+    # overlay namespace not in workload_classification.namespaces ⇒ invalid.
+    cat > "$TMP/prof11-proj-oor.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "project_id":"FEATURE-003",
+   "project_overlay_namespaces":["vue"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-proj-oor.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 overlay ns not in namespaces → exit 1"
+    assert_match "$out" "not in workload_classification.namespaces" "--validate-profile: v1.1 overlay-oor error names the constraint"
+
+    # overlay namespace duplicated ⇒ invalid.
+    cat > "$TMP/prof11-proj-dup.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["aws-platform"],
+   "namespaces":["aws","cfn","vue"],
+   "activated_probe_namespaces":["aws","cfn"],
+   "project_id":"FEATURE-003",
+   "project_overlay_namespaces":["vue","vue"]
+ },
+ "probes":{"aws":{"aws_region_strategy":"multi-region"},"cfn":{"cfn_stack_policy":"protected"}},
+ "grounded_in":["s"],"grounded_in_namespaces":["aws","cfn"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+    out=$("$SCRIPT" --validate-profile "$TMP/prof11-proj-dup.json" 2>&1); ec=$?
+    assert_eq "$ec" "1" "--validate-profile: v1.1 overlay ns duplicate → exit 1"
+    assert_match "$out" "duplicated" "--validate-profile: v1.1 overlay-dup error names the invariant"
+
     # unsupported schema_version → 1
     printf '{"schema_version":"2.0"}\n' > "$TMP/prof2.json"
     "$SCRIPT" --validate-profile "$TMP/prof2.json" >/dev/null 2>&1

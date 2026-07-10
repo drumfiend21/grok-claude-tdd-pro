@@ -233,6 +233,64 @@ if (sv === "1.0") {
       }
     }
   }
+  // §31 / S-58 / S-59 (P-15 Phase 1 pre-wire, TICKET-121.a): families_active[] tolerance.
+  // Additive optional; absent ⇒ pre-P-15 profile ⇒ pass unchanged. Present ⇒ array of
+  // non-empty strings, each a family ID (e.g. "frontend", "backend_runtime"). Set
+  // semantics: no duplicates (a tech belongs to a family once). Structural only —
+  // the family-registry corpus (`standards/technology-family-registry.yaml`) does
+  // not exist at CTP pin 11126a8; semantic cross-check against known family IDs is
+  // deferred to TICKET-122 (post-S-58/S-59 tag). Adopted per ADR-0047 additive
+  // discipline + GCTP-side convergence doc §3.3 (Phase 1 startable NOW via existing
+  // `--stack-add` mechanism — no `_project/` dependency).
+  if ("families_active" in wc) {
+    const fa = wc.families_active;
+    if (!Array.isArray(fa)) errs.push("workload_classification.families_active not an array");
+    else {
+      const seenFam = new Set();
+      for (let i = 0; i < fa.length; i++) {
+        const f = fa[i];
+        if (typeof f !== "string" || !f) errs.push("workload_classification.families_active["+i+"] not a non-empty string");
+        else if (seenFam.has(f)) errs.push("workload_classification.families_active["+i+"] duplicated: ["+f+"] (family membership is a set)");
+        else seenFam.add(f);
+      }
+    }
+  }
+  // §31.1 / S-63 (P-15 Phase 2 pre-wire, TICKET-121.b): project scoping tolerance.
+  // Additive optional; absent ⇒ global-scope profile (pre-P-15) ⇒ pass unchanged.
+  // Present ⇒ project_id must be a stable ID matching [A-Z][A-Z0-9_-]{2,63} (GCTP
+  // owns assignment per convergence doc B1). project_overlay_namespaces[] is
+  // derived by the CTP-side aggregator from `_project/<project_id>/`; if present it must
+  // be a string array with each entry a subset of workload_classification.namespaces AND
+  // project_id MUST also be present. Overlay without owning project id is meaningless.
+  // The no-silent-globalization spine (convergence doc B4): overlay namespaces
+  // never appear in a profile without an owning project_id; cross-project scoping
+  // enforcement (A15 leakage rejection) lives in audit-architecture-crosscheck.sh
+  // invariant-4, not here — the profile-level check is structural.
+  if ("project_id" in wc) {
+    if (typeof wc.project_id !== "string" || !wc.project_id) {
+      errs.push("workload_classification.project_id present but not a non-empty string");
+    } else if (!/^[A-Z][A-Z0-9_-]{2,63}$/.test(wc.project_id)) {
+      errs.push("workload_classification.project_id ["+wc.project_id+"] does not match [A-Z][A-Z0-9_-]{2,63} (GCTP-owned ID format per convergence doc B1)");
+    }
+  }
+  if ("project_overlay_namespaces" in wc) {
+    const pon = wc.project_overlay_namespaces;
+    if (!Array.isArray(pon)) errs.push("workload_classification.project_overlay_namespaces not an array");
+    else {
+      if (!("project_id" in wc)) errs.push("workload_classification.project_overlay_namespaces present but project_id missing (overlay without owning project — no silent globalization spine, convergence doc B4)");
+      const nsSetForOverlay = new Set(Array.isArray(wc.namespaces) ? wc.namespaces : []);
+      const seenOverlay = new Set();
+      for (let i = 0; i < pon.length; i++) {
+        const ns = pon[i];
+        if (typeof ns !== "string" || !ns) errs.push("workload_classification.project_overlay_namespaces["+i+"] not a non-empty string");
+        else {
+          if (nsSetForOverlay.size && !nsSetForOverlay.has(ns)) errs.push("workload_classification.project_overlay_namespaces["+i+"] ["+ns+"] not in workload_classification.namespaces");
+          if (seenOverlay.has(ns)) errs.push("workload_classification.project_overlay_namespaces["+i+"] ["+ns+"] duplicated");
+          seenOverlay.add(ns);
+        }
+      }
+    }
+  }
   const probes = p.probes || {};
   if (typeof probes !== "object") errs.push("probes not an object");
   // Completeness rule: when complete=true, every activated namespace must be answered.
