@@ -26,7 +26,7 @@ At pin `11126a8` the plug-in has ~15 authoritative sources already scraped into 
 
 - **§30.8 — Family taxonomy + umbrella activation.** New `standards/technology-family-registry.yaml` maps every known tech to a family (`frontend`, `backend_runtime`, `backend_framework`, `database_relational`, `cache_kv`, `orm`, `cloud`, `orchestration`, `ci_cd`, …). Each family declares `umbrella_namespaces` — the already-scraped, already-in-`active.json` rules that apply cross-cuttingly at that family. Classifier catalog widens to recognize every alias in the registry as a signal for that family's `canonical_workload_type`. **When user names Vue, the frontend family fires and its umbrellas activate immediately. No scrape. Just correct activation of rules that already exist.**
 - **§30.9 — Per-project tech-specific rule provisioning.** When a detected tech has no tech-specific namespace in `active.json` yet, `provision-tech-rules.sh --tech vue --project FEATURE-003` scrapes the tech's canonical docs (same pipeline the plug-in already uses for React → `react`), 4-axis-tags the extracted rules, and stores them at `.harness/consult-work/<feature>/project-rules/<namespace>/*.yaml` — **per-project only, NOT global**. The overlay loader unions `active.json` (global) ∪ `project-rules/` (per-project) into the project's effective rule set. Stage 0 re-classifies knowing Vue exists; Stage 2 asks Vue posture probes; design + write-time enforce. Operator approves before load. Reversible via `deprovision-tech-rules.sh`. **Global `active.json` is untouched by construction — GCTP has no write path to it.**
-- **§30.10 — PR-promotion path.** When project-scoped rules earn their keep, `promote-project-rules.sh --tech vue --project FEATURE-003` opens a PR against CTP containing (a) rule YAMLs at `generated-code-quality-standards/vue/*.yaml`, (b) `vue` axis binding in `namespace-axis-binding.yaml`, (c) family registry flip `vue.provision_status: provisioned`, (d) source registry entry with canonical URL + fetcher + tier, (e) auto-generated acceptance test spec. **CTP maintainer code-reviews the PR — this is the ONLY channel by which a per-project rule becomes global.** On merge + next pin bump, Vue rules become part of `active.json`; the project's overlay folder becomes safely removable.
+- **§30.10 — PR-promotion path.** When project-scoped rules earn their keep, `promote-project-rule.sh --tech vue --project FEATURE-003` opens a PR against CTP containing (a) rule YAMLs at `generated-code-quality-standards/vue/*.yaml`, (b) `vue` axis binding in `namespace-axis-binding.yaml`, (c) family registry flip `vue.provision_status: provisioned`, (d) source registry entry with canonical URL + fetcher + tier, (e) auto-generated acceptance test spec. **CTP maintainer code-reviews the PR — this is the ONLY channel by which a per-project rule becomes global.** On merge + next pin bump, Vue rules become part of `active.json`; the project's overlay folder becomes safely removable.
 
 **Invariant chain (the "no silent globalization" spine):** project-scoped write ⇒ read-only view of global CTP substrate from GCTP ⇒ PR-only promotion ⇒ code review ⇒ merge ⇒ pin bump ⇒ globalization. No auto-inclusion path exists by construction, not by policy — the prime directive already forbids GCTP from editing CTP substrate; §30.10's PR is the sanctioned channel.
 
@@ -133,7 +133,7 @@ Full sample YAML across all 10+ families is in the design doc §2.
 ### 2.3. §30.10 — PR-promotion path (per-project → global)
 
 **Contract surface:**
-- **New script:** `promote-project-rules.sh --tech <name> --project <feature-id>` — assembles a PR against CTP with:
+- **New script:** `promote-project-rule.sh --tech <name> --project <feature-id>` — assembles a PR against CTP with:
   1. Rule YAMLs copied to `generated-code-quality-standards/<namespace>/*.yaml`.
   2. Axis binding added to `namespace-axis-binding.yaml`.
   3. Family registry flip: `provision_status: provisioned`.
@@ -180,7 +180,7 @@ Full sample YAML across all 10+ families is in the design doc §2.
 10. `deprovision-tech-rules.sh` reverts; classifier no longer activates the namespace.
 
 **§30.10:**
-11. `promote-project-rules.sh --tech vue --project FEATURE-003` assembles a PR diff containing all six artifacts (rule YAMLs + axis binding + registry flip + source registry entry + acceptance test spec + PR body).
+11. `promote-project-rule.sh --tech vue --project FEATURE-003` assembles a PR diff containing all six artifacts (rule YAMLs + axis binding + registry flip + source registry entry + acceptance test spec + PR body).
 12. PR diff includes auto-generated acceptance test spec citing the canonical URL for every rule.
 13. On CTP-side merge simulation, next pin bump lifts the project-overlay to global; the project's overlay folder is safely removable.
 14. Promotion writes a provenance record with operator identity + timestamp + canonical URL + rule count + rule-extraction version.

@@ -28,15 +28,15 @@ Bump the pin `11126a8 → b886658` — upstream HEAD carrying the full P-15 impl
 
 2. **S-59 classifier widening.** Naming any technology in the registry fires the umbrella namespaces at Stage 0, activating the framework-agnostic rules that already exist in `active.json` — Vue, Angular, Ember, Svelte, Solid, Astro, Qwik, Bun, Deno, Elysia, Fastify, Postgres, MySQL, Redis, Prisma, Drizzle all now activate the appropriate umbrellas immediately. `workload_classification.families_active[]` records which families fired.
 
-3. **S-60 acquire pipeline.** `commands/acquire-tech-rules.sh --tech <name> --project <id>` searches the same authoritative sources CTP already uses (D2 `fetcher:` hint optional), extracts the tech-specific rules, and stores them at `generated-code-quality-standards/_project/<project-id>/<namespace>/*.yaml` with `origin: project`, `project_id`, 4-axis tags, and provenance. D3 budget (`--max-sources 8` default; over-budget → `budget_exhausted` + `needs_source` non-silent).
+3. **S-60 acquire pipeline.** `commands/acquire-technology-rules.sh --tech <name> --project <id>` searches the same authoritative sources CTP already uses (D2 `fetcher:` hint optional), extracts the tech-specific rules, and stores them at `generated-code-quality-standards/_project/<project-id>/<namespace>/*.yaml` with `origin: project`, `project_id`, 4-axis tags, and provenance. D3 budget (`--max-sources 8` default; over-budget → `budget_exhausted` + `needs_source` non-silent).
 
 4. **S-61 technology-fitness recommender.** When the operator asks what to use, the recommender doesn't just accept the suggestion — it can propose alternatives (Angular over React for an enterprise project, etc.) with rationale drawn from the umbrella-matched sources. No LLM in the recommendation path.
 
-5. **S-62 promotion PR flow.** `commands/promote-project-rules.sh --tech <name> --project <id>` assembles the six-artifact PR against CTP `main` (rule YAMLs + axis binding + registry flip + source registry entry + acceptance-test spec + PR body). Merge is the ONLY channel by which a per-project rule becomes global — the no-silent-globalization spine (convergence doc B4).
+5. **S-62 promotion PR flow.** `commands/promote-project-rule.sh --tech <name> --project <id>` assembles the six-artifact PR against CTP `main` (rule YAMLs + axis binding + registry flip + source registry entry + acceptance-test spec + PR body). Merge is the ONLY channel by which a per-project rule becomes global — the no-silent-globalization spine (convergence doc B4).
 
 6. **S-63 `_project/` foundation.** Working store at `generated-code-quality-standards/_project/<project-id>/<namespace>/*.yaml` inside the plugin cache. Aggregator `--project <id>` scopes the effective rule set to `active.json ∪ _project/<id>/`. Without `--project` the aggregator returns byte-identical `active.json` — the A9 no-silent-globalization spine formalized.
 
-7. **S-64 removal.** `release-tech-rules.sh --tech <name> --project <id>` reverses acquisition; symmetric removal PR handles deprecation on the promoted-then-EOL path (D5). `deprecated: true` rules skip default enforcement.
+7. **S-64 removal.** `promote-project-rule.sh --release --tech <name> --project <id>` reverses acquisition; symmetric removal PR handles deprecation on the promoted-then-EOL path (D5). `deprecated: true` rules skip default enforcement.
 
 8. **CL-560 consumer-contract reconciliation.** CTP aligned the shipped runtime field names on `full-surface-intake` output to exactly match GCTP's pre-wired validator: `families_active[]`, `project_id` (string|null), `project_overlay_namespaces[]`, and `--project` propagated onto the consult itself. This is the reciprocal of ADR-0087's key-name reconciliation, but done on CTP's side this time so GCTP's pre-wire schema tolerance lands unchanged.
 
@@ -44,7 +44,7 @@ Bump the pin `11126a8 → b886658` — upstream HEAD carrying the full P-15 impl
 
 1. **Non-React frontends now activate umbrellas.** At pin `11126a8`, naming `vue` in a vision produced zero probe activation; at `b886658`, Vue fires `frontend` family umbrellas — Google TS style, TypeScript handbook, OWASP ASVS + Top 10, WCAG 2.2, web-vitals, documentation — instantly, without any new scraping. Same for Angular, Ember, Svelte, Solid, Astro, Qwik.
 2. **On-demand tech-specific rules with a bounded write plane.** Acquired rules for Vue land at `_project/FEATURE-003/vue/` (per-project), not at `generated-code-quality-standards/vue/` (global). Gitignored on CTP's side. The `origin: project` scoping enforces first-class-but-scoped rigor — the acquired rules grade decisions for their project at official-rule rigor, but never leak into a different project or into global.
-3. **PR-only promotion path.** No auto-promotion. When a project-scoped ruleset earns its keep, the operator opens a PR against CTP main via `promote-project-rules.sh`; CTP maintainer reviews under CTP's standard PR discipline; on merge + next GCTP pin bump the rules become global. Two-step lifecycle uses the SAME governance GCTP already applies to every CTP CL adoption.
+3. **PR-only promotion path.** No auto-promotion. When a project-scoped ruleset earns its keep, the operator opens a PR against CTP main via `promote-project-rule.sh`; CTP maintainer reviews under CTP's standard PR discipline; on merge + next GCTP pin bump the rules become global. Two-step lifecycle uses the SAME governance GCTP already applies to every CTP CL adoption.
 4. **Recommender rounds it out.** S-61 handles the "you named Vue but for THIS regulatory context maybe Angular is a better fit" case, with rationale cited to umbrella-matched sources.
 
 ## What changes for GCTP
@@ -85,7 +85,7 @@ Bump the pin `11126a8 → b886658` — upstream HEAD carrying the full P-15 impl
 
 ## Rollback
 
-`git revert` this commit → lockfile snaps back to `11126a8`; classifier reverts to pre-P-15 behavior (Vue/Angular/etc. no longer fire umbrellas); `acquire-tech-rules.sh` / `release-tech-rules.sh` / `promote-project-rules.sh` disappear from the cache; `_project/` overlay stops loading in the aggregator; the recommender is gone. GCTP's schema tolerance and invariant-4 scoping remain active (they're additive-optional — they degrade gracefully when the shipped fields are absent). `sync-plugin.sh` preservation path stays at the corrected nested location (harmless when `_project/` doesn't exist). No downstream schema migration required — nothing outside classification + acquisition + enforcement changed.
+`git revert` this commit → lockfile snaps back to `11126a8`; classifier reverts to pre-P-15 behavior (Vue/Angular/etc. no longer fire umbrellas); `acquire-technology-rules.sh` / `promote-project-rule.sh --release` / `promote-project-rule.sh` disappear from the cache; `_project/` overlay stops loading in the aggregator; the recommender is gone. GCTP's schema tolerance and invariant-4 scoping remain active (they're additive-optional — they degrade gracefully when the shipped fields are absent). `sync-plugin.sh` preservation path stays at the corrected nested location (harmless when `_project/` doesn't exist). No downstream schema migration required — nothing outside classification + acquisition + enforcement changed.
 
 ## References
 

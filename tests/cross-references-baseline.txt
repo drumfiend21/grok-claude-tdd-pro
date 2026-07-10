@@ -73,6 +73,7 @@ docs/kata-architecture-revalidation-2026-06-20.md references missing path: docs/
 docs/plugin-sync.md references missing path: docs/adr/000N-*.md
 docs/plugin-sync.md references missing path: docs/architecture-v1.9.md
 docs/rulebook-coverage-audit.md references missing path: docs/rulebook-coverage-audit-2026-07-01.md
+docs/upstream-ctp-proposals.md references missing path: docs/architecture-v1.9.md
 docs/upstream-ctp-proposals.md references missing path: docs/handoff-ctp-to-gctp-p15-converged.md
 README.md references missing path: docs/adr/0006-static-context-injection-for-external-planners.md
 README.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md

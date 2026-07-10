@@ -154,7 +154,7 @@ Restated from GCTP's prior 14+3 map onto CTP's PUBLISHED §4 canonical shape:
 
 | # | Assertion | Machine form |
 |---|---|---|
-| **A11** | `promote-project-rules.sh --tech vue --project FEATURE-003` assembles PR diff with all six artifacts (rule YAMLs at `generated-code-quality-standards/vue/*.yaml` + axis binding + registry `provision_status: provisioned` flip + source-registry entry + acceptance-test spec + PR body). | Dry-run mode prints diff; assert six file paths present; assert PR-body template variables populated. |
+| **A11** | `promote-project-rule.sh --tech vue --project FEATURE-003` assembles PR diff with all six artifacts (rule YAMLs at `generated-code-quality-standards/vue/*.yaml` + axis binding + registry `provision_status: provisioned` flip + source-registry entry + acceptance-test spec + PR body). | Dry-run mode prints diff; assert six file paths present; assert PR-body template variables populated. |
 | **A12** | PR diff includes auto-generated acceptance-test spec citing canonical URL per rule (D2 fetcher-provenance carry-forward). | Each rule in the acceptance-test spec has `source_url` field matching the acquired rule's `source_url`. |
 | **A13** | Merge simulation → next pin bump lifts overlay to global; `_project/FEATURE-003/vue/` becomes safely removable via `release --replaced-by-global`. | Simulated merge: bump pin; sync repopulates cache with vue in `active.json`; release-mode "replaced-by-global" exits 0 without warnings. |
 | **A14** | Promotion writes provenance record with `operator`, `promoted_at`, `pr_url`, `pr_sha`, `rule_count`, `canonical_url`, `rule_extraction_version`. | `test -f .harness/consult-work/FEATURE-003/promoted-rules.log.md`; grep each field label; assert non-empty values. |

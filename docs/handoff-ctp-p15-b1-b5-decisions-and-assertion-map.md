@@ -68,7 +68,7 @@
 
 **Prime-directive check.** `_project/` is a DECLARED contract surface (documented in `docs/handoff-contract.md §Project-Rule-Store` and in CTP §31.3), not a private path GCTP reaches into. GCTP does not hand-author or edit rule YAMLs inside `_project/`; the write plane is uniformly CTP's. GCTP's role is `--project`-passing invoker + read-side loader consumer. This preserves the prime directive's "contract-only coupling" clause: contract-surface writes are sanctioned; private-path pokes are not.
 
-**Gitignore.** `_project/` is gitignored per CTP §31 (working-state, not committed data). Pin-bump lifecycle handles cleanup: when a promoted-and-merged tech shows up in `active.json` via `standards-sync.sh`, `release-tech-rules.sh --replaced-by-global` (or equivalent) tidies the overlay entry for that tech.
+**Gitignore.** `_project/` is gitignored per CTP §31 (working-state, not committed data). Pin-bump lifecycle handles cleanup: when a promoted-and-merged tech shows up in `active.json` via `standards-sync.sh`, `promote-project-rule.sh --release --replaced-by-global` (or equivalent) tidies the overlay entry for that tech.
 
 **Cache-rebuild resilience.** `standards-sync.sh` currently rebuilds `.harness/plugin-cache/claude-tdd-pro/` from the pinned commit on every sync. `_project/` is *not* part of the CTP commit; the rebuild must NOT wipe it. GCTP-side amendment: `standards-sync.sh` preserves `_project/` across rebuilds (backup → rebuild → restore), tracked in TICKET-121.a. Alternative if CTP prefers: `_project/` lives at `.harness/project-rules/<project-id>/` (parallel to plugin-cache, unaffected by rebuild) — GCTP defers to CTP's preference. **GCTP's leaning:** keep `_project/` inside the plugin cache (CTP's proposed location) with the sync-side preservation, because it keeps read-path symmetry (one loader union call, one directory tree). CTP's call.
 
@@ -78,14 +78,14 @@
 
 **Answer.** No new GCTP-side §15 ADR requirement for the promotion PR itself. Two-step lifecycle, both steps already covered by existing governance:
 
-1. **Step 1 — Promotion PR against CTP `main`.** GCTP invokes `promote-project-rules.sh --tech vue --project FEATURE-003` (CTP-owned). PR is reviewed and merged/declined by CTP maintainer using CTP's standard PR discipline. GCTP-side artifacts: PR URL logged in `.harness/consult-work/<project-id>/promoted-rules.log.md` + a P-15-followon row in `docs/upstream-ctp-proposals.md` with status `filed → PR open`.
+1. **Step 1 — Promotion PR against CTP `main`.** GCTP invokes `promote-project-rule.sh --tech vue --project FEATURE-003` (CTP-owned). PR is reviewed and merged/declined by CTP maintainer using CTP's standard PR discipline. GCTP-side artifacts: PR URL logged in `.harness/consult-work/<project-id>/promoted-rules.log.md` + a P-15-followon row in `docs/upstream-ctp-proposals.md` with status `filed → PR open`.
 2. **Step 2 — Subsequent pin bump adopts merged content.** When GCTP's next routine pin bump advances past the merge commit, the promoted rules land in `active.json` via `standards-sync.sh`. That pin bump is §15-gated per today's discipline — a new ADR captures which promoted rules are adopted (references the merged PR SHA, tech acquired, source URL). Status in `docs/upstream-ctp-proposals.md` advances to `PR merged → pin bump ADR → adopted`.
 
 **Why no NEW gate.** Every substantive CTP change today follows this same two-step: (a) a CL merges, (b) a pin bump adopts. The promotion PR is one such CL. Adding a separate GCTP ADR requirement for the PR itself would (a) double-gate what's already gated, (b) push GCTP into architecting the promotion (compact violation — CTP owns rule content), (c) create governance drift between promotion PRs and other CTP CLs.
 
 **Traceability.** `docs/upstream-ctp-proposals.md` grows a new section pattern `P-15-followon:<tech>` per promoted tech with status column: `filed → PR open → PR merged → pin bump ADR → adopted`. Same status-tracked lifecycle as P-1…P-15. `promoted-rules.log.md` fields: `tech`, `project-id`, `promoted-at`, `pr-url`, `pr-sha`, `pr-status`, `rule-count`, `canonical-url`, `operator`, `provenance-record-ref`.
 
-**Rejected-PR recovery.** If CTP declines the PR, GCTP-side: `release-tech-rules.sh --tech vue --project FEATURE-003` clears the working overlay; the operator either re-invokes acquisition with fixes and opens a new PR, or leaves the tech project-scoped indefinitely. `promoted-rules.log.md` records `pr-status: declined` with the CTP-side reason; no ADR churn on GCTP side (nothing was adopted).
+**Rejected-PR recovery.** If CTP declines the PR, GCTP-side: `promote-project-rule.sh --release --tech vue --project FEATURE-003` clears the working overlay; the operator either re-invokes acquisition with fixes and opens a new PR, or leaves the tech project-scoped indefinitely. `promoted-rules.log.md` records `pr-status: declined` with the CTP-side reason; no ADR churn on GCTP side (nothing was adopted).
 
 ### B4 — `origin: project` awareness in validators
 
@@ -140,18 +140,18 @@ Mapping each GCTP assertion from `docs/handoff-ctp-p15-family-umbrella-per-proje
 
 | GCTP # | Original text (compressed) | CTP shape target | Notes |
 |---|---|---|---|
-| A5 | `acquire-tech-rules.sh --tech <unprovisioned>` with reachable URL succeeds; writes YAML to `_project/<project-id>/<namespace>/`; provenance record generated. | CTP (b) acquisition CLI + `_project/` overlay shape from §31.3. | Verifies the happy-path acquire. |
-| A6 | `acquire-tech-rules.sh --tech <unprovisioned>` with unreachable URL exits 2 (cite-or-decline). | CTP (b) + D3 budget-exhaustion boundary. | Distinguish "URL unreachable" (exit 2) from `budget_exhausted` (`needs_source`); both are non-silent per D3. |
-| A7 | `acquire-tech-rules.sh --tech <already-globally-provisioned>` exits 0 no-op ("already global"). | CTP (b). | Guards against double-provisioning; loader union already covers this rule via `active.json`. |
+| A5 | `acquire-technology-rules.sh --tech <unprovisioned>` with reachable URL succeeds; writes YAML to `_project/<project-id>/<namespace>/`; provenance record generated. | CTP (b) acquisition CLI + `_project/` overlay shape from §31.3. | Verifies the happy-path acquire. |
+| A6 | `acquire-technology-rules.sh --tech <unprovisioned>` with unreachable URL exits 2 (cite-or-decline). | CTP (b) + D3 budget-exhaustion boundary. | Distinguish "URL unreachable" (exit 2) from `budget_exhausted` (`needs_source`); both are non-silent per D3. |
+| A7 | `acquire-technology-rules.sh --tech <already-globally-provisioned>` exits 0 no-op ("already global"). | CTP (b). | Guards against double-provisioning; loader union already covers this rule via `active.json`. |
 | A8 | Loader unions `active.json` (global) with `_project/<project-id>/*` (project overlay); project's effective rule set reflects both. | CTP §31.3 canonical overlay shape + loader spec. | Load-bearing for B4 (first-class enforcement). |
 | A9 | Acquisition DOES NOT modify global `active.json`. Byte-identical before/after. | CTP §31.3 write-plane split (working vs official). | Load-bearing for the "no silent globalization" spine. This IS GCTP's own test of that invariant, per CTP §7. |
-| A10 | `release-tech-rules.sh` reverts; classifier no longer activates the namespace. | CTP (b) release CLI + `_project/` overlay clearance. | Reversibility. |
+| A10 | `promote-project-rule.sh --release` reverts; classifier no longer activates the namespace. | CTP (b) release CLI + `_project/` overlay clearance. | Reversibility. |
 
 ### §31.2 — PR promotion (GCTP-original §30.10; assertions 11–14)
 
 | GCTP # | Original text (compressed) | CTP shape target | Notes |
 |---|---|---|---|
-| A11 | `promote-project-rules.sh --tech vue --project FEATURE-003` assembles a PR diff containing all six artifacts (rule YAMLs + axis binding + registry flip + source registry entry + acceptance-test spec + PR body). | CTP (c) promotion CLI + PR envelope shape from §31.3. | Verifies PR content completeness. |
+| A11 | `promote-project-rule.sh --tech vue --project FEATURE-003` assembles a PR diff containing all six artifacts (rule YAMLs + axis binding + registry flip + source registry entry + acceptance-test spec + PR body). | CTP (c) promotion CLI + PR envelope shape from §31.3. | Verifies PR content completeness. |
 | A12 | PR diff includes auto-generated acceptance-test spec citing canonical URL per rule. | CTP (c) + D2 fetcher-provenance carry-forward. | The promotion PR is reviewable: extracted YAMLs + citations + tests. |
 | A13 | On CTP-side merge simulation, next pin bump lifts overlay to global; the project overlay folder is safely removable. | CTP (c) + B3 pin-bump adoption path. | End-to-end lifecycle test; GCTP-side pin-bump adoption tested in TICKET-121.a. |
 | A14 | Promotion writes provenance record with operator + timestamp + canonical URL + rule count + rule-extraction version. | CTP (c) + D2 fetcher-provenance record shape. | Long-term traceability for the community-facing rule set. |
@@ -172,7 +172,7 @@ Restating and formalizing the additions from GCTP's 2026-07-10 reconciliation do
 
 ### A16 — `--project` flag required (fail-loud without)
 
-**Assertion.** Invoking any CTP command touching per-project state (`acquire-tech-rules.sh`, `release-tech-rules.sh`, `promote-project-rules.sh`, per-project reveal) WITHOUT `--project <id>` → exit non-zero with a human-readable message. No implicit default; no ambient current-project.
+**Assertion.** Invoking any CTP command touching per-project state (`acquire-technology-rules.sh`, `promote-project-rule.sh --release`, `promote-project-rule.sh`, per-project reveal) WITHOUT `--project <id>` → exit non-zero with a human-readable message. No implicit default; no ambient current-project.
 
 **Why load-bearing.** Prevents accidental cross-project contamination via omission. Matches D3's non-silent-no-op discipline.
 

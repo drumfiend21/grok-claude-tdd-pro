@@ -85,7 +85,7 @@ Everywhere GCTP's original shape yields, it yields to the *more precise* CTP sha
 **Decision.** Per-project acquired rules live at `.harness/plugin-cache/claude-tdd-pro/_project/<project-id>/` — inside the plugin cache directory tree (GCTP's filesystem) but populated by CTP-owned scripts (CTP's write plane). Directory layout mirrors global: `_project/<project-id>/<namespace>/*.yaml` + `<namespace>/.axis-binding.yaml`.
 
 **Write path.**
-- Operator issues `/consult` or equivalent; GCTP invokes `bash .harness/plugin-cache/claude-tdd-pro/commands/acquire-tech-rules.sh --tech vue --project FEATURE-003` (CTP-owned script).
+- Operator issues `/consult` or equivalent; GCTP invokes `bash .harness/plugin-cache/claude-tdd-pro/commands/acquire-technology-rules.sh --tech vue --project FEATURE-003` (CTP-owned script).
 - CTP's script resolves family registry, fetches canonical URL (cite-or-decline: 200 or exit 2), scrapes via existing fetcher pipeline, tags per family inference, writes to `_project/<project-id>/vue/*.yaml`.
 - GCTP never writes rule YAMLs itself.
 
@@ -106,7 +106,7 @@ Everywhere GCTP's original shape yields, it yields to the *more precise* CTP sha
 
 **Decision.** Promotion is a **two-step** flow:
 
-1. **Step 1 (immediate — CTP-side review).** GCTP invokes `bash .harness/plugin-cache/claude-tdd-pro/commands/promote-project-rules.sh --tech vue --project FEATURE-003` (CTP-owned). Script assembles a **core-content PR** against `drumfiend21/claude-tdd-pro` `main` containing (a) rule YAMLs at `generated-code-quality-standards/vue/*.yaml`, (b) axis binding in `namespace-axis-binding.yaml`, (c) family registry entry flipped to `provision_status: provisioned`, (d) source registry entry with canonical URL + fetcher + tier, (e) auto-generated acceptance-test spec citing canonical URL per rule, (f) PR body linking the project's provenance record. CTP maintainer code-reviews the PR using CTP's standard `docs/PULL-REQUEST-REVIEW.md` (or equivalent) discipline. Merge or request-changes is CTP's call.
+1. **Step 1 (immediate — CTP-side review).** GCTP invokes `bash .harness/plugin-cache/claude-tdd-pro/commands/promote-project-rule.sh --tech vue --project FEATURE-003` (CTP-owned). Script assembles a **core-content PR** against `drumfiend21/claude-tdd-pro` `main` containing (a) rule YAMLs at `generated-code-quality-standards/vue/*.yaml`, (b) axis binding in `namespace-axis-binding.yaml`, (c) family registry entry flipped to `provision_status: provisioned`, (d) source registry entry with canonical URL + fetcher + tier, (e) auto-generated acceptance-test spec citing canonical URL per rule, (f) PR body linking the project's provenance record. CTP maintainer code-reviews the PR using CTP's standard `docs/PULL-REQUEST-REVIEW.md` (or equivalent) discipline. Merge or request-changes is CTP's call.
 
 2. **Step 2 (delayed — GCTP-side pin bump).** Once the PR merges into CTP `main`, the promoted rules are picked up by the next GCTP routine pin bump via `standards-sync.sh`. That pin bump is §15-gated per today's discipline: a new ADR captures which promoted rules are being adopted (references the merged PR SHA + the tech acquired). This is the SAME governance GCTP applies to every CTP pin bump today — no new gate.
 
@@ -116,7 +116,7 @@ Everywhere GCTP's original shape yields, it yields to the *more precise* CTP sha
 - GCTP records the promotion PR URL in `.harness/consult-work/<project-id>/promoted-rules.log.md` at the moment of invocation. Fields: `tech`, `project-id`, `promoted-at`, `pr-url`, `rule-count`, `canonical-url`, `operator`.
 - `docs/upstream-ctp-proposals.md` gets a `P-15-followon:<tech>` row per promoted tech: `filed → PR open → PR merged → pin bump ADR → adopted`. Same status-tracked lifecycle as every other upstream proposal.
 
-**Reversibility.** If CTP declines the PR, `release-tech-rules.sh --tech vue --project FEATURE-003` reverts the working store; the acquired rules stay project-scoped until either re-promoted (with fixes) or abandoned.
+**Reversibility.** If CTP declines the PR, `promote-project-rule.sh --release --tech vue --project FEATURE-003` reverts the working store; the acquired rules stay project-scoped until either re-promoted (with fixes) or abandoned.
 
 **Cross-check.** This is the SAME two-step lifecycle GCTP already runs for every substantive CTP change today: (1) a CTP CL merges, (2) a GCTP pin bump adopts. The P-15 promotion PR is one such CL. No governance rewrite.
 
@@ -164,7 +164,7 @@ Everywhere GCTP's original shape yields, it yields to the *more precise* CTP sha
 **Decision.**
 - **Kata acquired rules live under the kata's `project-id`.** For the current O'Reilly SoftArchCert kata, `project-id = FEATURE-003` (stable across the kata's lifetime). All Vue/Bun/Elysia/Postgres rules acquired during the kata land in `_project/FEATURE-003/`.
 - **Default posture: working-only.** The kata is dogfood — an exercise for shaking out the pipeline. Rules acquired during the kata do NOT auto-promote. The kata's success criterion is "the pipeline works end-to-end," not "we grew the global rule set."
-- **Promotion optional, per-tech, operator-driven.** If a kata-acquired ruleset is clearly reusable (e.g., Vue-rules that turn out to be canonically-sourced, well-tagged, and passing the acceptance-test spec cleanly), the operator can invoke `promote-project-rules.sh --tech vue --project FEATURE-003` and go through the standard PR flow. This is a manual, deliberate step — never automatic on kata completion.
+- **Promotion optional, per-tech, operator-driven.** If a kata-acquired ruleset is clearly reusable (e.g., Vue-rules that turn out to be canonically-sourced, well-tagged, and passing the acceptance-test spec cleanly), the operator can invoke `promote-project-rule.sh --tech vue --project FEATURE-003` and go through the standard PR flow. This is a manual, deliberate step — never automatic on kata completion.
 
 **Why this shape.** Conflating "the kata ran" with "the kata's rules should ship" would (a) make kata iteration too heavy (every kata run triggers CTP-side PR review), (b) muddle the promotion signal (community-facing rule content should be operator-vetted, not exercise-vetted), (c) risk silently expanding the global rule set through routine dogfood — which violates the "no silent globalization" spine even if governance is technically PR-gated.
 
@@ -176,7 +176,7 @@ Everywhere GCTP's original shape yields, it yields to the *more precise* CTP sha
 
 ### 4.1. Delta A — verb: `acquire` / `release`, not `provision` / `deprovision`
 
-**Ask.** CTP's design already uses `acquire` in its summary. GCTP adopts CTP's word across scripts (`acquire-tech-rules.sh` / `release-tech-rules.sh`), docs, contract surface, and reveal labels. GCTP's earlier "provision" language is a relict of the initial P-15 draft and yields to CTP's clearer verb.
+**Ask.** CTP's design already uses `acquire` in its summary. GCTP adopts CTP's word across scripts (`acquire-technology-rules.sh` / `promote-project-rule.sh --release`), docs, contract surface, and reveal labels. GCTP's earlier "provision" language is a relict of the initial P-15 draft and yields to CTP's clearer verb.
 
 **Why.** "Provision" is overloaded in infra vocabulary (VM provisioning, DB provisioning, resource provisioning). "Acquire" is unambiguous: obtain a rule set from its canonical source and store it locally. "Release" is the clean antonym for reversal. Adopting one word across both sides eliminates the current cross-doc mismatch.
 
@@ -238,8 +238,8 @@ CTP identified **S-63** as the foundation ticket: introduce the `_project/` orig
 | CL | Scope | Contract surface added | Ships |
 |---|---|---|---|
 | P-15 phase 1 | Family umbrella activation | `standards/technology-family-registry.yaml`; classifier catalog widening; `workload_classification.families_active[]` | v1.17 CL a |
-| P-15 phase 2 | Per-project acquisition | `commands/acquire-tech-rules.sh`, `commands/release-tech-rules.sh`; `_project/<project-id>/` store; loader union; `workload_classification.project_overlay_namespaces[]` (derived from `_project/` origin) | v1.17 CL b |
-| P-15 phase 3 | PR promotion | `commands/promote-project-rules.sh`; auto-generated PR body + acceptance-test spec; provenance record | v1.17 CL c |
+| P-15 phase 2 | Per-project acquisition | `commands/acquire-technology-rules.sh`, `commands/promote-project-rule.sh --release`; `_project/<project-id>/` store; loader union; `workload_classification.project_overlay_namespaces[]` (derived from `_project/` origin) | v1.17 CL b |
+| P-15 phase 3 | PR promotion | `commands/promote-project-rule.sh`; auto-generated PR body + acceptance-test spec; provenance record | v1.17 CL c |
 
 **GCTP-side companion tickets:**
 
