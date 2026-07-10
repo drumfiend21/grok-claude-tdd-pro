@@ -9,9 +9,15 @@
 #   --preflight            Verify the loop's hard prerequisites (ADR-0056 D-D):
 #                          ruby >= 3.0 on PATH AND CTP's architecture engine present
 #                          in the pinned plugin cache. Exit 0 only if both hold.
-#   --engine-path <name>   Resolve + print the path to a CTP engine script
-#                          (architect-session.sh / business-intake.sh /
-#                          architect-recommend.sh / well-architected-review.sh).
+#   --engine-path <name>   Resolve + print the path to a CTP engine script.
+#                          Allowlist: the v1.0 quartet (architect-session.sh /
+#                          business-intake.sh / architect-recommend.sh /
+#                          well-architected-review.sh) AND the v1.1 pair
+#                          (full-surface-intake.sh / full-surface-consult.sh)
+#                          shipped by CTP at pin f060a8e+ (§30 / §30.1). All
+#                          six must be present in the pinned plugin cache at
+#                          preflight — a pre-P-12 rollback is not supported by
+#                          the /consult skill (KA-1 G-2 close-out).
 #   --validate <file>      Validate a consult artifact (FEATURE-NNN.architecture.json)
 #                          against docs/handoff-contract.md §Architecture-Consult-Loop:
 #                          schema_version=="1", needs_grounding==0, ruby_ok!=false, and
@@ -73,7 +79,15 @@ set -u
 RUBY_BIN="${CONSULT_RUBY_BIN:-ruby}"
 PLUGIN_CACHE="${CONSULT_PLUGIN_CACHE:-.harness/plugin-cache/claude-tdd-pro}"
 MIN_RUBY="${CONSULT_MIN_RUBY:-3.0}"
-ENGINE_SCRIPTS="architect-session.sh business-intake.sh architect-recommend.sh well-architected-review.sh"
+# v1.0 quartet + v1.1 pair (full-surface intake + design-consult). The v1.1 pair
+# was added to the allowlist to close KA-1 G-2: at pin f060a8e+ CTP ships
+# full-surface-intake.sh (§30 / S-57) and full-surface-consult.sh (§30.1) as
+# first-class engines the /consult skill and kata.sh drive; the spine's
+# --engine-path must resolve them alongside the v1.0 quartet, else callers have
+# to reach around the spine to the absolute plugin-cache path (contract-surface
+# leak, prime-directive-adjacent). All 6 must be present in the pinned plugin
+# cache at preflight (rollback to a pre-P-12 pin is not supported by /consult).
+ENGINE_SCRIPTS="architect-session.sh business-intake.sh architect-recommend.sh well-architected-review.sh full-surface-intake.sh full-surface-consult.sh"
 
 emit() { printf '%s\n' "$*"; }
 

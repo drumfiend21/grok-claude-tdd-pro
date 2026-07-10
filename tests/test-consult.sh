@@ -58,6 +58,20 @@ assert_eq "$?" "1" "--engine-path disallowed name → exit 1"
 "$SCRIPT" --engine-path >/dev/null 2>&1
 assert_eq "$?" "2" "--engine-path missing arg → exit 2"
 
+# Tests 10.a/10.b: v1.1 engines are allowlisted so the spine routes to them, not
+# just the v1.0 quartet. Closes KA-1 G-2 (spine allowlist drift after P-12/P-13
+# adoption). The /consult skill and kata.sh both need full-surface-intake.sh for
+# Stage-1/Stage-2 intake and full-surface-consult.sh for design-time consumption
+# of probe commitments (§30.1). Discovered when `kata.sh` had to invoke the
+# intake engine via absolute plugin-cache path because --engine-path refused
+# to resolve it.
+out=$("$SCRIPT" --engine-path full-surface-intake.sh 2>&1); ec=$?
+assert_eq "$ec" "0" "--engine-path full-surface-intake.sh → exit 0 (v1.1 intake engine)"
+assert_match "$out" "commands/full-surface-intake.sh" "--engine-path prints the v1.1 intake path"
+out=$("$SCRIPT" --engine-path full-surface-consult.sh 2>&1); ec=$?
+assert_eq "$ec" "0" "--engine-path full-surface-consult.sh → exit 0 (v1.1 design-consult engine)"
+assert_match "$out" "commands/full-surface-consult.sh" "--engine-path prints the v1.1 design-consult path"
+
 # --- --validate (consult-artifact gate, A-4) ---
 if command -v node >/dev/null 2>&1; then
     # Valid artifact → 0
