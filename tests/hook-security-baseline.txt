@@ -22,7 +22,11 @@ S-3|rm -rf usage (verify path is bounded)|scripts/standards-sync.sh:67:        r
 S-3|rm -rf usage (verify path is bounded)|scripts/standards-sync.sh:70:    rm -f "$TMP_OUT.norm" "$TMP_OUT.cur"
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:106:trap 'rm -f "$TMP_CSF"' EXIT
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:142:    rm -rf "$CLONE_DIR_E"
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:156:            || { rm -rf "$_PROJ_BACKUP"; die "could not back up _project/ for preservation"; }
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:159:    rm -rf "$CLONE_DIR_E"
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:172:        [ -d "$CLONE_DIR_E/_project" ] && rm -rf "$_PROJ_BACKUP" || true
 S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:208:rm -rf "$CLONE_DIR"
+S-3|rm -rf usage (verify path is bounded)|scripts/sync-plugin.sh:231:rm -rf "$CLONE_DIR"
 S-3|rm -rf usage (verify path is bounded)|tests/integration/test-generative-integration.sh:52:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|tests/test-all.sh:75:        [ "$CACHE" -eq 1 ] && rm -f "$(tc_cache_dir)/$suite_name.hash" 2>/dev/null
 S-3|rm -rf usage (verify path is bounded)|tests/test-app-root.sh:20:trap 'rm -rf -- "$TMP"' EXIT INT TERM
@@ -80,5 +84,10 @@ S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:61:rm 
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:65:rm -f "$CTPFF"; run --configure bogus >/dev/null 2>&1; rc=$?
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:76:rm -f "$C" "$TMP/refresh.log"
 S-3|rm -rf usage (verify path is bounded)|tests/test-standards-refresh.sh:96:rm -f "$C" "$TMP/refresh.log"; run --configure on-demand >/dev/null 2>&1
+S-3|rm -rf usage (verify path is bounded)|tests/test-sync-plugin.sh:118:    rm -rf "$CACHE_PATH/.git"
+S-3|rm -rf usage (verify path is bounded)|tests/test-sync-plugin.sh:125:        rm -rf "$_GIT_BACKUP"
+S-3|rm -rf usage (verify path is bounded)|tests/test-sync-plugin.sh:127:        rm -rf "$CACHE_PATH/_project"
+S-3|rm -rf usage (verify path is bounded)|tests/test-sync-plugin.sh:129:        rm -rf "$_GIT_BACKUP"
+S-3|rm -rf usage (verify path is bounded)|tests/test-sync-plugin.sh:136:        rm -rf "$CACHE_PATH/_project"
 S-3|rm -rf usage (verify path is bounded)|tests/test-test-cache.sh:27:trap 'rm -rf -- "$TMP"' EXIT INT TERM
 S-4a|hardcoded _KEY assignment|tests/test-grok-run.sh:97:printf 'XAI_API_KEY="xai-testkey-from-env-file"\n' > "$TMP/dotenv"

@@ -81,6 +81,64 @@ PIN=$(grep '^pinned_commit:' "$LOCKFILE" | awk '{print $2}')
 CACHE_HEAD=$(git -C .harness/plugin-cache/claude-tdd-pro rev-parse HEAD 2>/dev/null || echo "")
 assert_eq "$CACHE_HEAD" "$PIN" "--check leaves cache at the pinned commit (not branch HEAD)"
 
+# --- P-15 Phase 2 pre-wire (TICKET-121.b): _project/ preservation across re-clone ---
+# Rationale: the `_project/<project-id>/` directory inside the plugin cache is a
+# CTP-declared contract surface (per §31 / S-63 / convergence doc B2) holding
+# per-project acquired rules. It is gitignored — NOT part of any pinned commit —
+# so a naive --ensure re-clone would wipe operator working state. This test
+# creates a stub _project/ tree, forces a re-clone by wiping .git, then asserts
+# the _project/ tree survives. Defensive path exercised: no-op when _project/
+# absent (baseline behavior unchanged). At CTP pin 11126a8 the _project/ directory
+# does not yet exist; the test creates it locally so this pre-wire assertion is
+# meaningful. Convergence doc B2 mandates preservation.
+#
+# Test 8: baseline — no _project/ present, --ensure works unchanged.
+CACHE_PATH=.harness/plugin-cache/claude-tdd-pro
+[ ! -d "$CACHE_PATH/_project" ]
+assert_eq "$?" "0" "_project/ absent at pin (baseline; TICKET-121.b preservation no-op path)"
+
+# Test 9: stub _project/ tree survives --ensure re-clone.
+mkdir -p "$CACHE_PATH/_project/FEATURE-121/vue"
+STUB_RULE="$CACHE_PATH/_project/FEATURE-121/vue/vue-composition-api.yaml"
+cat > "$STUB_RULE" <<'YAML'
+id: vue-composition-api
+source_namespace: vue
+origin: project
+project_id: FEATURE-121
+source_url: https://vuejs.org/guide/introduction.html
+YAML
+STUB_SHA_BEFORE=$(shasum "$STUB_RULE" | awk '{print $1}')
+# Force a re-clone by wiping .git so --ensure re-clones from scratch. Backup .git
+# via a marker path to a temp location so we can restore if network fails.
+if [ -d "$CACHE_PATH/.git" ]; then
+    _GIT_BACKUP=$(mktemp -d -t sync-plugin-git.XXXXXX)
+    cp -R "$CACHE_PATH/.git" "$_GIT_BACKUP/.git"
+    # Force re-clone: delete .git so --ensure's early-return check fails on
+    # `rev-parse HEAD` and it wipes the cache.
+    rm -rf "$CACHE_PATH/.git"
+    "$SCRIPT" --ensure --quiet >/dev/null 2>&1
+    ensure_ec=$?
+    # Restore .git if the re-clone somehow failed to establish one (network etc).
+    if [ ! -d "$CACHE_PATH/.git" ]; then
+        cp -R "$_GIT_BACKUP/.git" "$CACHE_PATH/.git"
+        log "  (note: re-clone failed to establish .git; skipping preservation test)"
+        rm -rf "$_GIT_BACKUP"
+        # Also clean up the stub _project we created; it would leak if the re-clone bailed.
+        rm -rf "$CACHE_PATH/_project"
+    else
+        rm -rf "$_GIT_BACKUP"
+        assert_eq "$ensure_ec" "0" "--ensure after wiped .git exits 0 (re-clones cleanly)"
+        [ -f "$STUB_RULE" ]
+        assert_eq "$?" "0" "_project/FEATURE-121/vue/vue-composition-api.yaml preserved across re-clone (TICKET-121.b B2 spine)"
+        STUB_SHA_AFTER=$(shasum "$STUB_RULE" 2>/dev/null | awk '{print $1}')
+        assert_eq "$STUB_SHA_AFTER" "$STUB_SHA_BEFORE" "preserved _project/ rule bytes identical (no silent corruption)"
+        # Clean up stub _project/ so it does not persist across test runs.
+        rm -rf "$CACHE_PATH/_project"
+    fi
+else
+    log "  (skipped preservation test: cache .git not present — network-dependent path unavailable)"
+fi
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-sync-plugin] OK — $passes/$total passed."; exit 0
 else log "[test-sync-plugin] FAIL — $failures/$total."; exit 1; fi
