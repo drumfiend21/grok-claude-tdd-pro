@@ -139,22 +139,26 @@ if [ "$MODE" = "ensure" ]; then
             exit 0
         fi
     fi
-    # P-15 Phase 2 pre-wire (TICKET-121.b): preserve _project/<project-id>/ across
-    # cache rebuild. The `_project/` directory is a CTP-declared contract surface
-    # (per §31 / S-63) inside the plugin cache holding per-project acquired rules
-    # (`origin: project`, `scope: project:<id>`). It is gitignored — NOT part of
-    # the pinned commit — so a naive rm-rf would wipe operator working state on
-    # every pin bump. Convergence doc B2 mandates preservation. Defensive by
-    # design: no-op when _project/ is absent (which is true at pin 11126a8 —
-    # S-63 not yet shipped). Once CTP ships S-63, this backup/restore silently
-    # keeps the operator's acquired-but-not-yet-promoted rules alive across the
-    # pin bumps that adopt subsequent CTP features.
+    # P-15 Phase 2 (adopted at pin b886658 per ADR-0092): preserve per-project
+    # acquired rules across cache rebuild. The store landed at CTP's shipped
+    # location `generated-code-quality-standards/_project/<project-id>/<ns>/*.yaml`
+    # (relative to the plugin root; CTP answer #3 in the P-15 convergence exchange).
+    # These files are CTP-declared contract surface (§31 / S-63) holding rules with
+    # `origin: project` scoped to their owning project_id. Gitignored on CTP's side,
+    # so NOT part of the pinned commit — a naive rm-rf would wipe operator working
+    # state on every pin bump. Convergence doc B2 mandates preservation.
+    #
+    # Defensive by design: no-op when the store is absent (true pre-acquisition or
+    # if the operator has never scoped a consult with --project). Symmetric backup/
+    # restore around the rm-rf + clone. TICKET-121.b pre-wired the top-level path;
+    # TICKET-122 corrected it to the shipped nested path per CTP answer #3.
+    _PROJ_SRC="$CLONE_DIR_E/generated-code-quality-standards/_project"
     _PROJ_BACKUP=""
-    if [ -d "$CLONE_DIR_E/_project" ]; then
+    if [ -d "$_PROJ_SRC" ]; then
         _PROJ_BACKUP=$(mktemp -d -t sync-plugin-project.XXXXXX) || die "mktemp failed for _project backup"
-        cp -R "$CLONE_DIR_E/_project" "$_PROJ_BACKUP/_project" 2>/dev/null \
-            || { rm -rf "$_PROJ_BACKUP"; die "could not back up _project/ for preservation"; }
-        log "  preserve  : _project/ backed up (P-15 Phase 2 pre-wire, TICKET-121.b)"
+        cp -R "$_PROJ_SRC" "$_PROJ_BACKUP/_project" 2>/dev/null \
+            || { rm -rf "$_PROJ_BACKUP"; die "could not back up generated-code-quality-standards/_project/ for preservation"; }
+        log "  preserve  : generated-code-quality-standards/_project/ backed up (P-15 §31/S-63, TICKET-122)"
     fi
     rm -rf "$CLONE_DIR_E"
     git clone --depth=1 --branch "$PINNED_BRANCH" "$UPSTREAM_REPO" "$CLONE_DIR_E" >/dev/null 2>&1 \
@@ -167,10 +171,14 @@ if [ "$MODE" = "ensure" ]; then
             || die "could not check out pinned commit $PINNED_COMMIT; bump the pin or unshallow"
     fi
     if [ -n "$_PROJ_BACKUP" ] && [ -d "$_PROJ_BACKUP/_project" ]; then
-        cp -R "$_PROJ_BACKUP/_project" "$CLONE_DIR_E/_project" 2>/dev/null \
-            || log "  warn      : _project/ restore failed (backup at $_PROJ_BACKUP retained for manual recovery)"
-        [ -d "$CLONE_DIR_E/_project" ] && rm -rf "$_PROJ_BACKUP" || true
-        log "  restore   : _project/ preserved across pin bump (P-15 Phase 2 pre-wire, TICKET-121.b)"
+        # Restore to the same nested path (parent must exist — it always does
+        # under a valid CTP checkout because generated-code-quality-standards/
+        # is CTP-owned code).
+        mkdir -p "$CLONE_DIR_E/generated-code-quality-standards" 2>/dev/null || true
+        cp -R "$_PROJ_BACKUP/_project" "$_PROJ_SRC" 2>/dev/null \
+            || log "  warn      : generated-code-quality-standards/_project/ restore failed (backup at $_PROJ_BACKUP retained for manual recovery)"
+        [ -d "$_PROJ_SRC" ] && rm -rf "$_PROJ_BACKUP" || true
+        log "  restore   : generated-code-quality-standards/_project/ preserved across pin bump (P-15 §31/S-63, TICKET-122)"
     fi
     log "  status    : OK (cache materialized at $PINNED_SHORT_E)"
 
