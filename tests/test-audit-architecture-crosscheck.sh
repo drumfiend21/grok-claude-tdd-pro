@@ -293,6 +293,133 @@ cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
 JSON
 run; assert_eq "$?" "1" "invariant 4 §30.5: stack[] adds react uncovered by any decision → violation (1)"
 
+# --- Invariant 4 P-15 Phase 2 pre-wire (TICKET-121.b) — cross-project scoping ---
+# Adds project-overlay namespace propagation (first-class-but-scoped per convergence
+# doc B4) + A15 fail-loud cross-project leakage rejection + A16 --project required.
+# XC_PROJECT_ID env var carries the audit run scope; profile-side project_id is what
+# the emitting consult was scoped to. Matching scopes ⇒ overlay folds into target
+# set. Mismatching ⇒ hard error. Missing on audit run when profile carries one ⇒
+# hard error (no ambient current-project — GCTP owns ID assignment per B1).
+
+run_proj() { XC_RULES_FILE="$TMP/rules.json" XC_HANDOFFS_DIR="$TMP/h" XC_PROJECT_ID="$1" "$SCRIPT" --quiet >/dev/null 2>&1; }
+
+# Test 22: v1.1 profile with matching project_id + overlay ns covered by decision → 0
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]},
+  {"juncture":"frontend","complexity":"medium","applicable_rules":["g-react-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","security-governance","react"],
+   "activated_probe_namespaces":["iam","security-governance"],
+   "project_id":"FEATURE-003",
+   "project_overlay_namespaces":["react"]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run_proj "FEATURE-003"; assert_eq "$?" "0" "invariant 4 P-15: matching project_id + overlay ns covered by decision → 0"
+
+# Test 23: same profile, decision no longer references react → violation (overlay ns uncovered)
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+run_proj "FEATURE-003"; assert_eq "$?" "1" "invariant 4 P-15: matching project_id + overlay ns uncovered → violation (1)"
+
+# Test 24: violation error names the "project_overlay_namespaces (scope:FEATURE-003)" provenance
+out=$(XC_RULES_FILE="$TMP/rules.json" XC_HANDOFFS_DIR="$TMP/h" XC_PROJECT_ID="FEATURE-003" "$SCRIPT" 2>&1)
+echo "$out" | grep -q "project_overlay_namespaces (scope:FEATURE-003)" && overlay_msg_ok=1 || overlay_msg_ok=0
+assert_eq "$overlay_msg_ok" "1" "invariant 4 P-15: violation names 'project_overlay_namespaces (scope:FEATURE-003)' provenance"
+
+# Test 25: A16 — profile carries project_id but XC_PROJECT_ID unset → fail-loud violation
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001","g-react-001",$EO_ALL]}
+]}
+JSON
+run; assert_eq "$?" "1" "invariant 4 P-15/A16: profile with project_id but XC_PROJECT_ID unset → violation (--project required)"
+
+# Test 26: A16 error message cites convergence doc B1/A16
+out=$(XC_RULES_FILE="$TMP/rules.json" XC_HANDOFFS_DIR="$TMP/h" "$SCRIPT" 2>&1)
+echo "$out" | grep -q "convergence doc B1/A16" && a16_msg_ok=1 || a16_msg_ok=0
+assert_eq "$a16_msg_ok" "1" "invariant 4 P-15/A16: unset-XC_PROJECT_ID error cites B1/A16"
+
+# Test 27: A15 — profile scoped to FEATURE-003 but XC_PROJECT_ID=FEATURE-004 → cross-project leakage fail-loud
+run_proj "FEATURE-004"; assert_eq "$?" "1" "invariant 4 P-15/A15: cross-project scope mismatch → violation (leakage rejected)"
+
+# Test 28: A15 error message names both scopes + cites convergence doc B4/A15
+out=$(XC_RULES_FILE="$TMP/rules.json" XC_HANDOFFS_DIR="$TMP/h" XC_PROJECT_ID="FEATURE-004" "$SCRIPT" 2>&1)
+echo "$out" | grep -q "scoped to \[FEATURE-003\]" && a15_msg_from_ok=1 || a15_msg_from_ok=0
+echo "$out" | grep -q "audit run scoped to \[FEATURE-004\]" && a15_msg_to_ok=1 || a15_msg_to_ok=0
+echo "$out" | grep -q "convergence doc B4/A15" && a15_msg_cite_ok=1 || a15_msg_cite_ok=0
+assert_eq "$a15_msg_from_ok" "1" "invariant 4 P-15/A15: mismatch error names profile scope [FEATURE-003]"
+assert_eq "$a15_msg_to_ok" "1" "invariant 4 P-15/A15: mismatch error names audit scope [FEATURE-004]"
+assert_eq "$a15_msg_cite_ok" "1" "invariant 4 P-15/A15: mismatch error cites B4/A15 no-silent-globalization"
+
+# Test 29: profile without project_id + XC_PROJECT_ID set → global-only audit (no overlay in profile) → 0
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-node-007","g-iam-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api"],"namespaces":["iam","security-governance"],
+   "activated_probe_namespaces":["iam","security-governance"]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run_proj "FEATURE-003"; assert_eq "$?" "0" "invariant 4 P-15: XC_PROJECT_ID set but profile scope-agnostic → 0 (global-only view unchanged)"
+
+# Test 30: full union — activated ∪ stack ∪ overlay all covered → 0
+cat > "$TMP/h/FEATURE-1.architecture.json" <<JSON
+{"schema_version":"1","needs_grounding":0,"decisions":[
+  {"juncture":"auth","complexity":"medium","applicable_rules":["g-iam-001",$EO_ALL]},
+  {"juncture":"platform","complexity":"medium","applicable_rules":["g-aws-001",$EO_ALL]},
+  {"juncture":"frontend","complexity":"medium","applicable_rules":["g-react-001",$EO_ALL]}
+]}
+JSON
+cat > "$TMP/h/FEATURE-1.business-intake.json" <<'JSON'
+{"schema_version":"1.1","complete":true,
+ "workload_classification":{
+   "workload_types":["rest-api","aws-platform"],"namespaces":["iam","security-governance","aws","react"],
+   "activated_probe_namespaces":["iam","security-governance"],
+   "stack":[
+     {"namespace":"aws","source":"stack-add","trigger":"--stack-add aws","added_at":"2026-07-07T14:00:00Z"}
+   ],
+   "project_id":"FEATURE-003",
+   "project_overlay_namespaces":["react"]
+ },
+ "probes":{
+   "iam":{"identity_federation":"oidc-federated"},
+   "security-governance":{"ai_risk_tier":"annex-iii-high"}
+ },
+ "grounded_in":["s"],"grounded_in_namespaces":["iam","security-governance"],
+ "answers":{"workload":"x","motivation":"revenue","criticality":"mission-critical",
+   "availability_tolerance":"hours","data_loss_tolerance":"minutes","data_sensitivity":"confidential",
+   "compliance_regime":"gdpr","scale":"large","budget_posture":"balanced"}}
+JSON
+run_proj "FEATURE-003"; assert_eq "$?" "0" "invariant 4 P-15: activated ∪ stack ∪ overlay all covered → 0 (full union)"
+
 total=$((passes + failures))
 if [ "$failures" -eq 0 ]; then log "[test-arch-crosscheck] OK — $passes/$total passed."; exit 0
 else log "[test-arch-crosscheck] FAIL — $failures/$total."; exit 1; fi

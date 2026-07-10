@@ -34,6 +34,14 @@
 #   XC_RULES_FILE     default .harness/rules/active.json
 #   XC_HANDOFFS_DIR   default .harness/handoffs
 #   XC_EO_NAMESPACES  default "eo security-governance"
+#   XC_PROJECT_ID     P-15 Phase 2 pre-wire (TICKET-121.b) — the project scope for
+#                     this audit run. Required when a profile carries
+#                     workload_classification.project_id (fail-loud A16 otherwise).
+#                     When set and matching, project_overlay_namespaces[] on the
+#                     profile fold into invariant-4's target set (first-class-but-
+#                     scoped per convergence doc B4). When set and MISMATCHING,
+#                     invariant-4 fails-loud with a scope-mismatch diagnostic (A15
+#                     — the no-silent-globalization spine on the intra-repo axis).
 #
 # Exit codes:
 #   0  cross-check invariants hold (incl. vacuous: no artifacts)
@@ -66,6 +74,8 @@ emit() { [ "$QUIET" -eq 0 ] && printf '%s\n' "$*"; return 0; }
 RULES_FILE="${XC_RULES_FILE:-.harness/rules/active.json}"
 HANDOFFS_DIR="${XC_HANDOFFS_DIR:-.harness/handoffs}"
 EO_NS="${XC_EO_NAMESPACES:-eo security-governance}"
+# P-15 Phase 2 (TICKET-121.b): current-project scope. Empty ⇒ global-only run.
+PROJECT_ID="${XC_PROJECT_ID:-}"
 
 # Collect consult artifacts.
 have_artifact=0
@@ -90,7 +100,7 @@ for art in "$HANDOFFS_DIR"/*.architecture.json; do
     # v1.1 profile propagation (invariant 4, TICKET-114): sibling business-intake.json.
     prof="${art%.architecture.json}.business-intake.json"
     [ -f "$prof" ] || prof=""
-    out=$(XC_ART="$art" XC_CC="$cc" XC_RULES="$RULES_FILE" XC_EO="$EO_NS" XC_PROF="$prof" node -e '
+    out=$(XC_ART="$art" XC_CC="$cc" XC_RULES="$RULES_FILE" XC_EO="$EO_NS" XC_PROF="$prof" XC_PROJECT_ID="$PROJECT_ID" node -e '
 const fs = require("fs");
 const rd = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
 const errs = [];
@@ -138,10 +148,51 @@ if (process.env.XC_PROF) {
     const wc = prof.workload_classification || {};
     const activated = Array.isArray(wc.activated_probe_namespaces) ? wc.activated_probe_namespaces : [];
     const stackNs = Array.isArray(wc.stack) ? wc.stack.map(e => e && e.namespace).filter(x => typeof x === "string" && x) : [];
-    const target = new Set([...activated, ...stackNs]);
+    // P-15 Phase 2 (TICKET-121.b): overlay namespaces from project scope. When the
+    // profile carries project_id + project_overlay_namespaces (schema-validated by
+    // consult.sh --validate-profile), those namespaces are first-class-but-scoped
+    // per convergence doc B4. Cross-project leakage rejection (A15) + --project
+    // required (A16) fire before the union expansion.
+    const overlayNs = Array.isArray(wc.project_overlay_namespaces) ? wc.project_overlay_namespaces.filter(x => typeof x === "string" && x) : [];
+    const profileProjectId = (typeof wc.project_id === "string" && wc.project_id) ? wc.project_id : "";
+    const auditProjectId = process.env.XC_PROJECT_ID || "";
+    // A16: --project required when profile carries project_id.
+    if (profileProjectId && !auditProjectId) {
+      errs.push("v1.1 profile carries workload_classification.project_id [" + profileProjectId + "] but XC_PROJECT_ID unset (--project required per convergence doc B1/A16 — no ambient current-project)");
+    }
+    // A15: cross-project leakage rejection when scopes mismatch.
+    else if (profileProjectId && auditProjectId && profileProjectId !== auditProjectId) {
+      errs.push("v1.1 scope mismatch: profile scoped to [" + profileProjectId + "], audit run scoped to [" + auditProjectId + "] (cross-project leakage rejected per convergence doc B4/A15 — no silent globalization)");
+    }
+    // A15 companion: an overlay namespace present when auditProjectId is set but
+    // profileProjectId is empty is a schema-level anomaly already caught by
+    // --validate-profile (B4 orphan-overlay). Assert here defensively.
+    else if (!profileProjectId && overlayNs.length > 0) {
+      errs.push("v1.1 orphan overlay: project_overlay_namespaces present without project_id (schema violation — should have been caught by --validate-profile B4 spine)");
+    }
+    // Only expand invariant-4 target when scoping is consistent (or global).
+    const scopeOk = errs.length === 0 || !errs.some(e => e.startsWith("v1.1 scope mismatch") || e.startsWith("v1.1 profile carries") || e.startsWith("v1.1 orphan overlay"));
+    let target;
+    if (scopeOk && profileProjectId && profileProjectId === auditProjectId) {
+      // Matching scope — fold overlay into target.
+      target = new Set([...activated, ...stackNs, ...overlayNs]);
+    } else if (scopeOk) {
+      // Global-only or no overlay — unchanged from P-13.
+      target = new Set([...activated, ...stackNs]);
+    } else {
+      // Scope mismatch already logged; skip target expansion to avoid noise.
+      target = new Set();
+    }
     for (const ns of target) {
       if (!referencedNs.has(ns)) {
-        const from = activated.includes(ns) ? (stackNs.includes(ns) ? "activated_probe_namespaces + stack[]" : "activated_probe_namespaces") : "stack[]";
+        const inAct = activated.includes(ns);
+        const inStack = stackNs.includes(ns);
+        const inOverlay = overlayNs.includes(ns);
+        const from = [
+          inAct ? "activated_probe_namespaces" : null,
+          inStack ? "stack[]" : null,
+          inOverlay ? "project_overlay_namespaces (scope:" + profileProjectId + ")" : null,
+        ].filter(x => x).join(" + ");
         errs.push("v1.1 profile in-stack namespace [" + ns + "] (from " + from + ") does not propagate into any decision applicable_rules (no rule with source_namespace=" + ns + " referenced)");
       }
     }
