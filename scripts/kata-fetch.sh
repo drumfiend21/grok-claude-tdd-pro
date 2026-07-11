@@ -115,35 +115,62 @@ while IFS=$'\t' read -r sid url; do
         continue
     fi
     # Convert HTML → prose (one meaningful sentence per line). Python stdlib
-    # handles this cleanly; we strip script/style, unwrap tags, split on sentence
-    # boundaries, and drop lines shorter than 20 chars (nav labels, etc.).
+    # handles this cleanly:
+    #   • Skip content inside script/style/noscript/svg (never rules).
+    #   • Skip content inside nav/header/footer/aside (navigation cruft).
+    #   • PREFER content inside main/article/section — when the doc has one, we
+    #     use ONLY its text; otherwise fall back to whole-body text.
+    #   • Split on sentence boundaries; keep substantive lines (≥ 30 chars).
+    #   • Drop lines with menu-list signals (many pipes, many uppercase words in a
+    #     row, or dense caps-first tokens — classic nav-menu shapes).
     prose_chars=$(SRC_FILE="$tmpf" DEST_FILE="$dest" python3 -c '
 import os, re, sys
 from html.parser import HTMLParser
 class Extract(HTMLParser):
+    SKIP_TAGS = ("script","style","noscript","svg","nav","header","footer","aside","form","button")
+    PREFER_TAGS = ("main","article","section")
     def __init__(self):
         super().__init__()
-        self.out = []
-        self.skip = 0
+        self.out = []              # whole-document fallback
+        self.pref_out = []         # accumulated preferred-tag content
+        self.skip = 0              # nesting depth of a SKIP_TAG
+        self.pref_depth = 0        # nesting depth of a PREFER_TAG
     def handle_starttag(self, tag, attrs):
-        if tag in ("script","style","noscript","svg"): self.skip += 1
+        if tag in self.SKIP_TAGS: self.skip += 1
+        elif tag in self.PREFER_TAGS: self.pref_depth += 1
     def handle_endtag(self, tag):
-        if tag in ("script","style","noscript","svg") and self.skip > 0: self.skip -= 1
+        if tag in self.SKIP_TAGS and self.skip > 0: self.skip -= 1
+        elif tag in self.PREFER_TAGS and self.pref_depth > 0: self.pref_depth -= 1
     def handle_data(self, data):
         if self.skip: return
         t = data.strip()
-        if t: self.out.append(t)
+        if not t: return
+        if self.pref_depth > 0: self.pref_out.append(t)
+        self.out.append(t)
 src = open(os.environ["SRC_FILE"], "rb").read().decode("utf-8", errors="replace")
 p = Extract(); p.feed(src)
-text = " ".join(p.out)
-# Split on sentence boundaries; keep only substantive lines (>=20 chars, no HTML fragments)
-sents = re.split(r"(?<=[.!?])\s+", text)
+# Use main/article/section content when we saw enough of it; else whole body.
+chosen = " ".join(p.pref_out) if len(" ".join(p.pref_out)) > 500 else " ".join(p.out)
+# Split on sentence boundaries.
+sents = re.split(r"(?<=[.!?])\s+", chosen)
 lines = []
 for s in sents:
     s = re.sub(r"\s+", " ", s).strip()
-    if len(s) < 20: continue
-    if "{" in s or "}" in s: continue  # drops leaked JSX/JSON braces
+    if len(s) < 30: continue                        # too short — likely label
+    if "{" in s or "}" in s: continue               # leaked JSX/JSON braces
     if s.startswith("//") or s.startswith("/*"): continue
+    if s.count("|") >= 3: continue                  # nav breadcrumbs "A | B | C | D"
+    # Drop lines that are mostly Title-Case tokens (nav menus) — heuristic:
+    # count tokens matching /^[A-Z][a-z]+$/ and require < 40 percent of tokens.
+    toks = s.split()
+    if len(toks) >= 6:
+        title_like = sum(1 for t in toks if re.match(r"^[A-Z][a-z]+$", t))
+        if title_like / len(toks) > 0.4: continue
+    # Drop lines with too many capitalized ALL-CAP words (nav headers).
+    all_cap = sum(1 for t in toks if t.isupper() and len(t) > 1)
+    if all_cap >= 3: continue
+    # Sentences generally end with punctuation.
+    if not re.search(r"[.!?]$", s): continue
     lines.append(s)
 open(os.environ["DEST_FILE"], "w").write("\n".join(lines))
 print(sum(len(l) for l in lines))
