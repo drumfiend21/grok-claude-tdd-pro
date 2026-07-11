@@ -74,6 +74,7 @@ docs/handoff-ctp-p15-reconciliation-shared-design.md references missing path: do
 docs/handoff-ctp-p15-reconciliation-shared-design.md references missing path: scripts/dispatch.sh
 docs/handoff-ctp-p18-acquisition-sufficiency-threshold.md references missing path: scripts/audit-acquisition-sufficiency.sh
 docs/handoff-ctp-p18-acquisition-sufficiency-threshold.md references missing path: tests/test-audit-acquisition-sufficiency.sh
+docs/handoff-ctp-p21-compliance-urls-sync-gap.md references missing path: docs/architecture-v1.9.md
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-acquisition.sh
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-promotion.sh
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-recommender.sh
