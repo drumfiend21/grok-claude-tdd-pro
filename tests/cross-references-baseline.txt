@@ -55,6 +55,8 @@ docs/adr/0091-plugin-pin-bump-f39fcdc-to-11126a8.md references missing path: doc
 docs/adr/0092-plugin-pin-bump-11126a8-to-b886658.md references missing path: docs/architecture-v1.9.md
 docs/adr/0092-plugin-pin-bump-11126a8-to-b886658.md references missing path: docs/handoff-ctp-to-gctp-p15-converged.md
 docs/adr/0093-plugin-pin-bump-b886658-to-16e9623.md references missing path: docs/architecture-v1.9.md
+docs/adr/0094-plugin-pin-bump-16e9623-to-724fc4c.md references missing path: docs/architecture-v1.9.md
+docs/adr/0094-plugin-pin-bump-16e9623-to-724fc4c.md references missing path: scripts/audit-acquisition-sufficiency.sh
 docs/ai-engineering-corpus.md references missing path: docs/adr/000N-*.md
 docs/architecture-v1.9-drift-review-230e99d-to-4668c2e.md references missing path: docs/architecture-v1.9.md
 docs/deviations-template.md references missing path: docs/architecture/adr/0010-data-residency-region-extensible-iac.md
