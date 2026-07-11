@@ -13,6 +13,8 @@ S-3|rm -rf usage (verify path is bounded)|scripts/emit-manifest.sh:154:trap 'rm 
 S-3|rm -rf usage (verify path is bounded)|scripts/export-cursor-rules.sh:69:    trap 'rm -rf -- "$OUTDIR"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/grok-run.sh:149:trap 'rm -f -- "$compiled"' EXIT INT TERM
 S-3|rm -rf usage (verify path is bounded)|scripts/grok-run.sh:265:trap 'rm -f -- "$compiled"; [ -n "${GROK_DEBUG_FILE:-}" ] && rm -f -- "$GROK_DEBUG_FILE"; [ "${_RM_WORKDIR:-0}" = "1" ] && rm -rf -- "$GROK_WORKDIR"; :' EXIT INT TERM
+S-3|rm -rf usage (verify path is bounded)|scripts/kata-fetch.sh:113:        rm -f "$tmpf"
+S-3|rm -rf usage (verify path is bounded)|scripts/kata-fetch.sh:151:    rm -f "$tmpf"
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:190:    rm -f -- "$TEST_OUT"
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:192:    rm -f -- "$TEST_OUT"
 S-3|rm -rf usage (verify path is bounded)|scripts/smoke-e2e.sh:199:rm -f -- "$TEST_OUT"
