@@ -70,6 +70,8 @@ docs/handoff-ctp-p15-convergence-ack-and-final-shapes.md references missing path
 docs/handoff-ctp-p15-reconciliation-shared-design.md references missing path: docs/handoff-ctp-to-gctp-p15-technology-resolution-design.md
 docs/handoff-ctp-p15-reconciliation-shared-design.md references missing path: docs/PULL-REQUEST-REVIEW.md
 docs/handoff-ctp-p15-reconciliation-shared-design.md references missing path: scripts/dispatch.sh
+docs/handoff-ctp-p18-acquisition-sufficiency-threshold.md references missing path: scripts/audit-acquisition-sufficiency.sh
+docs/handoff-ctp-p18-acquisition-sufficiency-threshold.md references missing path: tests/test-audit-acquisition-sufficiency.sh
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-acquisition.sh
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-promotion.sh
 docs/handoff-ctp-post-adoption-pending-items.md references missing path: tests/test-p15-recommender.sh
@@ -79,6 +81,7 @@ docs/plugin-sync.md references missing path: docs/architecture-v1.9.md
 docs/rulebook-coverage-audit.md references missing path: docs/rulebook-coverage-audit-2026-07-01.md
 docs/upstream-ctp-proposals.md references missing path: docs/architecture-v1.9.md
 docs/upstream-ctp-proposals.md references missing path: docs/handoff-ctp-to-gctp-p15-converged.md
+docs/upstream-ctp-proposals.md references missing path: scripts/audit-acquisition-sufficiency.sh
 README.md references missing path: docs/adr/0006-static-context-injection-for-external-planners.md
 README.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 TICKETS.md references missing path: docs/compliance-profiles/eo-2026.md
@@ -87,6 +90,7 @@ TICKETS.md references missing path: docs/handoff-ctp-to-gctp-p15-converged.md
 TICKETS.md references missing path: docs/PROJECT_CONTEXT_FOR_PLANNER.md
 TICKETS.md references missing path: docs/secure-deployment-checklist.md
 TICKETS.md references missing path: docs/skill-consumption.md
+TICKETS.md references missing path: scripts/audit-acquisition-sufficiency.sh
 TICKETS.md references missing path: scripts/audit-vuln-scan.sh
 TICKETS.md references missing path: scripts/emit-cyber-report.sh
 TICKETS.md references missing path: tests/test-audit-vuln-scan.sh
