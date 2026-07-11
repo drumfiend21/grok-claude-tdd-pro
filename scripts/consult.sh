@@ -233,18 +233,23 @@ if (sv === "1.0") {
       }
     }
   }
-  // §31 / S-58 / S-59 (P-15 Phase 1 pre-wire, TICKET-121.a): families_active[] tolerance.
-  // Additive optional; absent ⇒ pre-P-15 profile ⇒ pass unchanged. Present ⇒ array of
-  // non-empty strings, each a family ID (e.g. "frontend", "backend_runtime"). Set
-  // semantics: no duplicates (a tech belongs to a family once). Structural only —
-  // the family-registry corpus (`standards/technology-family-registry.yaml`) does
-  // not exist at CTP pin 11126a8; semantic cross-check against known family IDs is
-  // deferred to TICKET-122 (post-S-58/S-59 tag). Adopted per ADR-0047 additive
-  // discipline + GCTP-side convergence doc §3.3 (Phase 1 startable NOW via existing
-  // `--stack-add` mechanism — no `_project/` dependency).
-  if ("families_active" in wc) {
-    const fa = wc.families_active;
-    if (!Array.isArray(fa)) errs.push("workload_classification.families_active not an array");
+  // §31 / S-58 / S-59 (P-15 Phase 1 pre-wire, TICKET-121.a; KA-3 G-1 reconciled at TICKET-129):
+  // families_active[] tolerance. CTP ships this at TOP-LEVEL of the profile (verified in KA-3
+  // via full-surface-intake.sh --classify --stack-add vue --partial --out — top-level d.families_active
+  // = ["frontend"] but d.workload_classification.families_active was null). Pre-wire TICKET-121.a
+  // speculatively placed the field under workload_classification.families_active; KA-3
+  // observed the shipped location is top-level. Same class of reconciliation as ADR-0087
+  // v1.1 key-name reconciliation and ADR-0091 stack[] enum reconciliation. This validator
+  // now checks BOTH locations for backward-compat during any transitional profile shape,
+  // but the shipped location is d.families_active (top-level). Additive optional; absent ⇒
+  // pre-P-15 profile ⇒ pass unchanged. Present ⇒ array of non-empty strings, each a family
+  // ID (e.g. "frontend", "backend_runtime"). Set semantics: no duplicates.
+  const familiesActiveField = ("families_active" in p) ? p.families_active
+                             : ("families_active" in wc) ? wc.families_active
+                             : undefined;
+  if (typeof familiesActiveField !== "undefined" && familiesActiveField !== null) {
+    const fa = familiesActiveField;
+    if (!Array.isArray(fa)) errs.push("families_active not an array (top-level or workload_classification)");
     else {
       const seenFam = new Set();
       for (let i = 0; i < fa.length; i++) {
